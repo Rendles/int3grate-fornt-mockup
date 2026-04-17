@@ -1,0 +1,22 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(npx tsc *)",
+      "Bash(npm run *)",
+      "Bash(curl -s -o /dev/null -w \"%{http_code}\" http://127.0.0.1:5173/)",
+      "Bash(npx eslint *)",
+      "Bash(curl -s http://127.0.0.1:5173/)",
+      "Bash(curl -s \"http://127.0.0.1:5173/src/prototype/index.tsx\")",
+      "Read(//tmp/**)",
+      "Bash(curl -s -o /dev/null -w \"%{http_code}\" http://127.0.0.1:5173/src/prototype/screens/HomeScreen.tsx)",
+      "Bash(curl -s -o /dev/null -w \"%{http_code}\\\\n\" http://127.0.0.1:5173/)",
+      "Bash(curl -s -o /dev/null -w \"%{http_code}\\\\n\" \"http://127.0.0.1:5173/src/prototype/index.tsx\")",
+      "Bash(curl -s -o /dev/null -w \"%{http_code}\\\\n\" http://127.0.0.1:5174/)",
+      "Bash(curl -s -o /dev/null -w \"%{http_code}\\\\n\" http://127.0.0.1:5174/src/prototype/screens/HomeScreen.tsx)",
+      "Bash(curl -s -o /dev/null -w \"%{http_code}\\\\n\" http://127.0.0.1:5174/src/prototype/screens/LoginScreen.tsx)",
+      "Bash(curl -s -o /dev/null -w '%{http_code}\\\\n' http://127.0.0.1:5175/__TRACKED_VAR__)",
+      "Bash(curl -s -o /dev/null -w '%{http_code}\\\\n' http://127.0.0.1:5176/__TRACKED_VAR__)",
+      "Bash(curl -s -o /dev/null -w '%{http_code}\\\\n' http://127.0.0.1:5177/__TRACKED_VAR__)"
+    ]
+  }
+}
