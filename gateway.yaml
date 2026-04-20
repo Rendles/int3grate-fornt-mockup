@@ -1,0 +1,1230 @@
+openapi: 3.1.0
+info:
+  title: Int3grate Gateway API
+  version: 0.1.0
+  description: |
+    Control plane API for Int3grate — B2B AI agent platform.
+    Manages identity, agents, tasks, approvals, and dashboards.
+  contact:
+    name: Int3grate Team
+    email: team.access@sprouter.ai
+
+servers:
+  - url: http://localhost:8080
+    description: Local development
+
+tags:
+  - name: auth
+    description: Authentication (JWT password flow)
+  - name: users
+    description: Current user profile
+  - name: agents
+    description: Agent configuration and versioning
+  - name: tasks
+    description: Work items (chat, one-time, schedule)
+  - name: runs
+    description: Execution audit trail
+  - name: approvals
+    description: Human-in-the-loop approval workflow
+  - name: dashboard
+    description: Spend analytics and monitoring
+  - name: internal
+    description: Service-to-service endpoints (not publicly routed)
+
+paths:
+  # ── Auth ────────────────────────────────────────────────────
+
+  /auth/login:
+    post:
+      operationId: login
+      summary: Authenticate user and receive JWT
+      tags: [auth]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/LoginRequest"
+      responses:
+        "200":
+          description: JWT issued successfully
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/LoginResponse"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "422":
+          $ref: "#/components/responses/ValidationError"
+
+  /me:
+    get:
+      operationId: getMe
+      summary: Get current authenticated user profile
+      tags: [users]
+      security:
+        - bearerAuth: []
+      responses:
+        "200":
+          description: Current user
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/User"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+
+  # ── Agents ──────────────────────────────────────────────────
+
+  /agents:
+    get:
+      operationId: listAgents
+      summary: List agents for the current tenant
+      tags: [agents]
+      security:
+        - bearerAuth: []
+      parameters:
+        - $ref: "#/components/parameters/LimitParam"
+        - $ref: "#/components/parameters/OffsetParam"
+      responses:
+        "200":
+          description: Paginated list of agents
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/AgentList"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+
+    post:
+      operationId: createAgent
+      summary: Create a new agent
+      tags: [agents]
+      security:
+        - bearerAuth: []
+      parameters:
+        - $ref: "#/components/parameters/IdempotencyKey"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CreateAgentRequest"
+      responses:
+        "201":
+          description: Agent created
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Agent"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "409":
+          $ref: "#/components/responses/Conflict"
+        "422":
+          $ref: "#/components/responses/ValidationError"
+
+  /agents/{agentId}:
+    get:
+      operationId: getAgent
+      summary: Get agent by ID
+      tags: [agents]
+      security:
+        - bearerAuth: []
+      parameters:
+        - $ref: "#/components/parameters/AgentId"
+      responses:
+        "200":
+          description: Agent details
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Agent"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "404":
+          $ref: "#/components/responses/NotFound"
+
+  /agents/{agentId}/versions:
+    post:
+      operationId: createAgentVersion
+      summary: Create a new immutable version for an agent
+      tags: [agents]
+      security:
+        - bearerAuth: []
+      parameters:
+        - $ref: "#/components/parameters/AgentId"
+        - $ref: "#/components/parameters/IdempotencyKey"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CreateAgentVersionRequest"
+      responses:
+        "201":
+          description: Version created
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/AgentVersion"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "422":
+          $ref: "#/components/responses/ValidationError"
+
+  /agents/{agentId}/versions/{versionId}/activate:
+    post:
+      operationId: activateAgentVersion
+      summary: Set a version as the active one (deactivates previous)
+      tags: [agents]
+      security:
+        - bearerAuth: []
+      parameters:
+        - $ref: "#/components/parameters/AgentId"
+        - $ref: "#/components/parameters/VersionId"
+      responses:
+        "200":
+          description: Version activated
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/AgentVersion"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "409":
+          $ref: "#/components/responses/Conflict"
+
+  /agents/{agentId}/grants:
+    get:
+      operationId: listToolGrants
+      summary: List tool grants for an agent
+      tags: [agents]
+      security:
+        - bearerAuth: []
+      parameters:
+        - $ref: "#/components/parameters/AgentId"
+      responses:
+        "200":
+          description: Tool grants
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/ToolGrant"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "404":
+          $ref: "#/components/responses/NotFound"
+
+    put:
+      operationId: replaceToolGrants
+      summary: Replace all tool grants for an agent (full replace)
+      tags: [agents]
+      security:
+        - bearerAuth: []
+      parameters:
+        - $ref: "#/components/parameters/AgentId"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ReplaceToolGrantsRequest"
+      responses:
+        "200":
+          description: Grants replaced
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/ToolGrant"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "422":
+          $ref: "#/components/responses/ValidationError"
+
+  # ── Tasks ───────────────────────────────────────────────────
+
+  /tasks:
+    get:
+      operationId: listTasks
+      summary: List tasks for the current tenant
+      tags: [tasks]
+      security:
+        - bearerAuth: []
+      parameters:
+        - $ref: "#/components/parameters/LimitParam"
+        - $ref: "#/components/parameters/OffsetParam"
+        - name: status
+          in: query
+          schema:
+            $ref: "#/components/schemas/TaskStatus"
+      responses:
+        "200":
+          description: Paginated list of tasks
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/TaskList"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+
+    post:
+      operationId: createTask
+      summary: Create a new task (starts a run)
+      tags: [tasks]
+      security:
+        - bearerAuth: []
+      parameters:
+        - $ref: "#/components/parameters/IdempotencyKey"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CreateTaskRequest"
+      responses:
+        "201":
+          description: Task created, run started
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Task"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "409":
+          $ref: "#/components/responses/Conflict"
+        "422":
+          $ref: "#/components/responses/ValidationError"
+
+  /tasks/{taskId}:
+    get:
+      operationId: getTask
+      summary: Get task by ID
+      tags: [tasks]
+      security:
+        - bearerAuth: []
+      parameters:
+        - $ref: "#/components/parameters/TaskId"
+      responses:
+        "200":
+          description: Task details
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Task"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "404":
+          $ref: "#/components/responses/NotFound"
+
+  # ── Runs ────────────────────────────────────────────────────
+
+  /runs/{runId}:
+    get:
+      operationId: getRun
+      summary: Get run with full step timeline (audit view)
+      tags: [runs]
+      security:
+        - bearerAuth: []
+      parameters:
+        - $ref: "#/components/parameters/RunId"
+      responses:
+        "200":
+          description: Run with steps
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/RunDetail"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "404":
+          $ref: "#/components/responses/NotFound"
+
+  # ── Approvals ───────────────────────────────────────────────
+
+  /approvals:
+    get:
+      operationId: listApprovals
+      summary: List approval requests (filterable by status)
+      tags: [approvals]
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: status
+          in: query
+          schema:
+            $ref: "#/components/schemas/ApprovalStatus"
+          description: Filter by status (default pending)
+        - $ref: "#/components/parameters/LimitParam"
+        - $ref: "#/components/parameters/OffsetParam"
+      responses:
+        "200":
+          description: Approval requests
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApprovalList"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+
+  /approvals/{approvalId}/decision:
+    post:
+      operationId: decideApproval
+      summary: Approve or reject a pending approval request
+      tags: [approvals]
+      security:
+        - bearerAuth: []
+      parameters:
+        - $ref: "#/components/parameters/ApprovalId"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ApprovalDecisionRequest"
+      responses:
+        "200":
+          description: Decision recorded, run resumed
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApprovalRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "409":
+          $ref: "#/components/responses/Conflict"
+
+  # ── Dashboard ───────────────────────────────────────────────
+
+  /dashboard/spend:
+    get:
+      operationId: getDashboardSpend
+      summary: Aggregated spend data for dashboards
+      tags: [dashboard]
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: range
+          in: query
+          required: false
+          schema:
+            type: string
+            enum: [1d, 7d, 30d, 90d]
+            default: 7d
+          description: Time range
+        - name: group_by
+          in: query
+          required: false
+          schema:
+            type: string
+            enum: [agent, user]
+            default: agent
+          description: Grouping dimension
+      responses:
+        "200":
+          description: Spend data
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/SpendDashboard"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+
+  # ── Internal (service-to-service) ───────────────────────────
+
+  /internal/approvals:
+    post:
+      operationId: createApprovalInternal
+      summary: Create an approval request (called by orchestrator)
+      tags: [internal]
+      x-internal: true
+      security:
+        - bearerToken: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CreateApprovalInternalRequest"
+      responses:
+        "201":
+          description: Approval request created
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApprovalRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "422":
+          $ref: "#/components/responses/ValidationError"
+
+  /internal/tool-grants/check:
+    get:
+      operationId: checkToolGrantInternal
+      summary: Check if a tool grant exists for a scope (called by orchestrator)
+      tags: [internal]
+      x-internal: true
+      security:
+        - bearerToken: []
+      parameters:
+        - name: scope_type
+          in: query
+          required: true
+          schema:
+            type: string
+            enum: [tenant, domain, agent]
+        - name: scope_id
+          in: query
+          required: true
+          schema:
+            type: string
+            format: uuid
+        - name: tool_name
+          in: query
+          required: true
+          schema:
+            type: string
+      responses:
+        "200":
+          description: Grant check result
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ToolGrantCheck"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+
+  # ── Health ──────────────────────────────────────────────────
+
+  /health:
+    get:
+      operationId: healthCheck
+      summary: Health check
+      tags: []
+      responses:
+        "200":
+          description: Service is healthy
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/HealthResponse"
+
+# ════════════════════════════════════════════════════════════════
+# Components
+# ════════════════════════════════════════════════════════════════
+
+components:
+
+  # ── Security Schemes ────────────────────────────────────────
+
+  securitySchemes:
+    bearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+      description: JWT issued by POST /auth/login
+    bearerToken:
+      type: http
+      scheme: bearer
+      description: Shared service token for /internal/* endpoints
+
+  # ── Parameters ──────────────────────────────────────────────
+
+  parameters:
+    AgentId:
+      name: agentId
+      in: path
+      required: true
+      schema:
+        type: string
+        format: uuid
+    VersionId:
+      name: versionId
+      in: path
+      required: true
+      schema:
+        type: string
+        format: uuid
+    TaskId:
+      name: taskId
+      in: path
+      required: true
+      schema:
+        type: string
+        format: uuid
+    RunId:
+      name: runId
+      in: path
+      required: true
+      schema:
+        type: string
+        format: uuid
+    ApprovalId:
+      name: approvalId
+      in: path
+      required: true
+      schema:
+        type: string
+        format: uuid
+    IdempotencyKey:
+      name: Idempotency-Key
+      in: header
+      required: false
+      schema:
+        type: string
+      description: Client-generated unique key for idempotent retries
+    LimitParam:
+      name: limit
+      in: query
+      required: false
+      schema:
+        type: integer
+        minimum: 1
+        maximum: 100
+        default: 20
+    OffsetParam:
+      name: offset
+      in: query
+      required: false
+      schema:
+        type: integer
+        minimum: 0
+        default: 0
+
+  # ── Responses ───────────────────────────────────────────────
+
+  responses:
+    Unauthorized:
+      description: Authentication required or token invalid
+      content:
+        application/problem+json:
+          schema:
+            $ref: "../schemas/shared/problem.yaml"
+    NotFound:
+      description: Resource not found
+      content:
+        application/problem+json:
+          schema:
+            $ref: "../schemas/shared/problem.yaml"
+    Conflict:
+      description: Conflict (duplicate idempotency key or state transition error)
+      content:
+        application/problem+json:
+          schema:
+            $ref: "../schemas/shared/problem.yaml"
+    ValidationError:
+      description: Request validation failed
+      content:
+        application/problem+json:
+          schema:
+            $ref: "../schemas/shared/problem.yaml"
+
+  # ── Schemas ─────────────────────────────────────────────────
+
+  schemas:
+
+    # ── Auth ──────────────────────────────────────────────────
+
+    LoginRequest:
+      type: object
+      required: [email, password]
+      properties:
+        email:
+          type: string
+          format: email
+        password:
+          type: string
+          minLength: 8
+
+    LoginResponse:
+      type: object
+      required: [token, expires_at]
+      properties:
+        token:
+          type: string
+          description: JWT access token
+        expires_at:
+          type: string
+          format: date-time
+
+    # ── User ──────────────────────────────────────────────────
+
+    User:
+      type: object
+      required: [id, tenant_id, email, name, role]
+      properties:
+        id:
+          type: string
+          format: uuid
+        tenant_id:
+          type: string
+          format: uuid
+        domain_id:
+          type: string
+          format: uuid
+          nullable: true
+        email:
+          type: string
+          format: email
+        name:
+          type: string
+        role:
+          type: string
+          enum: [member, domain_admin, admin]
+        approval_level:
+          type: integer
+          minimum: 1
+          maximum: 4
+        created_at:
+          type: string
+          format: date-time
+
+    # ── Agent ─────────────────────────────────────────────────
+
+    Agent:
+      type: object
+      required: [id, tenant_id, name, status, created_at]
+      properties:
+        id:
+          type: string
+          format: uuid
+        tenant_id:
+          type: string
+          format: uuid
+        domain_id:
+          type: string
+          format: uuid
+          nullable: true
+        owner_user_id:
+          type: string
+          format: uuid
+          nullable: true
+        name:
+          type: string
+        description:
+          type: string
+          nullable: true
+        status:
+          type: string
+          enum: [draft, active, paused, archived]
+        active_version:
+          $ref: "#/components/schemas/AgentVersion"
+          nullable: true
+          description: Embedded active version (if exists)
+        created_at:
+          type: string
+          format: date-time
+        updated_at:
+          type: string
+          format: date-time
+
+    AgentList:
+      type: object
+      required: [items, total]
+      properties:
+        items:
+          type: array
+          items:
+            $ref: "#/components/schemas/Agent"
+        total:
+          type: integer
+        limit:
+          type: integer
+        offset:
+          type: integer
+
+    CreateAgentRequest:
+      type: object
+      required: [name]
+      properties:
+        name:
+          type: string
+          minLength: 1
+          maxLength: 200
+        description:
+          type: string
+        domain_id:
+          type: string
+          format: uuid
+          description: Scope to a domain (null = tenant-wide)
+
+    # ── Agent Version ─────────────────────────────────────────
+
+    AgentVersion:
+      type: object
+      required: [id, agent_id, version, instruction_spec, is_active, created_at]
+      properties:
+        id:
+          type: string
+          format: uuid
+        agent_id:
+          type: string
+          format: uuid
+        version:
+          type: integer
+        instruction_spec:
+          type: string
+          description: Agent system prompt / instructions
+        memory_scope_config:
+          type: object
+          description: Allowed memory scopes
+        tool_scope_config:
+          type: object
+          description: Allowed tools and modes
+        approval_rules:
+          type: object
+        model_chain_config:
+          type: object
+        is_active:
+          type: boolean
+        created_by:
+          type: string
+          format: uuid
+          nullable: true
+        created_at:
+          type: string
+          format: date-time
+
+    CreateAgentVersionRequest:
+      type: object
+      required: [instruction_spec]
+      properties:
+        instruction_spec:
+          type: string
+          minLength: 1
+        memory_scope_config:
+          type: object
+          default: {}
+        tool_scope_config:
+          type: object
+          default: {}
+        approval_rules:
+          type: object
+          default: {}
+        model_chain_config:
+          type: object
+          default: {}
+
+    # ── Tool Grant ────────────────────────────────────────────
+
+    ToolGrant:
+      type: object
+      required: [id, tool_name, mode, approval_required]
+      properties:
+        id:
+          type: string
+          format: uuid
+        scope_type:
+          type: string
+          enum: [tenant, domain, agent]
+        scope_id:
+          type: string
+          format: uuid
+        tool_name:
+          type: string
+        mode:
+          type: string
+          enum: [read, write, read_write]
+        approval_required:
+          type: boolean
+        config:
+          type: object
+
+    ReplaceToolGrantsRequest:
+      type: object
+      required: [grants]
+      properties:
+        grants:
+          type: array
+          items:
+            type: object
+            required: [tool_name, mode]
+            properties:
+              tool_name:
+                type: string
+              mode:
+                type: string
+                enum: [read, write, read_write]
+              approval_required:
+                type: boolean
+                default: false
+              config:
+                type: object
+                default: {}
+
+    ToolGrantCheck:
+      type: object
+      required: [granted, mode, approval_required]
+      properties:
+        granted:
+          type: boolean
+        mode:
+          type: string
+          enum: [read, write, read_write]
+          nullable: true
+        approval_required:
+          type: boolean
+
+    # ── Task ──────────────────────────────────────────────────
+
+    TaskType:
+      type: string
+      enum: [chat, one_time, schedule]
+
+    TaskStatus:
+      type: string
+      enum: [pending, running, completed, failed, cancelled]
+
+    Task:
+      type: object
+      required: [id, tenant_id, type, status, created_at]
+      properties:
+        id:
+          type: string
+          format: uuid
+        tenant_id:
+          type: string
+          format: uuid
+        domain_id:
+          type: string
+          format: uuid
+          nullable: true
+        type:
+          $ref: "#/components/schemas/TaskType"
+        status:
+          $ref: "#/components/schemas/TaskStatus"
+        created_by:
+          type: string
+          format: uuid
+          nullable: true
+        assigned_agent_id:
+          type: string
+          format: uuid
+          nullable: true
+        assigned_agent_version_id:
+          type: string
+          format: uuid
+          nullable: true
+        title:
+          type: string
+          nullable: true
+        created_at:
+          type: string
+          format: date-time
+        updated_at:
+          type: string
+          format: date-time
+
+    TaskList:
+      type: object
+      required: [items, total]
+      properties:
+        items:
+          type: array
+          items:
+            $ref: "#/components/schemas/Task"
+        total:
+          type: integer
+        limit:
+          type: integer
+        offset:
+          type: integer
+
+    CreateTaskRequest:
+      type: object
+      required: [agent_id, user_input]
+      properties:
+        agent_id:
+          type: string
+          format: uuid
+          description: Agent to run (uses active version)
+        user_input:
+          type: string
+          minLength: 1
+          description: User message (for chat type)
+        type:
+          $ref: "#/components/schemas/TaskType"
+          default: chat
+        title:
+          type: string
+        domain_id:
+          type: string
+          format: uuid
+
+    # ── Run ───────────────────────────────────────────────────
+
+    RunStatus:
+      type: string
+      enum: [pending, running, completed, failed, suspended, cancelled]
+
+    RunDetail:
+      type: object
+      required: [id, tenant_id, task_id, status, created_at, steps]
+      properties:
+        id:
+          type: string
+          format: uuid
+        tenant_id:
+          type: string
+          format: uuid
+        domain_id:
+          type: string
+          format: uuid
+          nullable: true
+        task_id:
+          type: string
+          format: uuid
+        agent_version_id:
+          type: string
+          format: uuid
+          nullable: true
+        status:
+          $ref: "#/components/schemas/RunStatus"
+        suspended_stage:
+          type: string
+          nullable: true
+        started_at:
+          type: string
+          format: date-time
+          nullable: true
+        ended_at:
+          type: string
+          format: date-time
+          nullable: true
+        total_cost_usd:
+          type: number
+          format: double
+        total_tokens_in:
+          type: integer
+        total_tokens_out:
+          type: integer
+        error_message:
+          type: string
+          nullable: true
+        steps:
+          type: array
+          items:
+            $ref: "#/components/schemas/RunStep"
+        created_at:
+          type: string
+          format: date-time
+
+    RunStep:
+      type: object
+      required: [id, step_type, status, created_at]
+      properties:
+        id:
+          type: string
+          format: uuid
+        step_type:
+          type: string
+          enum: [llm_call, tool_call, memory_read, memory_write, approval_gate, validation]
+        status:
+          type: string
+        model_name:
+          type: string
+          nullable: true
+        tool_name:
+          type: string
+          nullable: true
+        input_ref:
+          type: object
+          nullable: true
+        output_ref:
+          type: object
+          nullable: true
+        cost_usd:
+          type: number
+          format: double
+          nullable: true
+        tokens_in:
+          type: integer
+          nullable: true
+        tokens_out:
+          type: integer
+          nullable: true
+        duration_ms:
+          type: integer
+          nullable: true
+        created_at:
+          type: string
+          format: date-time
+        completed_at:
+          type: string
+          format: date-time
+          nullable: true
+
+    # ── Approval ──────────────────────────────────────────────
+
+    ApprovalStatus:
+      type: string
+      enum: [pending, approved, rejected, expired, cancelled]
+
+    ApprovalRequest:
+      type: object
+      required: [id, run_id, task_id, tenant_id, requested_action, status, created_at]
+      properties:
+        id:
+          type: string
+          format: uuid
+        run_id:
+          type: string
+          format: uuid
+        task_id:
+          type: string
+          format: uuid
+        tenant_id:
+          type: string
+          format: uuid
+        requested_action:
+          type: string
+        requested_by:
+          type: string
+          format: uuid
+          nullable: true
+        requested_by_name:
+          type: string
+          nullable: true
+        approver_role:
+          type: string
+          nullable: true
+        approver_user_id:
+          type: string
+          format: uuid
+          nullable: true
+        status:
+          $ref: "#/components/schemas/ApprovalStatus"
+        reason:
+          type: string
+          nullable: true
+        evidence_ref:
+          type: object
+          nullable: true
+          description: Payload diff shown to the approver
+        expires_at:
+          type: string
+          format: date-time
+          nullable: true
+        resolved_at:
+          type: string
+          format: date-time
+          nullable: true
+        created_at:
+          type: string
+          format: date-time
+
+    ApprovalList:
+      type: object
+      required: [items, total]
+      properties:
+        items:
+          type: array
+          items:
+            $ref: "#/components/schemas/ApprovalRequest"
+        total:
+          type: integer
+        limit:
+          type: integer
+        offset:
+          type: integer
+
+    ApprovalDecisionRequest:
+      type: object
+      required: [decision]
+      properties:
+        decision:
+          type: string
+          enum: [approved, rejected]
+        reason:
+          type: string
+          description: Optional reason for the decision
+
+    CreateApprovalInternalRequest:
+      type: object
+      required: [run_id, task_id, tenant_id, requested_action]
+      properties:
+        run_id:
+          type: string
+          format: uuid
+        task_id:
+          type: string
+          format: uuid
+        tenant_id:
+          type: string
+          format: uuid
+        requested_action:
+          type: string
+        requested_by:
+          type: string
+          format: uuid
+        reason:
+          type: string
+        evidence_ref:
+          type: object
+
+    # ── Dashboard ─────────────────────────────────────────────
+
+    SpendDashboard:
+      type: object
+      required: [range, group_by, items, total_usd]
+      properties:
+        range:
+          type: string
+        group_by:
+          type: string
+        items:
+          type: array
+          items:
+            $ref: "#/components/schemas/SpendRow"
+        total_usd:
+          type: number
+          format: double
+
+    SpendRow:
+      type: object
+      required: [label, total_usd, run_count]
+      properties:
+        id:
+          type: string
+          format: uuid
+          description: Agent ID or User ID depending on group_by
+        label:
+          type: string
+          description: Agent name or user name
+        total_usd:
+          type: number
+          format: double
+        total_tokens_in:
+          type: integer
+        total_tokens_out:
+          type: integer
+        run_count:
+          type: integer
+        spend_date:
+          type: string
+          format: date
+          nullable: true
+
+    # ── Health ────────────────────────────────────────────────
+
+    HealthResponse:
+      type: object
+      required: [status]
+      properties:
+        status:
+          type: string
+          enum: [ok]
+        schema_version:
+          type: string

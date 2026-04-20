@@ -1,7 +1,6 @@
 import { useState } from 'react'
 import { useAuth } from '../auth'
 import { useRouter } from '../router'
-import { users } from '../lib/fixtures'
 import { Btn } from '../components/common'
 import { IconAlert, IconArrowRight } from '../components/icons'
 
@@ -15,6 +14,7 @@ function validate(email: string, password: string): FieldErrors {
   if (!email.trim()) e.email = 'Required'
   else if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email.trim())) e.email = 'Not a valid email address'
   if (!password) e.password = 'Required'
+  else if (password.length < 8) e.password = 'At least 8 characters'
   return e
 }
 
@@ -22,7 +22,7 @@ export default function LoginScreen() {
   const { login } = useAuth()
   const { navigate } = useRouter()
   const [email, setEmail] = useState('frontend@int3grate.ai')
-  const [password, setPassword] = useState('demo')
+  const [password, setPassword] = useState('demo1234')
   const [busy, setBusy] = useState(false)
   const [invalidCreds, setInvalidCreds] = useState(false)
   const [fieldErrors, setFieldErrors] = useState<FieldErrors>({})
@@ -41,23 +41,6 @@ export default function LoginScreen() {
     setInvalidCreds(false)
     try {
       await login(email, password)
-      navigate('/')
-    } catch {
-      setInvalidCreds(true)
-    } finally {
-      setBusy(false)
-    }
-  }
-
-  const quickLogin = async (u: typeof users[number]) => {
-    setEmail(u.email)
-    setPassword('demo')
-    setFieldErrors({})
-    setTouched({})
-    setBusy(true)
-    setInvalidCreds(false)
-    try {
-      await login(u.email, 'demo')
       navigate('/')
     } catch {
       setInvalidCreds(true)
@@ -92,8 +75,8 @@ export default function LoginScreen() {
           Keep humans <em>in control.</em>
         </h1>
         <div className="login__meta">
+          <span className="mono">POST /auth/login</span>
           <span>Region · eu-west-1</span>
-          <span>Build · 2026.04.17-a7c</span>
           <span>Status · nominal</span>
         </div>
       </div>
@@ -113,7 +96,7 @@ export default function LoginScreen() {
               <span className="banner__icon"><IconAlert className="ic" /></span>
               <div style={{ flex: 1 }}>
                 <div className="banner__title">Invalid credentials</div>
-                <div className="banner__body">That email and password combination isn't recognised. Try again, or use one of the demo roles below.</div>
+                <div className="banner__body">That email and password combination isn't recognised.</div>
               </div>
             </div>
           )}
@@ -182,24 +165,6 @@ export default function LoginScreen() {
               </span>
             ) : 'Continue'}
           </Btn>
-
-          <div className="login__roles">
-            <div className="login__roles-label">— or hop in as a demo role —</div>
-            <div className="login__roles-grid">
-              {users.map(u => (
-                <button
-                  key={u.id}
-                  type="button"
-                  className="login__role"
-                  onClick={() => quickLogin(u)}
-                  disabled={busy}
-                >
-                  <div style={{ fontWeight: 500, color: 'var(--text)' }}>{u.name.split(' ')[0]}</div>
-                  <div className="login__role-role">{u.role.replace('_', ' ')} · L{u.approval_level}</div>
-                </button>
-              ))}
-            </div>
-          </div>
         </form>
       </div>
     </div>

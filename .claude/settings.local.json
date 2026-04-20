@@ -28,7 +28,13 @@
       "Bash(curl -fsS http://127.0.0.1:5173/src/prototype/screens/ApprovalDetailScreen.tsx -o /dev/null)",
       "Bash(C:/Program Files/Git/bin/git.exe log *)",
       "Bash(where npx *)",
-      "Bash(C:/Program Files/Git/bin/git.exe status *)"
+      "Bash(C:/Program Files/Git/bin/git.exe status *)",
+      "Read(//c/Program Files/nodejs//**)",
+      "Read(//c/Program Files \\(x86\\)/**)",
+      "Bash(C:/Program Files/nodejs/npx.cmd tsc *)",
+      "Bash(C:/Program Files/nodejs/node.exe *)",
+      "Bash(\"C:/Program Files/nodejs/node.exe\" ./node_modules/typescript/bin/tsc -b --noEmit)",
+      "Bash(\"C:/Program Files/nodejs/node.exe\" ./node_modules/eslint/bin/eslint.js .)"
     ]
   }
 }

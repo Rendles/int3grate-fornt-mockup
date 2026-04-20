@@ -1,23 +1,23 @@
 import { useEffect, useState } from 'react'
 import { AppShell } from '../components/shell'
-import { PageHeader, Btn, Chip, MockBadge, BackendGapBanner } from '../components/common'
-import { Banner, EmptyState, ErrorState, LoadingList, NoAccessState } from '../components/states'
-import { IconAgent, IconArrowDown, IconArrowRight, IconArrowUp, IconSpend } from '../components/icons'
+import { PageHeader, Chip } from '../components/common'
+import { EmptyState, ErrorState, LoadingList, NoAccessState } from '../components/states'
+import { IconAgent, IconArrowRight, IconSpend } from '../components/icons'
 import { Link } from '../router'
 import { useAuth } from '../auth'
 import { api } from '../lib/api'
 import type { SpendDashboard, SpendGroupBy, SpendRange } from '../lib/types'
-import { money, num, pct, shortDate } from '../lib/format'
+import { money, num, shortDate } from '../lib/format'
 
 const RANGES: SpendRange[] = ['1d', '7d', '30d', '90d']
 const GROUPINGS: SpendGroupBy[] = ['agent', 'user']
 
-const TABLE_COLS = 'minmax(0, 1fr) 110px 70px 90px 92px 92px'
+const TABLE_COLS = 'minmax(0, 1fr) 120px 80px 90px 90px 110px'
 
 export default function SpendScreen() {
   const { user } = useAuth()
   const [data, setData] = useState<SpendDashboard | null>(null)
-  const [range, setRange] = useState<SpendRange>('30d')
+  const [range, setRange] = useState<SpendRange>('7d')
   const [groupBy, setGroupBy] = useState<SpendGroupBy>('agent')
   const [error, setError] = useState<string | null>(null)
   const [reloadTick, setReloadTick] = useState(0)
@@ -27,11 +27,16 @@ export default function SpendScreen() {
   useEffect(() => {
     if (!canView) return
     let cancelled = false
-    setError(null)
-    setData(null)
     api.getSpend(range, groupBy)
-      .then(d => { if (!cancelled) setData(d) })
-      .catch(e => { if (!cancelled) setError((e as Error).message ?? 'Failed to load') })
+      .then(d => {
+        if (cancelled) return
+        setData(d)
+        setError(null)
+      })
+      .catch(e => {
+        if (cancelled) return
+        setError((e as Error).message ?? 'Failed to load')
+      })
     return () => { cancelled = true }
   }, [range, groupBy, canView, reloadTick])
 
@@ -43,7 +48,7 @@ export default function SpendScreen() {
         <div className="page">
           <NoAccessState
             requiredRole="Admin or Domain Admin"
-            body="Spend analytics are scoped to admins. Members don't see tenant-wide cost rollups."
+            body="Spend analytics are scoped to admins."
           />
         </div>
       </AppShell>
@@ -54,11 +59,7 @@ export default function SpendScreen() {
     return (
       <AppShell crumbs={crumbs}>
         <div className="page">
-          <ErrorState
-            title="Couldn't load spend"
-            body={error}
-            onRetry={() => setReloadTick(t => t + 1)}
-          />
+          <ErrorState title="Couldn't load spend" body={error} onRetry={() => setReloadTick(t => t + 1)} />
         </div>
       </AppShell>
     )
@@ -74,11 +75,10 @@ export default function SpendScreen() {
 
   const stale = data.range !== range || data.group_by !== groupBy
   const items = data.items
-  const totalTokensIn = items.reduce((s, r) => s + r.tokens_in, 0)
-  const totalTokensOut = items.reduce((s, r) => s + r.tokens_out, 0)
-  const totalTokens = totalTokensIn + totalTokensOut
+  const totalTokensIn = items.reduce((s, r) => s + r.total_tokens_in, 0)
+  const totalTokensOut = items.reduce((s, r) => s + r.total_tokens_out, 0)
+  const totalRuns = items.reduce((s, r) => s + r.run_count, 0)
   const sorted = [...items].sort((a, b) => b.total_usd - a.total_usd)
-  const topItem = sorted[0] ?? null
   const maxSpend = Math.max(...items.map(r => r.total_usd), 0.0001)
   const empty = items.length === 0
 
@@ -86,40 +86,12 @@ export default function SpendScreen() {
     <AppShell crumbs={crumbs}>
       <div className="page page--wide" style={{ opacity: stale ? 0.55 : 1, transition: 'opacity 180ms' }}>
         <PageHeader
-          eyebrow={<>{`SPEND · ${(data.window_label ?? data.range).toUpperCase()} · GROUPED BY ${data.group_by.toUpperCase()}`}</>}
+          eyebrow={`SPEND · GET /dashboard/spend · ${data.range} · ${data.group_by}`}
           title={<>{money(data.total_usd, { compact: true })} <em>spent</em></>}
-          subtitle={
-            <>
-              Across {num(data.total_runs ?? 0)} runs in the {data.window_label ?? data.range} window. Spend analytics —
-              cost and throughput only, not business value or ROI.
-            </>
-          }
-          actions={
-            <Btn
-              variant="ghost"
-              disabled
-              title="Planned · CSV export not yet wired to backend"
-            >
-              Export CSV · planned
-            </Btn>
-          }
+          subtitle={<>Aggregated spend returned by <span className="mono">GET /dashboard/spend</span>. Fields: range, group_by, total_usd, items[].</>}
         />
 
-        <BackendGapBanner
-          title="Several spend metrics here aren't returned by /dashboard/spend"
-          fields={[
-            'total_runs',
-            'avg cost per run',
-            'period-over-period delta %',
-            'window label',
-            '"most expensive" callout',
-            'share-of-total bar',
-            'spend_date per row',
-          ]}
-          body={<>Backend response is <span className="mono">{'{range, group_by, total_usd, items[SpendRow]}'}</span>. Each SpendRow: <span className="mono">id, label, total_usd, total_tokens_in, total_tokens_out, run_count, spend_date</span>. Everything else is derived client-side.</>}
-        />
-
-        {/* Controls ── range + group_by */}
+        {/* Controls */}
         <div className="row" style={{ gap: 6, marginBottom: 16, flexWrap: 'wrap', alignItems: 'center' }}>
           <span className="mono uppercase muted" style={{ marginRight: 4 }}>range</span>
           {RANGES.map(r => (
@@ -133,7 +105,7 @@ export default function SpendScreen() {
             </button>
           ))}
           <span style={{ width: 1, height: 16, background: 'var(--border)', margin: '0 6px' }} />
-          <span className="mono uppercase muted" style={{ marginRight: 4 }}>group by</span>
+          <span className="mono uppercase muted" style={{ marginRight: 4 }}>group_by</span>
           {GROUPINGS.map(g => (
             <button
               key={g}
@@ -146,45 +118,30 @@ export default function SpendScreen() {
           ))}
         </div>
 
-        {/* Summary cards */}
-        <div className="grid grid--4" style={{ marginBottom: 18 }}>
+        {/* Summary cards — all derived from the response */}
+        <div className="grid grid--3" style={{ marginBottom: 18 }}>
           <div className="card card--metric">
             <div className="card__body">
-              <div className="metric__label">Total spend · {data.range}</div>
+              <div className="metric__label">total_usd</div>
               <div className="row" style={{ alignItems: 'baseline', gap: 6 }}>
                 <div className="metric__value">{money(data.total_usd, { compact: true })}</div>
                 <span className="metric__unit">USD</span>
               </div>
-              <div className={`metric__delta ${(data.total_spend_delta_pct ?? 0) >= 0 ? 'metric__delta--up' : 'metric__delta--down'}`}>
-                {(data.total_spend_delta_pct ?? 0) >= 0 ? <IconArrowUp className="ic ic--sm" /> : <IconArrowDown className="ic ic--sm" />}
-                {pct(data.total_spend_delta_pct ?? 0)} vs prior period
-              </div>
+              <div className="metric__delta">dashboard root field</div>
             </div>
           </div>
           <div className="card card--metric">
             <div className="card__body">
-              <div className="metric__label row row--sm">Total runs <MockBadge size="xs" /></div>
-              <div className="metric__value">{num(data.total_runs ?? 0)}</div>
-              <div className={`metric__delta ${(data.total_runs_delta_pct ?? 0) >= 0 ? 'metric__delta--up' : 'metric__delta--down'}`}>
-                {(data.total_runs_delta_pct ?? 0) >= 0 ? <IconArrowUp className="ic ic--sm" /> : <IconArrowDown className="ic ic--sm" />}
-                {pct(data.total_runs_delta_pct ?? 0)} vs prior period
-              </div>
+              <div className="metric__label">sum of run_count</div>
+              <div className="metric__value">{num(totalRuns)}</div>
+              <div className="metric__delta">across {items.length} {groupBy}{items.length === 1 ? '' : 's'}</div>
             </div>
           </div>
           <div className="card card--metric">
             <div className="card__body">
-              <div className="metric__label row row--sm">Avg cost / run <MockBadge size="xs" /></div>
-              <div className="metric__value">{money(data.avg_cost_per_run_usd ?? 0, { cents: true })}</div>
-              <div className="metric__delta">
-                {num(data.total_runs ?? 0)} runs · {money(data.total_usd, { compact: true })} total
-              </div>
-            </div>
-          </div>
-          <div className="card card--metric">
-            <div className="card__body">
-              <div className="metric__label">Total tokens</div>
+              <div className="metric__label">tokens · in / out</div>
               <div className="row" style={{ alignItems: 'baseline', gap: 6 }}>
-                <div className="metric__value">{num(Math.round(totalTokens / 1000))}</div>
+                <div className="metric__value">{num(Math.round((totalTokensIn + totalTokensOut) / 1000))}</div>
                 <span className="metric__unit">k</span>
               </div>
               <div className="metric__delta">
@@ -194,42 +151,7 @@ export default function SpendScreen() {
           </div>
         </div>
 
-        {/* Most expensive · callout */}
-        {topItem && !empty && (
-          <div className="card mock-outline" style={{ marginBottom: 18, borderColor: 'var(--warn-border)' }}>
-            <div className="card__body">
-              <div className="row row--between" style={{ gap: 16, flexWrap: 'wrap' }}>
-                <div style={{ minWidth: 0 }}>
-                  <div className="mono uppercase muted" style={{ fontSize: 10.5, marginBottom: 4 }}>
-                    most expensive {groupBy} · this {data.range}
-                  </div>
-                  <div className="row row--sm" style={{ gap: 10, flexWrap: 'wrap' }}>
-                    <div style={{ fontFamily: 'var(--font-serif)', fontSize: 22, color: 'var(--text)' }}>
-                      {topItem.label}
-                    </div>
-                    <Chip tone="warn">{Math.round((topItem.total_usd / Math.max(data.total_usd, 0.0001)) * 100)}% of total</Chip>
-                  </div>
-                  <div className="mono" style={{ fontSize: 11, color: 'var(--text-dim)', marginTop: 2 }}>
-                    {topItem.sub_label ? `${topItem.sub_label} · ` : ''}
-                    {num(topItem.run_count)} runs · {money(topItem.run_count > 0 ? topItem.total_usd / topItem.run_count : 0, { cents: true })} avg/run
-                  </div>
-                </div>
-                <div className="row row--sm" style={{ gap: 14 }}>
-                  <div style={{ fontFamily: 'var(--font-serif)', fontSize: 28, color: 'var(--warn)' }}>
-                    {money(topItem.total_usd, { compact: true })}
-                  </div>
-                  {groupBy === 'agent' && (
-                    <Btn variant="ghost" size="sm" href={`/agents/${topItem.id}`}>
-                      Open agent <IconArrowRight className="ic ic--sm" />
-                    </Btn>
-                  )}
-                </div>
-              </div>
-            </div>
-          </div>
-        )}
-
-        {/* Spend by group · horizontal bar chart */}
+        {/* Horizontal bars — derived from items */}
         {!empty && (
           <div className="card" style={{ marginBottom: 18 }}>
             <div className="card__head">
@@ -269,17 +191,10 @@ export default function SpendScreen() {
         )}
 
         {/* Breakdown table */}
-        <div className="row row--between" style={{ marginBottom: 10 }}>
-          <div className="mono uppercase muted">
-            breakdown · {items.length} {groupBy}{items.length === 1 ? '' : 's'} · total {money(data.total_usd, { compact: true })}
-          </div>
-        </div>
-
         {empty ? (
           <EmptyState
             icon={<IconSpend />}
-            title={`No spend in the ${data.window_label ?? data.range} window`}
-            body="Once runs are attributed to agents or users, rollups land here. Try a wider range or check back after new runs complete."
+            title={`No spend in the ${data.range} window`}
           />
         ) : (
           <div className="card" style={{ padding: 0 }}>
@@ -295,15 +210,14 @@ export default function SpendScreen() {
                 letterSpacing: '0.14em',
               }}
             >
-              <span>{groupBy}</span>
-              <span style={{ textAlign: 'right' }}>total</span>
+              <span>label · id</span>
+              <span style={{ textAlign: 'right' }}>total_usd</span>
               <span style={{ textAlign: 'right' }}>runs</span>
-              <span className="row row--sm" style={{ justifyContent: 'flex-end' }}>avg/run <MockBadge size="xs" /></span>
-              <span style={{ textAlign: 'right' }}>tokens in</span>
-              <span style={{ textAlign: 'right' }}>tokens out</span>
+              <span style={{ textAlign: 'right' }}>tokens_in</span>
+              <span style={{ textAlign: 'right' }}>tokens_out</span>
+              <span style={{ textAlign: 'right' }}>spend_date</span>
             </div>
             {items.map(r => {
-              const avg = r.run_count > 0 ? r.total_usd / r.run_count : 0
               const rowInner = (
                 <>
                   <div style={{ minWidth: 0 }}>
@@ -316,8 +230,7 @@ export default function SpendScreen() {
                       <div className="truncate" style={{ fontSize: 13, color: 'var(--text)' }}>{r.label}</div>
                     </div>
                     <div className="mono" style={{ fontSize: 10.5, color: 'var(--text-dim)', marginTop: 2 }}>
-                      {r.sub_label ?? r.kind ?? groupBy}
-                      {r.spend_date ? ` · ${shortDate(r.spend_date)}` : ''}
+                      {r.id}
                     </div>
                   </div>
                   <div className="mono" style={{ fontSize: 13, color: 'var(--text)', textAlign: 'right' }}>
@@ -326,14 +239,14 @@ export default function SpendScreen() {
                   <div className="mono" style={{ fontSize: 12, color: 'var(--text)', textAlign: 'right' }}>
                     {num(r.run_count)}
                   </div>
-                  <div className="mono" style={{ fontSize: 12, color: 'var(--text-muted)', textAlign: 'right' }}>
-                    {money(avg, { cents: true })}
+                  <div className="mono" style={{ fontSize: 11, color: 'var(--text-muted)', textAlign: 'right' }}>
+                    {num(r.total_tokens_in)}
                   </div>
                   <div className="mono" style={{ fontSize: 11, color: 'var(--text-muted)', textAlign: 'right' }}>
-                    {num(Math.round(r.tokens_in / 1000))}k
+                    {num(r.total_tokens_out)}
                   </div>
-                  <div className="mono" style={{ fontSize: 11, color: 'var(--text-muted)', textAlign: 'right' }}>
-                    {num(Math.round(r.tokens_out / 1000))}k
+                  <div className="mono" style={{ fontSize: 11, color: 'var(--text-dim)', textAlign: 'right' }}>
+                    {r.spend_date ? shortDate(r.spend_date) : '—'}
                   </div>
                 </>
               )
@@ -352,6 +265,7 @@ export default function SpendScreen() {
                     }}
                   >
                     {rowInner}
+                    <IconArrowRight className="ic" style={{ display: 'none' }} />
                   </Link>
                 )
               }
@@ -369,18 +283,9 @@ export default function SpendScreen() {
         )}
 
         <div style={{ height: 20 }} />
-
-        <Banner tone="info" title="Dashboard shape">
-          <>
-            <span className="mono">GET /dashboard/spend</span> with <span className="mono">{'{range, group_by}'}</span> returns
-            <span className="mono"> {'{total_usd, items[...]}'}</span>. Each row carries
-            <span className="mono"> total_usd</span>,
-            <span className="mono"> run_count</span>,
-            <span className="mono"> tokens_in</span>,
-            <span className="mono"> tokens_out</span>,
-            <span className="mono"> spend_date</span>. Supported group-by values: <Chip>agent</Chip> <Chip>user</Chip>.
-          </>
-        </Banner>
+        <div className="mono" style={{ fontSize: 10.5, color: 'var(--text-dim)', textAlign: 'right' }}>
+          endpoint · <span className="accent">GET /dashboard/spend?range={data.range}&group_by={data.group_by}</span>
+        </div>
       </div>
     </AppShell>
   )

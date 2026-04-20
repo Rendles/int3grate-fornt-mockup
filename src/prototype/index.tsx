@@ -1,6 +1,7 @@
 import './prototype.css'
 import { AuthProvider, useAuth } from './auth'
 import { RouterProvider, matchRoute, useRouter } from './router'
+import { ThemeProvider, useTheme } from './theme'
 import LoginScreen from './screens/LoginScreen'
 import HomeScreen from './screens/HomeScreen'
 import AgentsScreen from './screens/AgentsScreen'
@@ -40,7 +41,6 @@ function Router() {
     { pattern: '/agents', render: () => <AgentsScreen /> },
     { pattern: '/agents/new', render: () => <AgentNewScreen /> },
     { pattern: '/agents/:agentId', render: p => <AgentDetailScreen agentId={p.agentId} tab="overview" /> },
-    { pattern: '/agents/:agentId/versions', render: p => <AgentDetailScreen agentId={p.agentId} tab="versions" /> },
     { pattern: '/agents/:agentId/versions/new', render: p => <VersionNewScreen agentId={p.agentId} /> },
     { pattern: '/agents/:agentId/grants', render: p => <AgentDetailScreen agentId={p.agentId} tab="grants" /> },
     { pattern: '/agents/:agentId/settings', render: p => <AgentDetailScreen agentId={p.agentId} tab="settings" /> },
@@ -62,14 +62,23 @@ function Router() {
   return <NotFoundScreen />
 }
 
-export default function PrototypeApp() {
+function ThemedRoot() {
+  const { theme } = useTheme()
   return (
-    <div className="prototype-root">
+    <div className={`prototype-root${theme === 'light' ? ' theme-light' : ''}`}>
       <AuthProvider>
         <RouterProvider>
           <Router />
         </RouterProvider>
       </AuthProvider>
     </div>
+  )
+}
+
+export default function PrototypeApp() {
+  return (
+    <ThemeProvider>
+      <ThemedRoot />
+    </ThemeProvider>
   )
 }

@@ -2,14 +2,16 @@ import type { ReactNode } from 'react'
 import { useEffect, useState } from 'react'
 import { Link, useRouter } from '../router'
 import { useAuth } from '../auth'
+import { useTheme } from '../theme'
 import { api } from '../lib/api'
 import {
   IconAgent,
   IconApproval,
   IconHome,
   IconLogout,
-  IconSearch,
+  IconMoon,
   IconSpend,
+  IconSun,
   IconTask,
 } from './icons'
 import { Avatar } from './common'
@@ -76,11 +78,11 @@ export function Sidebar() {
           <div className="sb__tenant-label">Tenant / Domain</div>
           <div className="sb__tenant-body">
             <div>
-              <div className="sb__tenant-name">{user.tenant_name ?? user.tenant_id}</div>
-              <div className="sb__tenant-domain">{user.domain_name ?? user.domain_id}</div>
+              <div className="sb__tenant-name mono">{user.tenant_id}</div>
+              <div className="sb__tenant-domain mono">{user.domain_id ?? '—'}</div>
             </div>
             <Link to="/profile" className="sb__tenant-switch">
-              switch
+              open
             </Link>
           </div>
         </div>
@@ -115,7 +117,7 @@ export function Sidebar() {
       {user && (
         <div className="sb__footer">
           <Link to="/profile" className="sb__user">
-            <Avatar initials={user.initials ?? user.name.slice(0, 2).toUpperCase()} tone={user.avatar_tone ?? 'accent'} size={30} />
+            <Avatar initials={user.name.slice(0, 2).toUpperCase()} size={30} />
             <div style={{ minWidth: 0, flex: 1 }}>
               <div className="sb__user-name truncate">{user.name}</div>
               <div className="sb__user-role">{roleLabel(user.role)} · L{user.approval_level}</div>
@@ -133,6 +135,7 @@ export function Topbar({
   crumbs: { label: string; to?: string }[]
 }) {
   const { user, logout } = useAuth()
+  const { theme, toggle } = useTheme()
   return (
     <header className="shell__topbar">
       <nav className="tb__crumbs">
@@ -152,18 +155,22 @@ export function Topbar({
 
       <div className="tb__spacer" />
 
-      <div className="tb__search">
-        <IconSearch className="ic ic--sm" />
-        <input placeholder="Search agents, tasks, runs..." />
-        <kbd>⌘K</kbd>
-      </div>
-
-      <div className="tb__meta">
-        <div className="row row--sm">
-          <span className="tb__meta-dot" />
-          <span>live · {user ? '3 runs active' : 'not connected'}</span>
+      {user && (
+        <div className="tb__meta">
+          <span className="mono" style={{ fontSize: 11, color: 'var(--text-dim)' }}>
+            {user.email}
+          </span>
         </div>
-      </div>
+      )}
+
+      <button
+        className="tb__action"
+        onClick={toggle}
+        title={theme === 'dark' ? 'Switch to light theme' : 'Switch to dark theme'}
+        aria-label="Toggle theme"
+      >
+        {theme === 'dark' ? <IconSun className="ic ic--sm" /> : <IconMoon className="ic ic--sm" />}
+      </button>
 
       <button className="tb__action" onClick={logout} title="Sign out">
         <IconLogout className="ic ic--sm" />

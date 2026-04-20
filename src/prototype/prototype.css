@@ -3,7 +3,7 @@
    All styles scoped under .prototype-root. Dark, dense, instrument-panel.
    ============================================================= */
 
-@import url('https://fonts.googleapis.com/css2?family=Instrument+Serif:ital@0;1&family=Inter+Tight:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500;600&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap');
 
 .prototype-root {
   /* palette */
@@ -45,9 +45,9 @@
   --radius: 6px;
   --radius-lg: 10px;
 
-  --font-sans: 'Inter Tight', -apple-system, BlinkMacSystemFont, system-ui, sans-serif;
-  --font-serif: 'Instrument Serif', 'Times New Roman', serif;
-  --font-mono: 'JetBrains Mono', ui-monospace, 'Cascadia Code', Consolas, monospace;
+  --font-sans: 'Inter', -apple-system, BlinkMacSystemFont, system-ui, sans-serif;
+  --font-serif: 'Inter', -apple-system, BlinkMacSystemFont, system-ui, sans-serif;
+  --font-mono: 'Inter', -apple-system, BlinkMacSystemFont, system-ui, sans-serif;
 
   font-family: var(--font-sans);
   font-size: 14px;
@@ -57,6 +57,47 @@
   background: var(--bg);
   min-height: 100svh;
   -webkit-font-smoothing: antialiased;
+  transition: background 180ms ease, color 180ms ease;
+}
+
+/* ============================================================= light theme
+   Override palette only — layout, typography, components unchanged. */
+
+.prototype-root.theme-light {
+  --bg: #ffffff;
+  --surface: #f8f9fb;
+  --surface-2: #f2f3f6;
+  --surface-3: #eaecf0;
+  --surface-hi: #dfe2e8;
+  --border: #e3e5ea;
+  --border-2: #d5d8df;
+  --border-strong: #b8bcc4;
+  --text: #0a0b0c;
+  --text-muted: #4a4f56;
+  --text-dim: #7b7f86;
+  --text-ghost: #b4b7be;
+
+  --accent: #0F62FE;
+  --accent-2: #0043CE;
+  --accent-ink: #ffffff;
+  --accent-soft: rgba(15, 98, 254, 0.09);
+  --accent-border: rgba(15, 98, 254, 0.38);
+
+  --warn: #b45309;
+  --warn-soft: rgba(180, 83, 9, 0.09);
+  --warn-border: rgba(180, 83, 9, 0.35);
+
+  --danger: #b42318;
+  --danger-soft: rgba(180, 35, 24, 0.08);
+  --danger-border: rgba(180, 35, 24, 0.35);
+
+  --success: #107c41;
+  --success-soft: rgba(16, 124, 65, 0.09);
+  --success-border: rgba(16, 124, 65, 0.35);
+
+  --info: #0043ce;
+  --info-soft: rgba(0, 67, 206, 0.08);
+  --info-border: rgba(0, 67, 206, 0.35);
 }
 
 /* ============================================================= reset */

@@ -9,7 +9,6 @@ interface AuthValue {
   loading: boolean
   login: (email: string, password: string) => Promise<User>
   logout: () => void
-  switchRole: (userId: string) => Promise<void>
 }
 
 const AuthCtx = createContext<AuthValue | null>(null)
@@ -46,18 +45,12 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     return u
   }, [])
 
-  const switchRole = useCallback(async (userId: string) => {
-    const u = await api.me(userId)
-    setUser(u)
-    localStorage.setItem(STORAGE_KEY, JSON.stringify({ userId: u.id }))
-  }, [])
-
   const logout = useCallback(() => {
     setUser(null)
     localStorage.removeItem(STORAGE_KEY)
   }, [])
 
-  const value = useMemo<AuthValue>(() => ({ user, loading, login, logout, switchRole }), [user, loading, login, logout, switchRole])
+  const value = useMemo<AuthValue>(() => ({ user, loading, login, logout }), [user, loading, login, logout])
 
   return <AuthCtx.Provider value={value}>{children}</AuthCtx.Provider>
 }

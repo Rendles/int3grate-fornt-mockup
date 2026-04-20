@@ -268,52 +268,6 @@ export function Status({
   )
 }
 
-export function MockBadge({
-  label = 'ui-only',
-  size = 'sm',
-  title,
-}: {
-  label?: string
-  size?: 'sm' | 'xs'
-  title?: string
-}) {
-  return (
-    <span
-      className={`mock-badge${size === 'xs' ? ' mock-badge--xs' : ''}`}
-      title={title ?? 'Shown on the UI but not returned by the gateway API yet'}
-    >
-      {label}
-    </span>
-  )
-}
-
-export function BackendGapBanner({
-  title = 'Some fields on this screen aren\'t in the backend yet',
-  body,
-  fields,
-}: {
-  title?: string
-  body?: ReactNode
-  fields: string[]
-}) {
-  return (
-    <div className="mock-gap-banner" role="note">
-      <div className="mock-gap-banner__icon" aria-hidden>!</div>
-      <div style={{ flex: 1, minWidth: 0 }}>
-        <div className="mock-gap-banner__title">{title}</div>
-        <div className="mock-gap-banner__body">
-          {body ?? <>Populated from fixtures for the mockup. Each item below is tagged inline with the <span className="mock-badge mock-badge--xs" style={{ marginLeft: 2, marginRight: 2 }}>ui-only</span> pill.</>}
-        </div>
-        <div className="mock-gap-banner__chips">
-          {fields.map(f => (
-            <span key={f} className="mock-badge mock-badge--xs">{f}</span>
-          ))}
-        </div>
-      </div>
-    </div>
-  )
-}
-
 export function Btn({
   children,
   variant = 'default',

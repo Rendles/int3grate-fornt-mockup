@@ -1,36 +1,38 @@
 import { useEffect, useMemo, useState } from 'react'
 import { AppShell } from '../components/shell'
-import { PageHeader, Btn, Chip, Status, Sparkbar, Avatar, MockBadge, BackendGapBanner } from '../components/common'
+import { PageHeader, Btn, Chip, Status } from '../components/common'
 import { EmptyState, ErrorState, LoadingList } from '../components/states'
-import { IconAgent, IconArrowRight, IconLock, IconPlay, IconPlus } from '../components/icons'
-import { Link, useRouter } from '../router'
+import { IconAgent, IconArrowRight, IconLock, IconPlus } from '../components/icons'
+import { Link } from '../router'
 import { useAuth } from '../auth'
 import { api } from '../lib/api'
-import { allUsers, agentVersions as fxVersions } from '../lib/fixtures'
-import type { Agent, AgentStatus, User } from '../lib/types'
-import { ago, money, num, pct } from '../lib/format'
+import type { Agent, AgentStatus } from '../lib/types'
+import { ago } from '../lib/format'
 
 const STATUSES: Array<AgentStatus | 'all'> = ['all', 'active', 'paused', 'draft', 'archived']
 
 export default function AgentsScreen() {
   const { user } = useAuth()
-  const { navigate } = useRouter()
   const [agents, setAgents] = useState<Agent[] | null>(null)
   const [error, setError] = useState<string | null>(null)
   const [reloadTick, setReloadTick] = useState(0)
   const [filter, setFilter] = useState<AgentStatus | 'all'>('all')
   const [query, setQuery] = useState('')
-  const users = useMemo(() => allUsers(), [])
 
   const canCreate = user?.role === 'admin' || user?.role === 'domain_admin'
 
   useEffect(() => {
     let cancelled = false
-    setError(null)
-    setAgents(null)
     api.listAgents()
-      .then(a => { if (!cancelled) setAgents(a) })
-      .catch(e => { if (!cancelled) setError((e as Error).message ?? 'Failed to load agents') })
+      .then(a => {
+        if (cancelled) return
+        setAgents(a)
+        setError(null)
+      })
+      .catch(e => {
+        if (cancelled) return
+        setError((e as Error).message ?? 'Failed to load agents')
+      })
     return () => { cancelled = true }
   }, [reloadTick])
 
@@ -40,7 +42,7 @@ export default function AgentsScreen() {
       if (filter !== 'all' && a.status !== filter) return false
       if (query) {
         const q = query.toLowerCase()
-        if (!(a.name.toLowerCase().includes(q) || a.description.toLowerCase().includes(q))) return false
+        if (!(a.name.toLowerCase().includes(q) || (a.description ?? '').toLowerCase().includes(q))) return false
       }
       return true
     })
@@ -56,31 +58,14 @@ export default function AgentsScreen() {
     <AppShell crumbs={[{ label: 'home', to: '/' }, { label: 'agents' }]}>
       <div className="page page--wide">
         <PageHeader
-          eyebrow="AGENTS"
+          eyebrow="AGENTS · GET /agents"
           title={<>Your <em>fleet.</em></>}
-          subtitle="Each agent is an operator you configure: its role, the tools it may touch, and whose permission it needs to take action."
+          subtitle="Configure what agents are and what they may touch. Each row is one entry from GET /agents."
           actions={
-            <>
-              {canCreate ? (
-                <Btn variant="primary" href="/agents/new" icon={<IconPlus />}>New agent</Btn>
-              ) : (
-                <Btn variant="ghost" disabled icon={<IconLock />} title="Admins only · member role can't create agents">New agent</Btn>
-              )}
-            </>
+            canCreate
+              ? <Btn variant="primary" href="/agents/new" icon={<IconPlus />}>New agent</Btn>
+              : <Btn variant="ghost" disabled icon={<IconLock />} title="Admins only">New agent</Btn>
           }
-        />
-
-        <BackendGapBanner
-          title="Several columns shown here aren't in /agents response"
-          fields={[
-            '7d runs + success rate',
-            'monthly spend + cap bar',
-            'tools granted / gated counts',
-            'owner_team',
-            'sparkbar trend',
-            'glyph + tone',
-          ]}
-          body={<>GET /agents returns <span className="mono">{'{id, tenant_id, domain_id, owner_user_id, name, description, status, active_version, created_at, updated_at}'}</span>. Extra columns are derived or fixture-only.</>}
         />
 
         <div className="row" style={{ gap: 10, marginBottom: 16, flexWrap: 'wrap' }}>
@@ -101,7 +86,7 @@ export default function AgentsScreen() {
           <input
             className="input"
             style={{ width: 260, padding: '6px 10px', fontSize: 12 }}
-            placeholder="Search by name or description..."
+            placeholder="Filter by name or description..."
             value={query}
             onChange={e => setQuery(e.target.value)}
           />
@@ -119,190 +104,76 @@ export default function AgentsScreen() {
           <EmptyState
             icon={<IconAgent />}
             title="No agents match these filters"
-            body="Either loosen the filter set, or spin up a new agent from a template to get moving."
             action={canCreate ? { label: 'Create an agent', href: '/agents/new' } : undefined}
           />
         ) : (
           <div className="card" style={{ padding: 0 }}>
             <div style={{
               display: 'grid',
-              gridTemplateColumns: '40px minmax(0, 1fr) 110px 140px 130px 120px 90px',
+              gridTemplateColumns: 'minmax(0, 1fr) 120px 130px 160px 120px 32px',
               gap: 14, padding: '10px 16px', background: 'var(--surface-2)',
               fontFamily: 'var(--font-mono)', fontSize: 10, color: 'var(--text-dim)',
               textTransform: 'uppercase', letterSpacing: '0.14em',
               borderBottom: '1px solid var(--border)',
             }}>
+              <span>name · description</span>
+              <span>status</span>
+              <span>active version</span>
+              <span>owner · domain</span>
+              <span>updated</span>
               <span />
-              <span>agent · version · model</span>
-              <span className="row row--sm">status · 7d ok <MockBadge size="xs" /></span>
-              <span>owner</span>
-              <span className="row row--sm">spend · month <MockBadge size="xs" /></span>
-              <span className="row row--sm">grants <MockBadge size="xs" title="Counts derived from /agents/{id}/grants" /></span>
-              <span>actions</span>
             </div>
-            {filtered.map(a => {
-              const owner = users.find(u => u.id === a.owner_user_id)
-              const activeVer = fxVersions.find(v => v.id === a.active_version)
-              const grantBreakdown = null // we show summary as chips below
-              void grantBreakdown
-              return (
-                <AgentRow
-                  key={a.id}
-                  agent={a}
-                  owner={owner}
-                  versionLabel={activeVer ? `v${activeVer.version_number}` : undefined}
-                  model={activeVer?.model_chain_config.primary}
-                  canManagePermissions={!!canCreate}
-                  onManagePermissions={() => navigate(`/agents/${a.id}/grants`)}
-                  onStartTask={() => navigate(`/tasks/new?agent=${a.id}`)}
-                />
-              )
-            })}
+            {filtered.map(a => (
+              <Link
+                key={a.id}
+                to={`/agents/${a.id}`}
+                className="agent-row"
+                style={{ gridTemplateColumns: 'minmax(0, 1fr) 120px 130px 160px 120px 32px' }}
+              >
+                <div style={{ minWidth: 0 }}>
+                  <div style={{ fontSize: 13.5, color: 'var(--text)' }}>{a.name}</div>
+                  {a.description && (
+                    <div className="agent-row__desc truncate" style={{ marginTop: 2 }}>{a.description}</div>
+                  )}
+                  <div className="mono" style={{ fontSize: 10.5, color: 'var(--text-dim)', marginTop: 4 }}>
+                    {a.id}
+                  </div>
+                </div>
+                <Status status={a.status} />
+                <div>
+                  {a.active_version ? (
+                    <>
+                      <Chip tone="accent">v{a.active_version.version}</Chip>
+                      <div className="mono" style={{ fontSize: 10.5, color: 'var(--text-dim)', marginTop: 4 }}>
+                        {(a.active_version.model_chain_config as { primary?: string })?.primary ?? '—'}
+                      </div>
+                    </>
+                  ) : (
+                    <Chip tone="ghost">no active version</Chip>
+                  )}
+                </div>
+                <div>
+                  <div className="mono" style={{ fontSize: 11, color: 'var(--text)' }}>
+                    {a.owner_user_id ?? '—'}
+                  </div>
+                  <div className="mono" style={{ fontSize: 10.5, color: 'var(--text-dim)', marginTop: 4 }}>
+                    {a.domain_id ?? '—'}
+                  </div>
+                </div>
+                <div className="mono" style={{ fontSize: 11, color: 'var(--text-muted)' }}>
+                  {ago(a.updated_at)}
+                </div>
+                <IconArrowRight className="ic" />
+              </Link>
+            ))}
           </div>
         )}
 
         <div style={{ height: 20 }} />
         <div className="mono" style={{ fontSize: 10.5, color: 'var(--text-dim)', textAlign: 'right' }}>
           endpoint · <span className="accent">GET /agents</span>
-          {' · '}
-          no <span className="warn">PATCH</span> / <span className="warn">DELETE</span> /agents yet — editing and archival are disabled
         </div>
       </div>
     </AppShell>
-  )
-}
-
-function AgentRow({
-  agent, owner, versionLabel, model, canManagePermissions, onManagePermissions, onStartTask,
-}: {
-  agent: Agent
-  owner: User | undefined
-  versionLabel?: string
-  model?: string
-  canManagePermissions: boolean
-  onManagePermissions: () => void
-  onStartTask: () => void
-}) {
-  const canRun = agent.status === 'active'
-  return (
-    <Link
-      to={`/agents/${agent.id}`}
-      className="agent-row"
-      style={{ gridTemplateColumns: '40px minmax(0, 1fr) 110px 140px 130px 120px 90px' }}
-    >
-      <div className="agent-row__avatar" style={{ color: `var(--${agent.tone ?? 'accent'})` }}>
-        {agent.glyph ?? agent.name.slice(0, 2).toUpperCase()}
-      </div>
-      <div style={{ minWidth: 0 }}>
-        <div className="agent-row__name">
-          <span>{agent.name}</span>
-          {agent.owner_team && <Chip>{agent.owner_team}</Chip>}
-        </div>
-        <div className="agent-row__desc">{agent.description}</div>
-        <div className="row row--sm" style={{ marginTop: 6 }}>
-          {versionLabel ? (
-            <Chip tone="accent">{versionLabel}</Chip>
-          ) : (
-            <Chip tone="ghost">no active version</Chip>
-          )}
-          {model && <span className="mono" style={{ fontSize: 10.5, color: 'var(--text-dim)' }}>{model}</span>}
-          <span className="mono" style={{ fontSize: 10.5, color: 'var(--text-dim)' }}>updated {ago(agent.updated_at)}</span>
-        </div>
-      </div>
-      <div>
-        <Status status={agent.status} />
-        <div className="mono" style={{ fontSize: 10.5, color: 'var(--text-dim)', marginTop: 4 }}>
-          {num(agent.runs_7d ?? 0)} runs · {Math.round((agent.success_rate_7d ?? 0) * 100)}%
-        </div>
-      </div>
-      <OwnerCell owner={owner} />
-      <div>
-        <div className="mono" style={{ fontSize: 12, color: 'var(--text)' }}>
-          {money(agent.monthly_spend_usd ?? 0, { cents: (agent.monthly_spend_usd ?? 0) < 100 })}
-        </div>
-        {agent.monthly_spend_cap_usd && (
-          <>
-            <div className="spend-row__bar-track" style={{ marginTop: 4 }}>
-              <div className="spend-row__bar-fill" style={{ width: `${Math.min(100, ((agent.monthly_spend_usd ?? 0) / agent.monthly_spend_cap_usd) * 100)}%` }} />
-            </div>
-            <div className="mono" style={{ fontSize: 10, color: 'var(--text-dim)', marginTop: 3 }}>
-              {pct(((agent.monthly_spend_usd ?? 0) / agent.monthly_spend_cap_usd) * 100 - 100, 0)} to cap
-            </div>
-          </>
-        )}
-      </div>
-      <div>
-        <div className="mono" style={{ fontSize: 12, color: 'var(--text)' }}>
-          {agent.tools_granted ?? 0} total
-        </div>
-        <div className="mono" style={{ fontSize: 10.5, color: 'var(--warn)', marginTop: 3 }}>
-          {agent.tools_requiring_approval ?? 0} gated
-        </div>
-        <Sparkbar
-          values={(agent.runs_7d ?? 0) > 0 ? [5, 8, 6, 9, 12, 11, 14].map(n => n * ((agent.runs_7d ?? 0) / 40)) : [0, 0, 0, 0, 0, 0, 0]}
-          accent={agent.status === 'active'}
-          height={18}
-        />
-      </div>
-      <div className="row row--sm" style={{ justifyContent: 'flex-end' }}>
-        <RowAction
-          title={canRun ? 'Start task' : 'Agent not active'}
-          disabled={!canRun}
-          onClick={onStartTask}
-          icon={<IconPlay />}
-        />
-        <RowAction
-          title={canManagePermissions ? 'Manage permissions' : 'Admins only'}
-          disabled={!canManagePermissions}
-          onClick={onManagePermissions}
-          icon={canManagePermissions ? <IconLock /> : <IconLock />}
-        />
-        <IconArrowRight className="ic" />
-      </div>
-    </Link>
-  )
-}
-
-function RowAction({
-  title, disabled, onClick, icon,
-}: {
-  title: string
-  disabled?: boolean
-  onClick: () => void
-  icon: React.ReactNode
-}) {
-  return (
-    <button
-      className="tb__action"
-      title={title}
-      disabled={disabled}
-      onClick={e => {
-        e.preventDefault()
-        e.stopPropagation()
-        if (!disabled) onClick()
-      }}
-      style={{
-        padding: '4px 6px',
-        opacity: disabled ? 0.35 : 1,
-        cursor: disabled ? 'not-allowed' : 'pointer',
-      }}
-    >
-      {icon}
-    </button>
-  )
-}
-
-function OwnerCell({ owner }: { owner: User | undefined }) {
-  if (!owner) {
-    return <span className="mono" style={{ fontSize: 11, color: 'var(--text-dim)' }}>—</span>
-  }
-  return (
-    <div className="row row--sm">
-      <Avatar initials={owner.initials ?? owner.name.slice(0, 2).toUpperCase()} tone={owner.avatar_tone ?? 'accent'} size={22} />
-      <div style={{ minWidth: 0 }}>
-        <div style={{ fontSize: 12, color: 'var(--text)' }} className="truncate">{owner.name}</div>
-        <div className="mono" style={{ fontSize: 10, color: 'var(--text-dim)' }}>L{owner.approval_level} · {owner.role.replace('_', ' ')}</div>
-      </div>
-    </div>
   )
 }
