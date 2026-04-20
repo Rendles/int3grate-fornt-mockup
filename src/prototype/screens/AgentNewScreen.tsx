@@ -1,6 +1,6 @@
 import { useMemo, useState } from 'react'
 import { AppShell } from '../components/shell'
-import { PageHeader, Btn, Chip, Avatar } from '../components/common'
+import { PageHeader, Btn, Chip, Avatar, MockBadge } from '../components/common'
 import { Banner, NoAccessState } from '../components/states'
 import { IconAlert } from '../components/icons'
 import { useRouter } from '../router'
@@ -52,7 +52,7 @@ export default function AgentNewScreen() {
 
   if (isMember) {
     return (
-      <AppShell crumbs={[{ label: 'app', to: '/' }, { label: 'agents', to: '/agents' }, { label: 'new' }]}>
+      <AppShell crumbs={[{ label: 'home', to: '/' }, { label: 'agents', to: '/agents' }, { label: 'new' }]}>
         <div className="page page--narrow">
           <PageHeader eyebrow="CREATE AGENT" title={<>Admins only</>} />
           <NoAccessState
@@ -84,7 +84,7 @@ export default function AgentNewScreen() {
   }
 
   return (
-    <AppShell crumbs={[{ label: 'app', to: '/' }, { label: 'agents', to: '/agents' }, { label: 'new' }]}>
+    <AppShell crumbs={[{ label: 'home', to: '/' }, { label: 'agents', to: '/agents' }, { label: 'new' }]}>
       <div className="page page--narrow">
         <PageHeader
           eyebrow="CREATE AGENT"
@@ -199,7 +199,10 @@ export default function AgentNewScreen() {
             </div>
             <div className="form-row">
               <div>
-                <div className="form-row__label">Owner <span className="danger">*</span></div>
+                <div className="form-row__label row row--sm">
+                  Owner <span className="danger">*</span>
+                  <MockBadge size="xs" title="POST /agents doesn't accept owner_user_id — backend infers it from the caller" />
+                </div>
                 <div className="form-row__hint">Owner's tenant + domain seed agent scope. Approval level governs what the owner alone can auto-resolve.</div>
               </div>
               <div className="form-row__control">

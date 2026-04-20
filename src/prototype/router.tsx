@@ -15,8 +15,7 @@ const RouterCtx = createContext<RouterValue | null>(null)
 function parse(hash: string): { path: string; search: URLSearchParams } {
   const stripped = hash.replace(/^#/, '') || '/'
   const [path, q] = stripped.split('?')
-  const normalized = path.startsWith('/app') ? path.slice(4) || '/' : '/'
-  return { path: normalized, search: new URLSearchParams(q ?? '') }
+  return { path: path || '/', search: new URLSearchParams(q ?? '') }
 }
 
 export function RouterProvider({ children }: { children: ReactNode }) {
@@ -34,13 +33,12 @@ export function RouterProvider({ children }: { children: ReactNode }) {
       path,
       search,
       navigate: (to, opts) => {
-        const qualified = to.startsWith('/app') ? to : `/app${to === '/' ? '' : to}`
-        const next = `#${qualified}`
+        const next = `#${to}`
         if (opts?.replace) {
           window.history.replaceState(null, '', next)
           setHash(window.location.hash)
         } else {
-          window.location.hash = qualified
+          window.location.hash = to
         }
       },
     }
@@ -78,7 +76,7 @@ export function Link({ to, className, children, onClick, style, title }: {
   const { navigate } = useRouter()
   return (
     <a
-      href={`#${to.startsWith('/app') ? to : `/app${to === '/' ? '' : to}`}`}
+      href={`#${to}`}
       className={className}
       style={style}
       title={title}

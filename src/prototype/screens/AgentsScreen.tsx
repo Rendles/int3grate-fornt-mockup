@@ -1,8 +1,8 @@
 import { useEffect, useMemo, useState } from 'react'
 import { AppShell } from '../components/shell'
-import { PageHeader, Btn, Chip, Status, Sparkbar, Avatar } from '../components/common'
-import { EmptyState, LoadingList } from '../components/states'
-import { IconAgent, IconArrowRight, IconFilter, IconLock, IconPlay, IconPlus } from '../components/icons'
+import { PageHeader, Btn, Chip, Status, Sparkbar, Avatar, MockBadge, BackendGapBanner } from '../components/common'
+import { EmptyState, ErrorState, LoadingList } from '../components/states'
+import { IconAgent, IconArrowRight, IconLock, IconPlay, IconPlus } from '../components/icons'
 import { Link, useRouter } from '../router'
 import { useAuth } from '../auth'
 import { api } from '../lib/api'
@@ -16,6 +16,8 @@ export default function AgentsScreen() {
   const { user } = useAuth()
   const { navigate } = useRouter()
   const [agents, setAgents] = useState<Agent[] | null>(null)
+  const [error, setError] = useState<string | null>(null)
+  const [reloadTick, setReloadTick] = useState(0)
   const [filter, setFilter] = useState<AgentStatus | 'all'>('all')
   const [query, setQuery] = useState('')
   const users = useMemo(() => allUsers(), [])
@@ -23,8 +25,14 @@ export default function AgentsScreen() {
   const canCreate = user?.role === 'admin' || user?.role === 'domain_admin'
 
   useEffect(() => {
-    api.listAgents().then(setAgents)
-  }, [])
+    let cancelled = false
+    setError(null)
+    setAgents(null)
+    api.listAgents()
+      .then(a => { if (!cancelled) setAgents(a) })
+      .catch(e => { if (!cancelled) setError((e as Error).message ?? 'Failed to load agents') })
+    return () => { cancelled = true }
+  }, [reloadTick])
 
   const filtered = useMemo(() => {
     if (!agents) return []
@@ -45,7 +53,7 @@ export default function AgentsScreen() {
   }, [agents])
 
   return (
-    <AppShell crumbs={[{ label: 'app', to: '/' }, { label: 'agents' }]}>
+    <AppShell crumbs={[{ label: 'home', to: '/' }, { label: 'agents' }]}>
       <div className="page page--wide">
         <PageHeader
           eyebrow="AGENTS"
@@ -53,14 +61,26 @@ export default function AgentsScreen() {
           subtitle="Each agent is an operator you configure: its role, the tools it may touch, and whose permission it needs to take action."
           actions={
             <>
-              <Btn variant="ghost" icon={<IconFilter />}>Filters</Btn>
               {canCreate ? (
                 <Btn variant="primary" href="/agents/new" icon={<IconPlus />}>New agent</Btn>
               ) : (
-                <Btn variant="ghost" disabled icon={<IconLock />} title="Admins only">New agent</Btn>
+                <Btn variant="ghost" disabled icon={<IconLock />} title="Admins only · member role can't create agents">New agent</Btn>
               )}
             </>
           }
+        />
+
+        <BackendGapBanner
+          title="Several columns shown here aren't in /agents response"
+          fields={[
+            '7d runs + success rate',
+            'monthly spend + cap bar',
+            'tools granted / gated counts',
+            'owner_team',
+            'sparkbar trend',
+            'glyph + tone',
+          ]}
+          body={<>GET /agents returns <span className="mono">{'{id, tenant_id, domain_id, owner_user_id, name, description, status, active_version, created_at, updated_at}'}</span>. Extra columns are derived or fixture-only.</>}
         />
 
         <div className="row" style={{ gap: 10, marginBottom: 16, flexWrap: 'wrap' }}>
@@ -87,7 +107,13 @@ export default function AgentsScreen() {
           />
         </div>
 
-        {!agents ? (
+        {error ? (
+          <ErrorState
+            title="Couldn't load agents"
+            body={error}
+            onRetry={() => setReloadTick(t => t + 1)}
+          />
+        ) : !agents ? (
           <LoadingList rows={6} />
         ) : filtered.length === 0 ? (
           <EmptyState
@@ -108,10 +134,10 @@ export default function AgentsScreen() {
             }}>
               <span />
               <span>agent · version · model</span>
-              <span>status · 7d ok</span>
+              <span className="row row--sm">status · 7d ok <MockBadge size="xs" /></span>
               <span>owner</span>
-              <span>spend · month</span>
-              <span>grants</span>
+              <span className="row row--sm">spend · month <MockBadge size="xs" /></span>
+              <span className="row row--sm">grants <MockBadge size="xs" title="Counts derived from /agents/{id}/grants" /></span>
               <span>actions</span>
             </div>
             {filtered.map(a => {

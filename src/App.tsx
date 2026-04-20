@@ -15,11 +15,13 @@ function App() {
     return () => window.removeEventListener('hashchange', onChange)
   }, [])
 
-  useEffect(() => {
-    document.body.classList.toggle('prototype-active', hash.startsWith('#/app'))
-  }, [hash])
+  const inPrototype = hash.startsWith('#/')
 
-  if (hash.startsWith('#/app')) return <PrototypeApp />
+  useEffect(() => {
+    document.body.classList.toggle('prototype-active', inPrototype)
+  }, [inPrototype])
+
+  if (inPrototype) return <PrototypeApp />
 
   return (
     <>
@@ -42,7 +44,7 @@ function App() {
           Count is {count}
         </button>
         <a
-          href="#/app"
+          href="#/"
           style={{
             color: 'var(--accent)',
             border: '1px solid var(--accent-border)',

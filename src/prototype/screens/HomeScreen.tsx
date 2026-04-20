@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from 'react'
 import { AppShell } from '../components/shell'
-import { PageHeader, Btn, Chip, Dot, Status, Sparkbar } from '../components/common'
+import { PageHeader, Btn, Chip, Dot, Status, Sparkbar, MockBadge, BackendGapBanner } from '../components/common'
 import { Banner, ErrorState, LoadingList, NoAccessState } from '../components/states'
 import {
   IconAgent,
@@ -103,7 +103,7 @@ export default function HomeScreen() {
 
   const nowDate = new Date()
 
-  const crumbs = [{ label: 'app', to: '/' }, { label: 'dashboard' }]
+  const crumbs = [{ label: 'home', to: '/' }, { label: 'dashboard' }]
 
   // ───── error state
   if (errored) {
@@ -149,6 +149,23 @@ export default function HomeScreen() {
           canSwitchGroupBy={!isMember}
         />
 
+        {!isMember && !loading && !isEmpty && !errored && (
+          <BackendGapBanner
+            title="Dashboard pulls fields that aren't in the gateway contract yet"
+            fields={[
+              'period deltas (spend & runs)',
+              'runs today / 7d',
+              'active / paused / draft counts',
+              'failed runs · all-time',
+              'daily burn chart',
+              'cap utilisation',
+              'per-agent monthly spend',
+              'sparkbar trends',
+            ]}
+            body={<>GET /dashboard/spend returns only <span className="mono">{'{range, group_by, items, total_usd}'}</span>. Everything below tagged <MockBadge size="xs" /> is derived client-side or invented for the mock.</>}
+          />
+        )}
+
         {loading ? (
           <div style={{ marginTop: 24 }}><LoadingList rows={8} /></div>
         ) : isEmpty ? (
@@ -172,6 +189,7 @@ export default function HomeScreen() {
                   <>
                     {(spendPrimary?.total_spend_delta_pct ?? 0) >= 0 ? <IconArrowUp className="ic ic--sm" /> : <IconArrowDown className="ic ic--sm" />}
                     {pct(spendPrimary?.total_spend_delta_pct ?? 0)} vs prior
+                    <MockBadge size="xs" title="Period-over-period delta — not in /dashboard/spend response" />
                   </>
                 }
                 subTone={(spendPrimary?.total_spend_delta_pct ?? 0) >= 0 ? 'up' : 'down'}
@@ -181,7 +199,11 @@ export default function HomeScreen() {
               <MetricCard
                 label="Active agents"
                 value={num(activeAgents)}
-                sub={`${(agents ?? []).length} total · ${pausedAgents} paused · ${draftAgents} draft`}
+                sub={
+                  <>
+                    {(agents ?? []).length} total · {pausedAgents} paused · {draftAgents} draft
+                  </>
+                }
                 href="/agents"
                 icon={<IconAgent />}
               />
@@ -196,7 +218,7 @@ export default function HomeScreen() {
                 tone={pendingApprovals.length > 0 ? 'warn' : undefined}
               />
               <MetricCard
-                label="Failed runs · all-time"
+                label={<>Failed runs · all-time <MockBadge size="xs" title="Derived from tasks.status='failed' — no GET /runs aggregate" /></>}
                 value={num(failedRuns)}
                 sub={failedRuns > 0 ? 'review & rerun' : 'no failures on record'}
                 subTone={failedRuns > 0 ? 'danger' : undefined}
@@ -210,7 +232,7 @@ export default function HomeScreen() {
             <div className="grid grid--3" style={{ marginBottom: 20 }}>
               <div className="card card--metric">
                 <div className="card__body">
-                  <div className="metric__label">Runs · today</div>
+                  <div className="metric__label row row--sm">Runs · today <MockBadge size="xs" title="Derived from tasks.created_at; no GET /runs endpoint" /></div>
                   <div className="row" style={{ alignItems: 'baseline', gap: 6 }}>
                     <div className="metric__value">{num(runsToday)}</div>
                     {runsToday > 0 && <Dot tone="success" pulse />}
@@ -220,14 +242,14 @@ export default function HomeScreen() {
               </div>
               <div className="card card--metric">
                 <div className="card__body">
-                  <div className="metric__label">Runs · 7d</div>
+                  <div className="metric__label row row--sm">Runs · 7d <MockBadge size="xs" /></div>
                   <div className="metric__value">{num(runs7d)}</div>
                   <div className="metric__delta">tasks with a run started this week</div>
                 </div>
               </div>
               <div className="card card--metric" style={{ borderColor: mostExpensive ? 'var(--accent-border)' : undefined }}>
                 <div className="card__body">
-                  <div className="metric__label">Most expensive agent</div>
+                  <div className="metric__label row row--sm">Most expensive agent <MockBadge size="xs" title="Backend Agent doesn't carry monthly_spend_usd" /></div>
                   {mostExpensive ? (
                     <Link to={`/agents/${mostExpensive.id}`} style={{ display: 'block' }}>
                       <div className="row" style={{ gap: 10 }}>
@@ -343,7 +365,7 @@ function RangeControls({
 function MetricCard({
   label, value, sub, href, icon, pulse, subTone, tone,
 }: {
-  label: string
+  label: React.ReactNode
   value: string
   sub: React.ReactNode
   href: string
@@ -510,9 +532,9 @@ function BurnChartCard({ spend }: { spend: SpendDashboard }) {
   const arr = spend.burn_per_day ?? []
   const max = Math.max(...arr, 0.001)
   return (
-    <div className="card">
+    <div className="card mock-outline">
       <div className="card__head">
-        <div className="card__title">Daily burn · {spend.window_label}</div>
+        <div className="card__title row row--sm">Daily burn · {spend.window_label} <MockBadge title="burn_per_day / cap_usd not returned by /dashboard/spend" /></div>
         <Chip tone="accent">range · {spend.range}</Chip>
       </div>
       <div className="card__body">
@@ -578,9 +600,9 @@ function SpendTableCard({
             }}>
               <span>{data.group_by}</span>
               <span style={{ textAlign: 'right' }}>spend</span>
-              <span>trend</span>
+              <span className="row row--sm">trend <MockBadge size="xs" /></span>
               <span style={{ textAlign: 'right' }}>runs</span>
-              <span style={{ textAlign: 'right' }}>delta</span>
+              <span style={{ textAlign: 'right' }} className="row row--sm">delta <MockBadge size="xs" /></span>
             </div>
             {data.items.slice(0, 6).map(r => {
               const RowInner = (

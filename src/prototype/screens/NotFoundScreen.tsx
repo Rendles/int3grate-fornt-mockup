@@ -5,7 +5,7 @@ import { useRouter } from '../router'
 export default function NotFoundScreen() {
   const { path } = useRouter()
   return (
-    <AppShell crumbs={[{ label: 'app', to: '/' }, { label: '404' }]}>
+    <AppShell crumbs={[{ label: 'home', to: '/' }, { label: '404' }]}>
       <div className="page">
         <EmptyState
           title="Route not found"

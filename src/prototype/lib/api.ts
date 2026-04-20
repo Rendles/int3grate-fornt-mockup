@@ -205,10 +205,51 @@ export const api = {
     await delay()
     const a = fxApprovals.find(a => a.id === id)
     if (!a) throw new Error('no approval')
+    if (a.status !== 'pending') {
+      // Conflict — someone else (or this same tab) already decided.
+      throw Object.assign(new Error('Approval already resolved'), { code: 'already_resolved', current: a })
+    }
+    const now = new Date().toISOString()
     a.status = decision === 'approve' ? 'approved' : 'rejected'
     a.approver_user_id = byUserId
-    a.resolved_at = new Date().toISOString()
+    a.resolved_at = now
     a.reason = reason
+
+    // Cascade the decision into the related run (and task on reject) so the
+    // mock matches what the detail screen promises the operator.
+    const run = fxRuns[a.run_id]
+    if (run) {
+      const gate = run.steps.find(s => s.approval_id === a.id)
+      if (decision === 'approve') {
+        if (run.status === 'suspended') {
+          run.status = 'running'
+          run.suspended_stage = null
+        }
+        if (gate) {
+          gate.status = 'ok'
+          gate.completed_at = now
+          gate.detail = `Approved · orchestrator will resume ${a.tool_name ?? 'the pending step'}`
+        }
+      } else {
+        if (run.status === 'suspended' || run.status === 'running') {
+          run.status = 'cancelled'
+          run.ended_at = now
+          run.suspended_stage = null
+          run.error_message = `Approval ${a.id} rejected${reason ? `: ${reason}` : ''}`
+        }
+        if (gate) {
+          gate.status = 'blocked'
+          gate.completed_at = now
+          gate.detail = `Rejected${reason ? ` · ${reason}` : ''}`
+        }
+        const task = fxTasks.find(t => t.id === a.task_id)
+        if (task && (task.status === 'pending' || task.status === 'running')) {
+          task.status = 'cancelled'
+          task.updated_at = now
+          task.result_summary = `Cancelled · approval ${a.id} rejected`
+        }
+      }
+    }
     return a
   },
   async getSpend(range: SpendRange = '30d', group_by: SpendGroupBy = 'agent'): Promise<SpendDashboard> {

@@ -20,11 +20,11 @@
   --text-dim: #60646c;
   --text-ghost: #383c43;
 
-  --accent: #c8ff3b;
-  --accent-2: #9fcc20;
-  --accent-ink: #0a0b0c;
-  --accent-soft: rgba(200, 255, 59, 0.12);
-  --accent-border: rgba(200, 255, 59, 0.35);
+  --accent: #0F62FE;
+  --accent-2: #0043CE;
+  --accent-ink: #ffffff;
+  --accent-soft: rgba(15, 98, 254, 0.14);
+  --accent-border: rgba(15, 98, 254, 0.42);
 
   --warn: #ffb347;
   --warn-soft: rgba(255, 179, 71, 0.12);
@@ -451,6 +451,7 @@
   padding: 28px 32px 96px;
 }
 .page--wide { max-width: none; }
+.page--narrow { max-width: 920px; margin-inline: auto; }
 
 .page__header {
   display: flex;
@@ -1470,6 +1471,108 @@
   height: 6px;
   border-radius: 999px;
   background: var(--warn);
+}
+
+/* ============================================================= MOCK MARKERS
+   Visual convention for fields/sections shown on the frontend that are
+   NOT in the gateway.yaml contract. Dashed border + warn accent so the
+   eye catches it. Keep subtle — we use a lot of these. */
+
+.mock-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 1px 5px;
+  font-family: var(--font-mono);
+  font-size: 9px;
+  font-weight: 600;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: var(--warn);
+  background: var(--warn-soft);
+  border: 1px dashed var(--warn-border);
+  border-radius: 3px;
+  line-height: 1.5;
+  vertical-align: middle;
+  white-space: nowrap;
+}
+.mock-badge--xs {
+  font-size: 8.5px;
+  padding: 0 4px;
+  letter-spacing: 0.1em;
+}
+.mock-badge::before {
+  content: '';
+  width: 4px;
+  height: 4px;
+  border-radius: 999px;
+  background: var(--warn);
+  flex: none;
+}
+
+.mock-outline {
+  position: relative;
+  outline: 1px dashed var(--warn-border);
+  outline-offset: -1px;
+}
+.mock-outline::after {
+  content: 'ui-only';
+  position: absolute;
+  top: -8px;
+  right: 8px;
+  padding: 1px 5px;
+  font-family: var(--font-mono);
+  font-size: 8.5px;
+  font-weight: 600;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: var(--warn);
+  background: var(--bg);
+  border: 1px dashed var(--warn-border);
+  border-radius: 3px;
+  line-height: 1.5;
+  pointer-events: none;
+}
+
+.mock-gap-banner {
+  display: flex;
+  gap: 12px;
+  padding: 10px 14px;
+  border: 1px dashed var(--warn-border);
+  background: var(--warn-soft);
+  border-radius: var(--radius);
+  font-size: 12px;
+  line-height: 1.55;
+  color: var(--text);
+  margin-bottom: 16px;
+}
+.mock-gap-banner__icon {
+  flex: none;
+  width: 22px;
+  height: 22px;
+  display: grid;
+  place-items: center;
+  color: var(--warn);
+  border: 1px dashed var(--warn-border);
+  border-radius: 3px;
+  margin-top: 1px;
+}
+.mock-gap-banner__title {
+  font-family: var(--font-serif);
+  font-size: 15px;
+  color: var(--warn);
+  margin-bottom: 4px;
+  letter-spacing: -0.01em;
+}
+.mock-gap-banner__body {
+  color: var(--text-muted);
+  font-size: 12px;
+}
+.mock-gap-banner__chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px 6px;
+  margin-top: 8px;
 }
 
 .split {

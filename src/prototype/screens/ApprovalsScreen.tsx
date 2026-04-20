@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useState } from 'react'
 import { AppShell } from '../components/shell'
-import { PageHeader, Chip, Status, Avatar } from '../components/common'
-import { EmptyState, LoadingList } from '../components/states'
+import { PageHeader, Chip, Status, Avatar, MockBadge, BackendGapBanner } from '../components/common'
+import { EmptyState, ErrorState, LoadingList } from '../components/states'
 import { IconApproval, IconArrowRight, IconCheck, IconFilter, IconX } from '../components/icons'
 import { Link, useRouter } from '../router'
 import { api } from '../lib/api'
@@ -27,14 +27,23 @@ export default function ApprovalsScreen() {
   const [requesterFilter, setRequesterFilter] = useState<string>('all')
   const [dateFilter, setDateFilter] = useState<DateFilter>('any')
   const [loadedAt, setLoadedAt] = useState<number>(0)
+  const [error, setError] = useState<string | null>(null)
+  const [reloadTick, setReloadTick] = useState(0)
   const users = useMemo(() => allUsers(), [])
 
   useEffect(() => {
-    api.listApprovals().then(list => {
-      setApprovals(list)
-      setLoadedAt(Date.now())
-    })
-  }, [])
+    let cancelled = false
+    setError(null)
+    setApprovals(null)
+    api.listApprovals()
+      .then(list => {
+        if (cancelled) return
+        setApprovals(list)
+        setLoadedAt(Date.now())
+      })
+      .catch(e => { if (!cancelled) setError((e as Error).message ?? 'Failed to load approvals') })
+    return () => { cancelled = true }
+  }, [reloadTick])
 
   const agentOptions = useMemo(() => {
     const seen = new Map<string, string>()
@@ -85,7 +94,7 @@ export default function ApprovalsScreen() {
   }
 
   return (
-    <AppShell crumbs={[{ label: 'app', to: '/' }, { label: 'approvals' }]}>
+    <AppShell crumbs={[{ label: 'home', to: '/' }, { label: 'approvals' }]}>
       <div className="page page--wide">
         <PageHeader
           eyebrow="APPROVALS"
@@ -94,6 +103,21 @@ export default function ApprovalsScreen() {
         />
 
         <PolicyBanner />
+
+        <BackendGapBanner
+          title="Risk, approver level, monetary value and the agent / level filter are UI-only"
+          fields={[
+            'risk (low / medium / high)',
+            'required_approver_level',
+            'monetary_value_usd',
+            'agent_id / agent_name on approval',
+            'tool_name on approval',
+            'agent filter (no ?agent_id on /approvals)',
+            'level filter (no ?level on /approvals)',
+            'date filter (client-side)',
+          ]}
+          body={<>GET /approvals returns <span className="mono">{'{items[ApprovalRequest], total}'}</span>. Each ApprovalRequest carries <span className="mono">requested_action, requested_by, approver_role, status, reason, evidence_ref, expires_at, resolved_at</span>. No risk, no level, no agent linkage — those are derived client-side.</>}
+        />
 
         {/* Status row */}
         <div className="row" style={{ gap: 6, marginBottom: 10, flexWrap: 'wrap' }}>
@@ -141,6 +165,7 @@ export default function ApprovalsScreen() {
           </select>
           <div className="row row--sm">
             <span className="mono uppercase muted" style={{ fontSize: 9.5 }}>level</span>
+            <MockBadge size="xs" title="Client-side filter — required_approver_level is UI-only" />
             {LEVELS.map(l => (
               <button
                 key={String(l)}
@@ -178,7 +203,13 @@ export default function ApprovalsScreen() {
 
         <div style={{ height: 16 }} />
 
-        {!approvals ? (
+        {error ? (
+          <ErrorState
+            title="Couldn't load approvals"
+            body={error}
+            onRetry={() => setReloadTick(t => t + 1)}
+          />
+        ) : !approvals ? (
           <LoadingList rows={4} />
         ) : filtered.length === 0 ? (
           <EmptyState
@@ -204,9 +235,9 @@ export default function ApprovalsScreen() {
               <span>id · created</span>
               <span>action summary</span>
               <span>requester</span>
-              <span>approver · level</span>
+              <span className="row row--sm">approver · level <MockBadge size="xs" title="required_approver_level not in backend" /></span>
               <span>status</span>
-              <span>value / risk</span>
+              <span className="row row--sm">value / risk <MockBadge size="xs" /></span>
               <span>quick decide</span>
               <span />
             </div>

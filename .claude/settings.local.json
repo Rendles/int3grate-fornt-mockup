@@ -16,7 +16,19 @@
       "Bash(curl -s -o /dev/null -w \"%{http_code}\\\\n\" http://127.0.0.1:5174/src/prototype/screens/LoginScreen.tsx)",
       "Bash(curl -s -o /dev/null -w '%{http_code}\\\\n' http://127.0.0.1:5175/__TRACKED_VAR__)",
       "Bash(curl -s -o /dev/null -w '%{http_code}\\\\n' http://127.0.0.1:5176/__TRACKED_VAR__)",
-      "Bash(curl -s -o /dev/null -w '%{http_code}\\\\n' http://127.0.0.1:5177/__TRACKED_VAR__)"
+      "Bash(curl -s -o /dev/null -w '%{http_code}\\\\n' http://127.0.0.1:5177/__TRACKED_VAR__)",
+      "Bash(where npm *)",
+      "Bash(npm.cmd --version)",
+      "Bash(/c/Program Files/nodejs/npx.cmd tsc *)",
+      "Bash(cmd.exe *)",
+      "Bash(/c/Windows/System32/cmd.exe *)",
+      "Bash(/c/Program Files/nodejs/node.exe *)",
+      "Bash(curl -fsS http://127.0.0.1:5173/ -o /dev/null)",
+      "Bash(curl -fsS http://127.0.0.1:5173/src/prototype/screens/ApprovalsScreen.tsx -o /dev/null)",
+      "Bash(curl -fsS http://127.0.0.1:5173/src/prototype/screens/ApprovalDetailScreen.tsx -o /dev/null)",
+      "Bash(C:/Program Files/Git/bin/git.exe log *)",
+      "Bash(where npx *)",
+      "Bash(C:/Program Files/Git/bin/git.exe status *)"
     ]
   }
 }

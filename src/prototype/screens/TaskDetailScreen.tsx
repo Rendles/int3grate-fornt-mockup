@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from 'react'
 import { AppShell } from '../components/shell'
-import { PageHeader, Btn, Chip, Status, CommandBar, Avatar } from '../components/common'
+import { PageHeader, Btn, Chip, Status, CommandBar, Avatar, MockBadge, BackendGapBanner } from '../components/common'
 import { LoadingList, NoAccessState, Banner } from '../components/states'
 import { IconArrowRight, IconPlay, IconRoute } from '../components/icons'
 import { Link } from '../router'
@@ -23,7 +23,7 @@ export default function TaskDetailScreen({ taskId }: { taskId: string }) {
 
   if (task === null) {
     return (
-      <AppShell crumbs={[{ label: 'app', to: '/' }, { label: 'tasks', to: '/tasks' }, { label: 'not found' }]}>
+      <AppShell crumbs={[{ label: 'home', to: '/' }, { label: 'tasks', to: '/tasks' }, { label: 'not found' }]}>
         <div className="page"><NoAccessState requiredRole="access to this task" body={`Task ${taskId} could not be loaded.`} /></div>
       </AppShell>
     )
@@ -39,7 +39,7 @@ export default function TaskDetailScreen({ taskId }: { taskId: string }) {
   return (
     <AppShell
       crumbs={[
-        { label: 'app', to: '/' },
+        { label: 'home', to: '/' },
         { label: 'tasks', to: '/tasks' },
         { label: task.id.toUpperCase() },
       ]}
@@ -82,7 +82,23 @@ export default function TaskDetailScreen({ taskId }: { taskId: string }) {
           ]}
         />
 
-        <div style={{ height: 20 }} />
+        <div style={{ height: 14 }} />
+
+        <BackendGapBanner
+          title="Most task-level stats aren't on GET /tasks/{id}"
+          fields={[
+            'run_id link (Task has no run_id)',
+            'steps_count',
+            'spend_usd',
+            'duration_ms',
+            'priority',
+            'result_summary',
+            'agent_name (denormalized)',
+          ]}
+          body={<>The backend Task schema is <span className="mono">{'{id, tenant_id, domain_id, type, status, created_by, assigned_agent_id, assigned_agent_version_id, title, created_at, updated_at}'}</span>. Run-level aggregates would need a separate lookup — no endpoint for that yet.</>}
+        />
+
+        <div style={{ height: 14 }} />
 
         <div className="split">
           <div className="stack">
@@ -103,9 +119,12 @@ export default function TaskDetailScreen({ taskId }: { taskId: string }) {
             </div>
 
             {task.result_summary && (
-              <div className="card" style={{ borderColor: task.status === 'failed' ? 'var(--danger-border)' : 'var(--success-border)' }}>
+              <div className="card mock-outline" style={{ borderColor: task.status === 'failed' ? 'var(--danger-border)' : 'var(--success-border)' }}>
                 <div className="card__head">
-                  <div className="card__title">{task.status === 'failed' ? 'Failure note' : 'Result summary'}</div>
+                  <div className="card__title row row--sm">
+                    {task.status === 'failed' ? 'Failure note' : 'Result summary'}
+                    <MockBadge />
+                  </div>
                   <Chip tone={task.status === 'failed' ? 'danger' : 'success'}>{task.status}</Chip>
                 </div>
                 <div className="card__body">

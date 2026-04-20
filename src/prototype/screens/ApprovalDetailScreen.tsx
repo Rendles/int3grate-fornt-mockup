@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from 'react'
 import { AppShell } from '../components/shell'
-import { PageHeader, Btn, Chip, Status, Avatar, CommandBar } from '../components/common'
+import { PageHeader, Btn, Chip, Status, Avatar, CommandBar, MockBadge, BackendGapBanner } from '../components/common'
 import { Banner, LoadingList, NoAccessState } from '../components/states'
 import {
   IconAlert,
@@ -60,7 +60,7 @@ export default function ApprovalDetailScreen({ approvalId }: { approvalId: strin
 
   if (approval === null) {
     return (
-      <AppShell crumbs={[{ label: 'app', to: '/' }, { label: 'approvals', to: '/approvals' }, { label: 'not found' }]}>
+      <AppShell crumbs={[{ label: 'home', to: '/' }, { label: 'approvals', to: '/approvals' }, { label: 'not found' }]}>
         <div className="page"><NoAccessState requiredRole="visibility into this approval" body={`Approval ${approvalId} could not be loaded.`} /></div>
       </AppShell>
     )
@@ -105,7 +105,14 @@ export default function ApprovalDetailScreen({ approvalId }: { approvalId: strin
       setReason('')
       setReasonTouched(false)
     } catch (e) {
-      setSaveError((e as Error).message ?? 'Failed to submit decision')
+      const err = e as Error & { code?: string; current?: ApprovalRequest }
+      if (err.code === 'already_resolved' && err.current) {
+        setConflict(err.current)
+        setApproval(err.current)
+        setDecision(null)
+      } else {
+        setSaveError(err.message ?? 'Failed to submit decision')
+      }
     } finally {
       setBusy(false)
     }
@@ -121,7 +128,7 @@ export default function ApprovalDetailScreen({ approvalId }: { approvalId: strin
   return (
     <AppShell
       crumbs={[
-        { label: 'app', to: '/' },
+        { label: 'home', to: '/' },
         { label: 'approvals', to: '/approvals' },
         { label: approval.id.toUpperCase() },
       ]}
@@ -134,11 +141,42 @@ export default function ApprovalDetailScreen({ approvalId }: { approvalId: strin
           actions={
             <>
               <Status status={approval.status} />
-              {approval.risk && <Chip tone={approval.risk === 'high' ? 'danger' : approval.risk === 'medium' ? 'warn' : 'ghost'}>{approval.risk} risk</Chip>}
-              {approval.monetary_value_usd != null && <Chip tone="accent">{money(approval.monetary_value_usd)}</Chip>}
-              <Btn variant="ghost" href="/approvals">All approvals</Btn>
+              {approval.risk && (
+                <span className="row row--sm">
+                  <Chip tone={approval.risk === 'high' ? 'danger' : approval.risk === 'medium' ? 'warn' : 'ghost'}>{approval.risk} risk</Chip>
+                  <MockBadge size="xs" />
+                </span>
+              )}
+              {approval.monetary_value_usd != null && (
+                <span className="row row--sm">
+                  <Chip tone="accent">{money(approval.monetary_value_usd)}</Chip>
+                  <MockBadge size="xs" />
+                </span>
+              )}
+              <Btn variant="ghost" size="sm" href={`/runs/${approval.run_id}`}>
+                Open run <IconArrowRight className="ic ic--sm" />
+              </Btn>
+              <Btn variant="ghost" size="sm" href={`/tasks/${approval.task_id}`}>
+                Open task <IconArrowRight className="ic ic--sm" />
+              </Btn>
+              <Btn variant="ghost" size="sm" href="/approvals">Back to inbox</Btn>
             </>
           }
+        />
+
+        <BackendGapBanner
+          title="Context fields here aren't on the ApprovalRequest schema"
+          fields={[
+            'policy_reason',
+            'impact_scope',
+            'required_approver_level',
+            'risk chip',
+            'monetary_value_usd',
+            'agent_id / agent_name',
+            'tool_name',
+            'payload key-value diff (evidence_ref is just an object ref)',
+          ]}
+          body={<>Backend returns <span className="mono">requested_action, requested_by, approver_role, status, reason, evidence_ref, expires_at, resolved_at</span>. Everything else is invented for the mockup so the operator has a full decision surface.</>}
         />
 
         <CommandBar
@@ -237,7 +275,10 @@ export default function ApprovalDetailScreen({ approvalId }: { approvalId: strin
             </div>
             {approval.impact_scope && (
               <>
-                <div className="mono uppercase muted" style={{ marginBottom: 4 }}>Impact scope</div>
+                <div className="row row--sm" style={{ marginBottom: 4 }}>
+                  <span className="mono uppercase muted">Impact scope</span>
+                  <MockBadge size="xs" />
+                </div>
                 <div style={{ fontSize: 12.5, color: 'var(--text-muted)', marginBottom: 12 }}>{approval.impact_scope}</div>
               </>
             )}
@@ -287,7 +328,10 @@ export default function ApprovalDetailScreen({ approvalId }: { approvalId: strin
                 )}
               </div>
               <div>
-                <div className="mono uppercase muted" style={{ marginBottom: 4 }}>Agent</div>
+                <div className="row row--sm" style={{ marginBottom: 4 }}>
+                  <span className="mono uppercase muted">Agent</span>
+                  <MockBadge size="xs" title="Derived via run → version → agent; not on ApprovalRequest" />
+                </div>
                 <Link to={`/agents/${approval.agent_id}`}>
                   {approval.agent_name ?? approval.agent_id}
                 </Link>
@@ -301,7 +345,10 @@ export default function ApprovalDetailScreen({ approvalId }: { approvalId: strin
                 </div>
               </div>
               <div>
-                <div className="mono uppercase muted" style={{ marginBottom: 4 }}>Policy reason</div>
+                <div className="row row--sm" style={{ marginBottom: 4 }}>
+                  <span className="mono uppercase muted">Policy reason</span>
+                  <MockBadge size="xs" title="Not on ApprovalRequest — would come from the tool-grant / approval-rule that triggered this request" />
+                </div>
                 <div style={{ fontSize: 12.5 }}>{approval.policy_reason}</div>
               </div>
               <div>

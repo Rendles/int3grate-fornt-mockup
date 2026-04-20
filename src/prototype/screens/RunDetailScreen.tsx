@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from 'react'
 import { AppShell } from '../components/shell'
-import { PageHeader, Btn, Chip, Status, CommandBar } from '../components/common'
+import { PageHeader, Btn, Chip, Status, CommandBar, MockBadge, BackendGapBanner } from '../components/common'
 import { LoadingList, NoAccessState, Banner, EmptyState } from '../components/states'
 import {
   IconAlert,
@@ -70,7 +70,7 @@ export default function RunDetailScreen({ runId }: { runId: string }) {
 
   if (run === null) {
     return (
-      <AppShell crumbs={[{ label: 'app', to: '/' }, { label: 'runs' }, { label: 'not found' }]}>
+      <AppShell crumbs={[{ label: 'home', to: '/' }, { label: 'runs' }, { label: 'not found' }]}>
         <div className="page">
           <NoAccessState
             requiredRole="access to this run"
@@ -119,7 +119,7 @@ export default function RunDetailScreen({ runId }: { runId: string }) {
   return (
     <AppShell
       crumbs={[
-        { label: 'app', to: '/' },
+        { label: 'home', to: '/' },
         { label: 'tasks', to: '/tasks' },
         task ? { label: task.title.slice(0, 40), to: `/tasks/${task.id}` } : { label: 'task' },
         { label: run.id.toUpperCase() },
@@ -133,8 +133,26 @@ export default function RunDetailScreen({ runId }: { runId: string }) {
           actions={
             <>
               <Status status={run.status} />
-              {live && <Btn variant="ghost" icon={<IconPause />}>Pause</Btn>}
-              {live && <Btn variant="danger" icon={<IconStop />}>Stop run</Btn>}
+              {live && (
+                <Btn
+                  variant="ghost"
+                  icon={<IconPause />}
+                  disabled
+                  title="Planned · POST /runs/{id}/pause is not yet wired up"
+                >
+                  Pause · planned
+                </Btn>
+              )}
+              {live && (
+                <Btn
+                  variant="ghost"
+                  icon={<IconStop />}
+                  disabled
+                  title="Planned · POST /runs/{id}/cancel is not yet wired up"
+                >
+                  Stop · planned
+                </Btn>
+              )}
               <Btn variant="ghost" href="/tasks">All tasks</Btn>
               {task && <Btn variant="ghost" href={`/tasks/${task.id}`}>Task detail</Btn>}
               {task && (
@@ -161,6 +179,21 @@ export default function RunDetailScreen({ runId }: { runId: string }) {
             { label: 'DURATION', value: durationMs(run.duration_ms ?? null) },
             ...(run.suspended_stage ? [{ label: 'SUSPENDED AT', value: run.suspended_stage, tone: 'warn' as const }] : []),
           ]}
+        />
+
+        <div style={{ height: 12 }} />
+
+        <BackendGapBanner
+          title="Step titles, details and payload diffs are UI-only"
+          fields={[
+            'step.title + friendly detail',
+            'step.payload key-value view',
+            'step.approval_id link',
+            'step_index ordering',
+            'run.agent_id / agent_name (derived via version)',
+            'run.duration_ms / version_label',
+          ]}
+          body={<>Backend RunStep returns <span className="mono">{'{id, step_type, status, model_name, tool_name, input_ref, output_ref, cost_usd, tokens_in, tokens_out, duration_ms, created_at, completed_at}'}</span>. input_ref / output_ref are opaque object refs — the key-value diffs you see below are invented for the mock.</>}
         />
 
         {run.status === 'suspended' && (() => {

@@ -192,7 +192,7 @@ export default function VersionNewScreen({ agentId }: { agentId: string }) {
 
   if (!canEdit) {
     return (
-      <AppShell crumbs={[{ label: 'app', to: '/' }, { label: 'agents', to: '/agents' }, { label: agent?.name ?? '…', to: `/agents/${agentId}` }, { label: 'new version' }]}>
+      <AppShell crumbs={[{ label: 'home', to: '/' }, { label: 'agents', to: '/agents' }, { label: agent?.name ?? '…', to: `/agents/${agentId}` }, { label: 'new version' }]}>
         <div className="page page--narrow">
           <PageHeader eyebrow="NEW VERSION" title={<>Admins only</>} />
           <NoAccessState
@@ -213,7 +213,7 @@ export default function VersionNewScreen({ agentId }: { agentId: string }) {
   return (
     <AppShell
       crumbs={[
-        { label: 'app', to: '/' },
+        { label: 'home', to: '/' },
         { label: 'agents', to: '/agents' },
         { label: agent.name, to: `/agents/${agent.id}` },
         { label: 'versions', to: `/agents/${agent.id}/versions` },

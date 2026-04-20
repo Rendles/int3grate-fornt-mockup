@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from 'react'
 import { AppShell } from '../components/shell'
-import { PageHeader, Btn, Chip, Status } from '../components/common'
+import { PageHeader, Btn, Chip, Status, MockBadge } from '../components/common'
 import { Banner, LoadingList } from '../components/states'
 import {
   IconAlert,
@@ -163,7 +163,7 @@ export default function TaskNewScreen() {
   }
 
   return (
-    <AppShell crumbs={[{ label: 'app', to: '/' }, { label: 'tasks', to: '/tasks' }, { label: created ? 'created' : 'new' }]}>
+    <AppShell crumbs={[{ label: 'home', to: '/' }, { label: 'tasks', to: '/tasks' }, { label: created ? 'created' : 'new' }]}>
       <div className="page page--narrow">
         <PageHeader
           eyebrow="CREATE TASK · START AGENT"
@@ -394,7 +394,9 @@ export default function TaskNewScreen() {
                 </div>
                 <div className="form-row">
                   <div>
-                    <div className="form-row__label">Priority</div>
+                    <div className="form-row__label row row--sm">
+                      Priority <MockBadge size="xs" title="priority is not part of POST /tasks in gateway.yaml" />
+                    </div>
                     <div className="form-row__hint">Affects scheduling and how approvals are routed.</div>
                   </div>
                   <div className="form-row__control">

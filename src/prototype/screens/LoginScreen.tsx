@@ -21,7 +21,7 @@ function validate(email: string, password: string): FieldErrors {
 export default function LoginScreen() {
   const { login } = useAuth()
   const { navigate } = useRouter()
-  const [email, setEmail] = useState('frontend@sprouter.ai')
+  const [email, setEmail] = useState('frontend@int3grate.ai')
   const [password, setPassword] = useState('demo')
   const [busy, setBusy] = useState(false)
   const [invalidCreds, setInvalidCreds] = useState(false)
@@ -81,8 +81,8 @@ export default function LoginScreen() {
     <div className="login">
       <div className="login__side">
         <div className="login__brand">
-          <div className="sb__brand-mark">S</div>
-          <span>Sprouter</span>
+          <div className="sb__brand-mark">I</div>
+          <span>Int3grate.ai</span>
           <span className="mono" style={{ fontSize: 10, letterSpacing: '0.14em', color: 'var(--text-dim)', textTransform: 'uppercase', marginLeft: 6 }}>
             Control Plane
           </span>

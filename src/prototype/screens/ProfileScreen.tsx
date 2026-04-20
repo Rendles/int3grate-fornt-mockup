@@ -12,7 +12,7 @@ export default function ProfileScreen() {
   const initials = (u: { initials?: string; name: string }) => u.initials ?? u.name.slice(0, 2).toUpperCase()
 
   return (
-    <AppShell crumbs={[{ label: 'app', to: '/' }, { label: 'profile' }]}>
+    <AppShell crumbs={[{ label: 'home', to: '/' }, { label: 'profile' }]}>
       <div className="page page--narrow">
         <PageHeader
           eyebrow="PROFILE"

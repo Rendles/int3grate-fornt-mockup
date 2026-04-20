@@ -1,8 +1,8 @@
 import { useEffect, useMemo, useState } from 'react'
 import { AppShell } from '../components/shell'
-import { PageHeader, Btn, Chip, Status, Avatar } from '../components/common'
-import { EmptyState, LoadingList } from '../components/states'
-import { IconArrowRight, IconFilter, IconPlus, IconRoute, IconTask } from '../components/icons'
+import { PageHeader, Btn, Chip, Status, Avatar, MockBadge, BackendGapBanner } from '../components/common'
+import { EmptyState, ErrorState, LoadingList } from '../components/states'
+import { IconArrowRight, IconPlus, IconRoute, IconTask } from '../components/icons'
 import { Link, useRouter } from '../router'
 import { api } from '../lib/api'
 import type { Agent, Task, TaskStatus, TaskType } from '../lib/types'
@@ -18,13 +18,27 @@ export default function TasksScreen() {
   const [agents, setAgents] = useState<Agent[]>([])
   const [status, setStatus] = useState<TaskStatus | 'all'>('all')
   const [type, setType] = useState<TaskType | 'all'>('all')
+  const [error, setError] = useState<string | null>(null)
+  const [reloadTick, setReloadTick] = useState(0)
   const users = useMemo(() => allUsers(), [])
 
   useEffect(() => {
+    let cancelled = false
+    setError(null)
+    setTasks(null)
     // GET /tasks supports status filter server-side — we still filter by type client-side since the backend does not support it.
-    api.listTasks(status === 'all' ? undefined : { status }).then(setTasks)
-    api.listAgents().then(setAgents)
-  }, [status])
+    Promise.all([
+      api.listTasks(status === 'all' ? undefined : { status }),
+      api.listAgents(),
+    ])
+      .then(([t, a]) => {
+        if (cancelled) return
+        setTasks(t)
+        setAgents(a)
+      })
+      .catch(e => { if (!cancelled) setError((e as Error).message ?? 'Failed to load tasks') })
+    return () => { cancelled = true }
+  }, [status, reloadTick])
 
   const filtered = useMemo(() => {
     if (!tasks) return []
@@ -41,20 +55,31 @@ export default function TasksScreen() {
   const hasServerStatusFilter = status !== 'all'
 
   return (
-    <AppShell crumbs={[{ label: 'app', to: '/' }, { label: 'tasks' }]}>
+    <AppShell crumbs={[{ label: 'home', to: '/' }, { label: 'tasks' }]}>
       <div className="page page--wide">
         <PageHeader
           eyebrow="TASKS"
           title={<>Work <em>in motion.</em></>}
           subtitle="Each task is a unit of work you dispatch to an agent. Tasks spawn runs; runs stream steps — tool calls, memory reads, approval gates."
           actions={
-            <>
-              <Btn variant="ghost" icon={<IconFilter />}>Filters</Btn>
-              <Btn variant="primary" href="/tasks/new" icon={<IconPlus />}>
-                Create task
-              </Btn>
-            </>
+            <Btn variant="primary" href="/tasks/new" icon={<IconPlus />}>
+              Create task
+            </Btn>
           }
+        />
+
+        <BackendGapBanner
+          title="Several columns shown here aren't in /tasks response"
+          fields={[
+            'user_input preview',
+            'priority',
+            'duration',
+            'steps count',
+            'per-task spend',
+            'run link (task has no run_id)',
+            'agent name (denormalized)',
+          ]}
+          body={<>GET /tasks returns <span className="mono">{'{id, tenant_id, domain_id, type, status, created_by, assigned_agent_id, assigned_agent_version_id, title, created_at, updated_at}'}</span>. No run_id, no step / spend aggregates on the task.</>}
         />
 
         <div className="row" style={{ gap: 6, marginBottom: 10, flexWrap: 'wrap' }}>
@@ -84,7 +109,13 @@ export default function TasksScreen() {
           <span className="mono" style={{ fontSize: 10.5, color: 'var(--text-dim)', marginLeft: 8 }}>client-side · backend filters status only</span>
         </div>
 
-        {!tasks ? (
+        {error ? (
+          <ErrorState
+            title="Couldn't load tasks"
+            body={error}
+            onRetry={() => setReloadTick(t => t + 1)}
+          />
+        ) : !tasks ? (
           <LoadingList rows={6} />
         ) : filtered.length === 0 ? (
           <EmptyState
@@ -109,13 +140,13 @@ export default function TasksScreen() {
               letterSpacing: '0.12em',
             }}>
               <span />
-              <span>task · input</span>
+              <span className="row row--sm">task · input <MockBadge size="xs" title="user_input preview not part of GET /tasks response" /></span>
               <span>type</span>
               <span>agent · version</span>
               <span>creator · updated</span>
               <span>status</span>
-              <span>spend</span>
-              <span>run</span>
+              <span className="row row--sm">spend <MockBadge size="xs" /></span>
+              <span className="row row--sm">run <MockBadge size="xs" title="task.run_id not in backend" /></span>
               <span />
             </div>
             {filtered.map(t => {

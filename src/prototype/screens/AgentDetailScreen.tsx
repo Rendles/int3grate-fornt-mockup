@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from 'react'
 import { AppShell } from '../components/shell'
-import { PageHeader, Btn, Chip, Status, Tabs, Sparkbar, CommandBar, Avatar } from '../components/common'
+import { PageHeader, Btn, Chip, Status, Tabs, Sparkbar, CommandBar, Avatar, MockBadge, BackendGapBanner } from '../components/common'
 import { Banner, LoadingList, NoAccessState } from '../components/states'
 import {
   IconAgent, IconArrowRight, IconPlay, IconPlus, IconClock, IconLock, IconChat, IconTask, IconRoute,
@@ -40,7 +40,7 @@ export default function AgentDetailScreen({
 
   if (agent === null) {
     return (
-      <AppShell crumbs={[{ label: 'app', to: '/' }, { label: 'agents', to: '/agents' }, { label: 'not found' }]}>
+      <AppShell crumbs={[{ label: 'home', to: '/' }, { label: 'agents', to: '/agents' }, { label: 'not found' }]}>
         <div className="page">
           <NoAccessState
             requiredRole="visibility into this agent"
@@ -53,7 +53,7 @@ export default function AgentDetailScreen({
 
   if (agent === undefined) {
     return (
-      <AppShell crumbs={[{ label: 'app', to: '/' }, { label: 'agents', to: '/agents' }, { label: 'loading...' }]}>
+      <AppShell crumbs={[{ label: 'home', to: '/' }, { label: 'agents', to: '/agents' }, { label: 'loading...' }]}>
         <div className="page"><LoadingList rows={6} /></div>
       </AppShell>
     )
@@ -73,7 +73,7 @@ export default function AgentDetailScreen({
   return (
     <AppShell
       crumbs={[
-        { label: 'app', to: '/' },
+        { label: 'home', to: '/' },
         { label: 'agents', to: '/agents' },
         { label: agent.name },
       ]}
@@ -107,6 +107,23 @@ export default function AgentDetailScreen({
         />
 
         <div style={{ height: 20 }} />
+
+        <BackendGapBanner
+          title="Several signals on this agent detail are UI-only"
+          fields={[
+            'tools_granted / requiring_approval counts (derived)',
+            'spend MTD + cap bar',
+            'last_run_at',
+            'runs_7d + success rate',
+            'runs trend sparkbar',
+            '28d activity chart',
+            'GET /agents/{id}/versions (version history shim)',
+            '?agent_id filter on /tasks',
+          ]}
+          body={<>GET /agents/{'{id}'} returns <span className="mono">{'{id, tenant_id, domain_id, owner_user_id, name, description, status, active_version, created_at, updated_at}'}</span>. Aggregates below are either derived or fixture-only.</>}
+        />
+
+        <div style={{ height: 12 }} />
 
         <Tabs items={tabs} active={tab} />
 
@@ -290,10 +307,10 @@ function OverviewTab({
         </div>
 
         {/* ── Runs trend */}
-        <div className="card">
+        <div className="card mock-outline">
           <div className="card__head">
-            <div className="card__title">Runs · last 28 days</div>
-            <Chip>mock data</Chip>
+            <div className="card__title row row--sm">Runs · last 28 days <MockBadge /></div>
+            <Chip>derived locally</Chip>
           </div>
           <div className="card__body">
             <div className="grid grid--3" style={{ marginBottom: 18 }}>
@@ -374,8 +391,10 @@ function OverviewTab({
           </div>
         </div>
 
-        <div className="card">
-          <div className="card__head"><div className="card__title">Spend · 30d</div></div>
+        <div className="card mock-outline">
+          <div className="card__head">
+            <div className="card__title row row--sm">Spend · 30d <MockBadge title="monthly_spend_usd / cap not on Agent" /></div>
+          </div>
           <div className="card__body">
             {agent.monthly_spend_cap_usd && (
               <>

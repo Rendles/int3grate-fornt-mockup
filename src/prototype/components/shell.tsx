@@ -64,9 +64,9 @@ export function Sidebar() {
   return (
     <nav className="shell__sidebar" aria-label="Main">
       <div className="sb__brand">
-        <div className="sb__brand-mark">S</div>
+        <div className="sb__brand-mark">I</div>
         <div>
-          <div className="sb__brand-name">Sprouter</div>
+          <div className="sb__brand-name">Int3grate.ai</div>
           <div className="sb__brand-sub">CONTROL · v0.7</div>
         </div>
       </div>
