@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from 'react'
 import { AppShell } from '../components/shell'
-import { PageHeader, Btn, Chip, Status, InfoHint } from '../components/common'
+import { PageHeader, Btn, Chip, Status, InfoHint, Pagination } from '../components/common'
 import { EmptyState, ErrorState, LoadingList } from '../components/states'
 import { IconAgent, IconArrowRight, IconLock, IconPlus } from '../components/icons'
 import { Link } from '../router'
@@ -18,6 +18,8 @@ export default function AgentsScreen() {
   const [reloadTick, setReloadTick] = useState(0)
   const [filter, setFilter] = useState<AgentStatus | 'all'>('all')
   const [query, setQuery] = useState('')
+  const [page, setPage] = useState(0)
+  const [pageSize, setPageSize] = useState(10)
 
   const canCreate = user?.role === 'admin' || user?.role === 'domain_admin'
 
@@ -54,6 +56,9 @@ export default function AgentsScreen() {
     return c
   }, [agents])
 
+  const pageStart = page * pageSize
+  const pageItems = filtered.slice(pageStart, pageStart + pageSize)
+
   return (
     <AppShell crumbs={[{ label: 'home', to: '/' }, { label: 'agents' }]}>
       <div className="page page--wide">
@@ -81,7 +86,7 @@ export default function AgentsScreen() {
               <button
                 key={f}
                 className={`chip${filter === f ? ' chip--accent' : ''}`}
-                onClick={() => setFilter(f)}
+                onClick={() => { setFilter(f); setPage(0) }}
                 style={{ cursor: 'pointer' }}
               >
                 {f}
@@ -95,7 +100,7 @@ export default function AgentsScreen() {
             style={{ width: 260, padding: '6px 10px', fontSize: 12 }}
             placeholder="Filter by name or description..."
             value={query}
-            onChange={e => setQuery(e.target.value)}
+            onChange={e => { setQuery(e.target.value); setPage(0) }}
           />
         </div>
 
@@ -130,7 +135,7 @@ export default function AgentsScreen() {
               <span>updated</span>
               <span />
             </div>
-            {filtered.map(a => (
+            {pageItems.map(a => (
               <Link
                 key={a.id}
                 to={`/agents/${a.id}`}
@@ -173,6 +178,14 @@ export default function AgentsScreen() {
                 <IconArrowRight className="ic" />
               </Link>
             ))}
+            <Pagination
+              page={page}
+              pageSize={pageSize}
+              total={filtered.length}
+              onPageChange={setPage}
+              onPageSizeChange={n => { setPageSize(n); setPage(0) }}
+              label="agents"
+            />
           </div>
         )}
 

@@ -3,6 +3,7 @@ import { useAuth } from '../auth'
 import { useRouter } from '../router'
 import { Btn } from '../components/common'
 import { IconAlert, IconArrowRight } from '../components/icons'
+import logo from '../../assets/logo.svg'
 
 interface FieldErrors {
   email?: string
@@ -64,7 +65,9 @@ export default function LoginScreen() {
     <div className="login">
       <div className="login__side">
         <div className="login__brand">
-          <div className="sb__brand-mark">I</div>
+          <div className="sb__brand-mark" style={{ width: 28, height: 28 }}>
+            <img src={logo} alt="" />
+          </div>
           <span>Int3grate.ai</span>
           <span className="mono" style={{ fontSize: 10, letterSpacing: '0.14em', color: 'var(--text-dim)', textTransform: 'uppercase', marginLeft: 6 }}>
             Control Plane

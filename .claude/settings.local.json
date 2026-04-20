@@ -36,7 +36,10 @@
       "Bash(\"C:/Program Files/nodejs/node.exe\" ./node_modules/typescript/bin/tsc -b --noEmit)",
       "Bash(\"C:/Program Files/nodejs/node.exe\" ./node_modules/eslint/bin/eslint.js .)",
       "Bash(\"C:/Program Files/nodejs/node.exe\" ./node_modules/vite/bin/vite.js build)",
-      "Bash(\"C:/Program Files/Git/usr/bin/rm.exe\" \"D:/Work/int3grate-fornt-mockup/src/App.css\")"
+      "Bash(\"C:/Program Files/Git/usr/bin/rm.exe\" \"D:/Work/int3grate-fornt-mockup/src/App.css\")",
+      "Bash(\"C:/Program Files/nodejs/node.exe\" ./node_modules/eslint/bin/eslint.js . --max-warnings=0)",
+      "Bash(C:/Program Files/Git/usr/bin/ls.exe *)",
+      "Bash(\"C:/Program Files/Git/usr/bin/rm.exe\" -f D:/Work/int3grate-fornt-mockup/src/assets/hero.png D:/Work/int3grate-fornt-mockup/src/assets/react.svg D:/Work/int3grate-fornt-mockup/src/assets/vite.svg D:/Work/int3grate-fornt-mockup/public/icons.svg)"
     ]
   }
 }

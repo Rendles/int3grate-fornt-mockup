@@ -4,6 +4,7 @@ import { Link, useRouter } from '../router'
 import { useAuth } from '../auth'
 import { useTheme } from '../theme'
 import { api } from '../lib/api'
+import logo from '../../assets/logo.svg'
 import {
   IconAgent,
   IconApproval,
@@ -66,7 +67,9 @@ export function Sidebar() {
   return (
     <nav className="shell__sidebar" aria-label="Main">
       <div className="sb__brand">
-        <div className="sb__brand-mark">I</div>
+        <div className="sb__brand-mark">
+          <img src={logo} alt="" />
+        </div>
         <div>
           <div className="sb__brand-name">Int3grate.ai</div>
           <div className="sb__brand-sub">CONTROL · v0.7</div>

@@ -90,16 +90,6 @@ export function Chip({
   return <span className={cls.join(' ')}>{children}</span>
 }
 
-export function Dot({
-  tone = 'accent',
-  pulse,
-}: {
-  tone?: 'accent' | 'warn' | 'danger' | 'success' | 'info'
-  pulse?: boolean
-}) {
-  return <span className={`dot dot--${tone}${pulse ? ' dot--pulse' : ''}`} />
-}
-
 export function Tabs({
   items,
   active,
@@ -157,29 +147,6 @@ export function CommandBar({
   )
 }
 
-export function Breadcrumbs({
-  parts,
-}: {
-  parts: { label: string; to?: string }[]
-}) {
-  return (
-    <nav className="tb__crumbs">
-      {parts.map((p, i) => (
-        <span key={i} style={{ display: 'inline-flex', alignItems: 'center', gap: 6 }}>
-          {i > 0 && <span className="tb__crumb-sep">/</span>}
-          {p.to ? (
-            <Link to={p.to} className={i === parts.length - 1 ? 'tb__crumb--last' : ''}>
-              {p.label}
-            </Link>
-          ) : (
-            <span className={i === parts.length - 1 ? 'tb__crumb--last' : ''}>{p.label}</span>
-          )}
-        </span>
-      ))}
-    </nav>
-  )
-}
-
 export function PageHeader({
   eyebrow,
   title,
@@ -200,29 +167,6 @@ export function PageHeader({
       </div>
       {actions && <div className="page__actions">{actions}</div>}
     </header>
-  )
-}
-
-export function Sparkbar({
-  values,
-  accent,
-  height = 28,
-}: {
-  values: number[]
-  accent?: boolean
-  height?: number
-}) {
-  const max = Math.max(...values, 0.001)
-  return (
-    <div className="spark" style={{ height }}>
-      {values.map((v, i) => (
-        <span
-          key={i}
-          className={`spark-bar${accent ? ' spark-bar--accent' : ''}`}
-          style={{ height: `${Math.max(6, (v / max) * 100)}%`, opacity: accent ? 1 : 0.5 + (i / values.length) * 0.5 }}
-        />
-      ))}
-    </div>
   )
 }
 
@@ -364,6 +308,69 @@ export function InfoHint({
         document.querySelector('.prototype-root') ?? document.body,
       )}
     </>
+  )
+}
+
+export function Pagination({
+  page,
+  pageSize,
+  total,
+  onPageChange,
+  pageSizes = [10, 25, 50],
+  onPageSizeChange,
+  label = 'rows',
+}: {
+  page: number
+  pageSize: number
+  total: number
+  onPageChange: (p: number) => void
+  pageSizes?: number[]
+  onPageSizeChange?: (n: number) => void
+  label?: string
+}) {
+  const totalPages = Math.max(1, Math.ceil(total / pageSize))
+  const safePage = Math.min(page, totalPages - 1)
+  const start = total === 0 ? 0 : safePage * pageSize + 1
+  const end = Math.min((safePage + 1) * pageSize, total)
+
+  return (
+    <div className="pagination">
+      <span className="pagination__info">
+        {start}–{end} of {total} {label}
+      </span>
+      <div className="pagination__controls">
+        {onPageSizeChange && (
+          <label className="pagination__size">
+            <span>rows/page</span>
+            <select
+              value={pageSize}
+              onChange={e => onPageSizeChange(Number(e.target.value))}
+            >
+              {pageSizes.map(n => <option key={n} value={n}>{n}</option>)}
+            </select>
+          </label>
+        )}
+        <button
+          className="pagination__nav"
+          onClick={() => onPageChange(Math.max(0, safePage - 1))}
+          disabled={safePage <= 0}
+          aria-label="Previous page"
+        >
+          ← prev
+        </button>
+        <span className="pagination__page">
+          {safePage + 1} / {totalPages}
+        </span>
+        <button
+          className="pagination__nav"
+          onClick={() => onPageChange(Math.min(totalPages - 1, safePage + 1))}
+          disabled={safePage >= totalPages - 1}
+          aria-label="Next page"
+        >
+          next →
+        </button>
+      </div>
+    </div>
   )
 }
 

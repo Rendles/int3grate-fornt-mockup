@@ -56,32 +56,8 @@ export function durationMs(ms: number | null): string {
   return `${m}m ${rem}s`
 }
 
-export function shortId(id: string): string {
-  return id.toUpperCase()
-}
-
 export function roleLabel(r: 'admin' | 'domain_admin' | 'member'): string {
   if (r === 'admin') return 'Tenant Admin'
   if (r === 'domain_admin') return 'Domain Admin'
   return 'Member'
-}
-
-export function toolDisplay(toolName: string): { provider: string; action: string } {
-  const [provider, action = ''] = toolName.split('.')
-  const cap = (s: string) => s.charAt(0).toUpperCase() + s.slice(1)
-  return {
-    provider: cap(provider.replace(/_/g, ' ')),
-    action: action.replace(/_/g, ' '),
-  }
-}
-
-export function scopeLabel(scopeType: 'tenant' | 'domain' | 'agent', scopeId: string): string {
-  if (scopeType === 'tenant') return `tenant · ${scopeId}`
-  if (scopeType === 'domain') return `domain · ${scopeId}`
-  return `agent · ${scopeId}`
-}
-
-export function modeLabel(mode: 'read' | 'write' | 'read_write'): string {
-  if (mode === 'read_write') return 'read + write'
-  return mode
 }

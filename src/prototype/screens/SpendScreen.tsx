@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react'
 import { AppShell } from '../components/shell'
-import { PageHeader, Chip, InfoHint } from '../components/common'
+import { PageHeader, Chip, InfoHint, Pagination } from '../components/common'
 import { EmptyState, ErrorState, LoadingList, NoAccessState } from '../components/states'
 import { IconAgent, IconArrowRight, IconSpend } from '../components/icons'
 import { Link } from '../router'
@@ -21,6 +21,8 @@ export default function SpendScreen() {
   const [groupBy, setGroupBy] = useState<SpendGroupBy>('agent')
   const [error, setError] = useState<string | null>(null)
   const [reloadTick, setReloadTick] = useState(0)
+  const [page, setPage] = useState(0)
+  const [pageSize, setPageSize] = useState(10)
 
   const canView = !!user && (user.role === 'admin' || user.role === 'domain_admin')
 
@@ -75,6 +77,8 @@ export default function SpendScreen() {
 
   const stale = data.range !== range || data.group_by !== groupBy
   const items = data.items
+  const pageStart = page * pageSize
+  const pageItems = items.slice(pageStart, pageStart + pageSize)
   const totalTokensIn = items.reduce((s, r) => s + r.total_tokens_in, 0)
   const totalTokensOut = items.reduce((s, r) => s + r.total_tokens_out, 0)
   const totalRuns = items.reduce((s, r) => s + r.run_count, 0)
@@ -106,7 +110,7 @@ export default function SpendScreen() {
               key={r}
               className={`chip${range === r ? ' chip--accent' : ''}`}
               style={{ cursor: 'pointer' }}
-              onClick={() => setRange(r)}
+              onClick={() => { setRange(r); setPage(0) }}
             >
               {r}
             </button>
@@ -118,7 +122,7 @@ export default function SpendScreen() {
               key={g}
               className={`chip${groupBy === g ? ' chip--accent' : ''}`}
               style={{ cursor: 'pointer' }}
-              onClick={() => setGroupBy(g)}
+              onClick={() => { setGroupBy(g); setPage(0) }}
             >
               {g}
             </button>
@@ -224,7 +228,7 @@ export default function SpendScreen() {
               <span style={{ textAlign: 'right' }}>tokens out</span>
               <span style={{ textAlign: 'right' }}>date</span>
             </div>
-            {items.map(r => {
+            {pageItems.map(r => {
               const rowInner = (
                 <>
                   <div style={{ minWidth: 0 }}>
@@ -286,6 +290,14 @@ export default function SpendScreen() {
                 </div>
               )
             })}
+            <Pagination
+              page={page}
+              pageSize={pageSize}
+              total={items.length}
+              onPageChange={setPage}
+              onPageSizeChange={n => { setPageSize(n); setPage(0) }}
+              label={`${groupBy}s`}
+            />
           </div>
         )}
 

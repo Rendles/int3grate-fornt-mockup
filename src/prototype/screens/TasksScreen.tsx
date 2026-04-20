@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from 'react'
 import { AppShell } from '../components/shell'
-import { PageHeader, Btn, Chip, Status, InfoHint } from '../components/common'
+import { PageHeader, Btn, Chip, Status, InfoHint, Pagination } from '../components/common'
 import { EmptyState, ErrorState, LoadingList } from '../components/states'
 import { IconArrowRight, IconPlus, IconTask } from '../components/icons'
 import { Link } from '../router'
@@ -15,6 +15,8 @@ export default function TasksScreen() {
   const [status, setStatus] = useState<TaskStatus | 'all'>('all')
   const [error, setError] = useState<string | null>(null)
   const [reloadTick, setReloadTick] = useState(0)
+  const [page, setPage] = useState(0)
+  const [pageSize, setPageSize] = useState(10)
 
   useEffect(() => {
     let cancelled = false
@@ -36,6 +38,9 @@ export default function TasksScreen() {
     ;(tasks ?? []).forEach(t => { c[t.status] = (c[t.status] ?? 0) + 1 })
     return c
   }, [tasks])
+
+  const pageStart = page * pageSize
+  const pageItems = (tasks ?? []).slice(pageStart, pageStart + pageSize)
 
   return (
     <AppShell crumbs={[{ label: 'home', to: '/' }, { label: 'tasks' }]}>
@@ -62,7 +67,7 @@ export default function TasksScreen() {
             <button
               key={s}
               className={`chip${status === s ? ' chip--accent' : ''}`}
-              onClick={() => setStatus(s)}
+              onClick={() => { setStatus(s); setPage(0) }}
               style={{ cursor: 'pointer' }}
             >
               {s} <span className="mono" style={{ color: 'var(--text-dim)' }}>{counts[s] ?? 0}</span>
@@ -107,7 +112,7 @@ export default function TasksScreen() {
               <span>updated</span>
               <span />
             </div>
-            {tasks.map(t => (
+            {pageItems.map(t => (
               <Link
                 key={t.id}
                 to={`/tasks/${t.id}`}
@@ -137,6 +142,14 @@ export default function TasksScreen() {
                 <IconArrowRight className="ic" />
               </Link>
             ))}
+            <Pagination
+              page={page}
+              pageSize={pageSize}
+              total={tasks.length}
+              onPageChange={setPage}
+              onPageSizeChange={n => { setPageSize(n); setPage(0) }}
+              label="tasks"
+            />
           </div>
         )}
 

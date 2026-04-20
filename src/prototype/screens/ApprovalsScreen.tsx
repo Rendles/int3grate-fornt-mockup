@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from 'react'
 import { AppShell } from '../components/shell'
-import { PageHeader, Chip, Status, InfoHint } from '../components/common'
+import { PageHeader, Chip, Status, InfoHint, Pagination } from '../components/common'
 import { EmptyState, ErrorState, LoadingList } from '../components/states'
 import { IconApproval, IconArrowRight, IconCheck, IconX } from '../components/icons'
 import { Link, useRouter } from '../router'
@@ -17,6 +17,8 @@ export default function ApprovalsScreen() {
   const [statusFilter, setStatusFilter] = useState<StatusFilter>('pending')
   const [error, setError] = useState<string | null>(null)
   const [reloadTick, setReloadTick] = useState(0)
+  const [page, setPage] = useState(0)
+  const [pageSize, setPageSize] = useState(10)
 
   useEffect(() => {
     let cancelled = false
@@ -38,6 +40,9 @@ export default function ApprovalsScreen() {
     ;(approvals ?? []).forEach(a => { c[a.status] = (c[a.status] ?? 0) + 1 })
     return c
   }, [approvals])
+
+  const pageStart = page * pageSize
+  const pageItems = (approvals ?? []).slice(pageStart, pageStart + pageSize)
 
   const quickDecide = (id: string, decision: 'approved' | 'rejected') => {
     navigate(`/approvals/${id}?decide=${decision}`)
@@ -68,7 +73,7 @@ export default function ApprovalsScreen() {
               key={f}
               className={`chip${statusFilter === f ? (f === 'pending' ? ' chip--warn' : ' chip--accent') : ''}`}
               style={{ cursor: 'pointer' }}
-              onClick={() => setStatusFilter(f)}
+              onClick={() => { setStatusFilter(f); setPage(0) }}
             >
               {f}{' '}
               <span className="mono" style={{ color: 'var(--text-dim)' }}>{counts[f] ?? 0}</span>
@@ -112,7 +117,7 @@ export default function ApprovalsScreen() {
               <span>quick decide</span>
               <span />
             </div>
-            {approvals.map(a => {
+            {pageItems.map(a => {
               const isPending = a.status === 'pending'
               return (
                 <Link
@@ -179,6 +184,14 @@ export default function ApprovalsScreen() {
                 </Link>
               )
             })}
+            <Pagination
+              page={page}
+              pageSize={pageSize}
+              total={approvals.length}
+              onPageChange={setPage}
+              onPageSizeChange={n => { setPageSize(n); setPage(0) }}
+              label="approvals"
+            />
           </div>
         )}
 

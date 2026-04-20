@@ -104,12 +104,3 @@ export function Banner({
     </div>
   )
 }
-
-export function PlannedRibbon({ label = 'planned · not yet wired to backend' }: { label?: string }) {
-  return (
-    <div className="pg-ribbon">
-      <span className="pg-ribbon__dot" />
-      {label}
-    </div>
-  )
-}
