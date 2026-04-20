@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from 'react'
 import { AppShell } from '../components/shell'
-import { PageHeader, Btn, Chip, Status } from '../components/common'
+import { PageHeader, Btn, Chip, Status, InfoHint } from '../components/common'
 import { EmptyState, ErrorState, LoadingList } from '../components/states'
 import { IconAgent, IconArrowRight, IconLock, IconPlus } from '../components/icons'
 import { Link } from '../router'
@@ -58,9 +58,16 @@ export default function AgentsScreen() {
     <AppShell crumbs={[{ label: 'home', to: '/' }, { label: 'agents' }]}>
       <div className="page page--wide">
         <PageHeader
-          eyebrow="AGENTS · GET /agents"
+          eyebrow={
+            <>
+              AGENTS{' '}
+              <InfoHint>
+                List from <span className="mono">GET /agents</span>. Each row is one agent record returned by the gateway.
+              </InfoHint>
+            </>
+          }
           title={<>Your <em>fleet.</em></>}
-          subtitle="Configure what agents are and what they may touch. Each row is one entry from GET /agents."
+          subtitle="Configure what agents are and what they may touch."
           actions={
             canCreate
               ? <Btn variant="primary" href="/agents/new" icon={<IconPlus />}>New agent</Btn>
@@ -169,10 +176,6 @@ export default function AgentsScreen() {
           </div>
         )}
 
-        <div style={{ height: 20 }} />
-        <div className="mono" style={{ fontSize: 10.5, color: 'var(--text-dim)', textAlign: 'right' }}>
-          endpoint · <span className="accent">GET /agents</span>
-        </div>
       </div>
     </AppShell>
   )

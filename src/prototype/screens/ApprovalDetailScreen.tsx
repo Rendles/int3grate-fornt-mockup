@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react'
 import { AppShell } from '../components/shell'
-import { PageHeader, Btn, Chip, Status, CommandBar } from '../components/common'
+import { PageHeader, Btn, Chip, Status, CommandBar, InfoHint } from '../components/common'
 import { LoadingList, NoAccessState } from '../components/states'
 import {
   IconAlert,
@@ -120,7 +120,14 @@ export default function ApprovalDetailScreen({ approvalId }: { approvalId: strin
     >
       <div className="page page--narrow">
         <PageHeader
-          eyebrow={`APPROVAL · ${approval.id}`}
+          eyebrow={
+            <>
+              {`APPROVAL · ${approval.id}`}{' '}
+              <InfoHint>
+                Loaded via <span className="mono">GET /approvals/{'{id}'}</span>. Decision posts to <span className="mono">POST /approvals/{'{id}'}/decision</span> with <span className="mono">{'{ decision, reason }'}</span>.
+              </InfoHint>
+            </>
+          }
           title={approval.requested_action}
           actions={
             <>
@@ -257,11 +264,6 @@ export default function ApprovalDetailScreen({ approvalId }: { approvalId: strin
           </>
         )}
 
-        <div style={{ height: 16 }} />
-
-        <div className="mono" style={{ fontSize: 10.5, color: 'var(--text-dim)', textAlign: 'right' }}>
-          endpoint · <span className="accent">POST /approvals/{approval.id}/decision</span>
-        </div>
       </div>
     </AppShell>
   )
@@ -393,7 +395,16 @@ function DecisionConfirmCard({
         <button
           onClick={() => onSwitch(isApprove ? 'rejected' : 'approved')}
           className="mono"
-          style={{ fontSize: 10.5, color: 'var(--text-dim)', letterSpacing: '0.12em', textTransform: 'uppercase' }}
+          style={{
+            fontSize: 10.5,
+            color: 'var(--text-dim)',
+            letterSpacing: '0.12em',
+            textTransform: 'uppercase',
+            padding: '6px 10px',
+            border: '1px solid var(--border-2)',
+            borderRadius: 4,
+            background: 'var(--surface-2)',
+          }}
         >
           ↔ switch to {isApprove ? 'reject' : 'approve'}
         </button>

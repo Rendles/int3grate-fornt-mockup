@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react'
 import { AppShell } from '../components/shell'
-import { PageHeader, Chip } from '../components/common'
+import { PageHeader, Chip, InfoHint } from '../components/common'
 import { EmptyState, ErrorState, LoadingList, NoAccessState } from '../components/states'
 import { IconAgent, IconArrowRight, IconSpend } from '../components/icons'
 import { Link } from '../router'
@@ -86,9 +86,16 @@ export default function SpendScreen() {
     <AppShell crumbs={crumbs}>
       <div className="page page--wide" style={{ opacity: stale ? 0.55 : 1, transition: 'opacity 180ms' }}>
         <PageHeader
-          eyebrow={`SPEND · GET /dashboard/spend · ${data.range} · ${data.group_by}`}
+          eyebrow={
+            <>
+              {`SPEND · ${data.range} · ${data.group_by}`}{' '}
+              <InfoHint>
+                Loaded via <span className="mono">GET /dashboard/spend</span> with <span className="mono">range</span> and <span className="mono">group_by</span> parameters. Only cost and token aggregates are returned.
+              </InfoHint>
+            </>
+          }
           title={<>{money(data.total_usd, { compact: true })} <em>spent</em></>}
-          subtitle={<>Aggregated spend returned by <span className="mono">GET /dashboard/spend</span>. Fields: range, group_by, total_usd, items[].</>}
+          subtitle="Aggregated spend by agent or by user."
         />
 
         {/* Controls */}
@@ -122,17 +129,17 @@ export default function SpendScreen() {
         <div className="grid grid--3" style={{ marginBottom: 18 }}>
           <div className="card card--metric">
             <div className="card__body">
-              <div className="metric__label">total_usd</div>
+              <div className="metric__label">Total spend</div>
               <div className="row" style={{ alignItems: 'baseline', gap: 6 }}>
                 <div className="metric__value">{money(data.total_usd, { compact: true })}</div>
                 <span className="metric__unit">USD</span>
               </div>
-              <div className="metric__delta">dashboard root field</div>
+              <div className="metric__delta">across the selected window</div>
             </div>
           </div>
           <div className="card card--metric">
             <div className="card__body">
-              <div className="metric__label">sum of run_count</div>
+              <div className="metric__label">Total runs</div>
               <div className="metric__value">{num(totalRuns)}</div>
               <div className="metric__delta">across {items.length} {groupBy}{items.length === 1 ? '' : 's'}</div>
             </div>
@@ -210,12 +217,12 @@ export default function SpendScreen() {
                 letterSpacing: '0.14em',
               }}
             >
-              <span>label · id</span>
-              <span style={{ textAlign: 'right' }}>total_usd</span>
+              <span>{groupBy}</span>
+              <span style={{ textAlign: 'right' }}>spend</span>
               <span style={{ textAlign: 'right' }}>runs</span>
-              <span style={{ textAlign: 'right' }}>tokens_in</span>
-              <span style={{ textAlign: 'right' }}>tokens_out</span>
-              <span style={{ textAlign: 'right' }}>spend_date</span>
+              <span style={{ textAlign: 'right' }}>tokens in</span>
+              <span style={{ textAlign: 'right' }}>tokens out</span>
+              <span style={{ textAlign: 'right' }}>date</span>
             </div>
             {items.map(r => {
               const rowInner = (
@@ -282,10 +289,6 @@ export default function SpendScreen() {
           </div>
         )}
 
-        <div style={{ height: 20 }} />
-        <div className="mono" style={{ fontSize: 10.5, color: 'var(--text-dim)', textAlign: 'right' }}>
-          endpoint · <span className="accent">GET /dashboard/spend?range={data.range}&group_by={data.group_by}</span>
-        </div>
       </div>
     </AppShell>
   )

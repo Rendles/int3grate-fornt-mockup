@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react'
 import { AppShell } from '../components/shell'
-import { PageHeader, Btn, Chip, Status, CommandBar } from '../components/common'
+import { PageHeader, Btn, Chip, Status, CommandBar, InfoHint } from '../components/common'
 import { LoadingList, NoAccessState, Banner } from '../components/states'
 import { IconAlert, IconArrowRight } from '../components/icons'
 import { Link } from '../router'
@@ -68,9 +68,16 @@ export default function RunDetailScreen({ runId }: { runId: string }) {
     >
       <div className="page page--wide">
         <PageHeader
-          eyebrow={`RUN · ${run.id} · GET /runs/{id}`}
+          eyebrow={
+            <>
+              {`RUN · ${run.id}`}{' '}
+              <InfoHint>
+                Loaded via <span className="mono">GET /runs/{'{id}'}</span>. Full step timeline included in the response.
+              </InfoHint>
+            </>
+          }
           title={<>Run <em>timeline.</em></>}
-          subtitle="Full step audit trail for this run, returned by GET /runs/{id}."
+          subtitle="Full step audit trail for this run."
           actions={
             <>
               <Status status={run.status} />

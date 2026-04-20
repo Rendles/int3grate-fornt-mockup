@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react'
 import { AppShell } from '../components/shell'
-import { PageHeader, Btn, Chip } from '../components/common'
-import { Banner, LoadingList, NoAccessState } from '../components/states'
+import { PageHeader, Btn, InfoHint } from '../components/common'
+import { LoadingList, NoAccessState } from '../components/states'
 import { IconAlert } from '../components/icons'
 import { useRouter } from '../router'
 import { useAuth } from '../auth'
@@ -57,7 +57,7 @@ export default function VersionNewScreen({ agentId }: { agentId: string }) {
     return (
       <AppShell crumbs={[{ label: 'home', to: '/' }, { label: 'agents', to: '/agents' }, { label: agent?.name ?? '…', to: `/agents/${agentId}` }, { label: 'new version' }]}>
         <div className="page page--narrow">
-          <PageHeader eyebrow="POST /agents/{id}/versions" title={<>Admins only</>} />
+          <PageHeader eyebrow="NEW VERSION" title={<>Admins only</>} />
           <NoAccessState
             requiredRole="domain_admin or admin"
             body="Creating versions is restricted to admins."
@@ -125,7 +125,14 @@ export default function VersionNewScreen({ agentId }: { agentId: string }) {
     >
       <div className="page page--narrow">
         <PageHeader
-          eyebrow={`POST /agents/${agent.id}/versions`}
+          eyebrow={
+            <>
+              NEW VERSION{' '}
+              <InfoHint>
+                Creates an immutable version via <span className="mono">POST /agents/{'{id}'}/versions</span>. If you check "activate immediately", the new version is then set active via <span className="mono">POST /versions/{'{verId}'}/activate</span>.
+              </InfoHint>
+            </>
+          }
           title={<>New <em>version</em> <span style={{ color: 'var(--text-muted)', fontSize: 26, marginLeft: 6 }}>v{nextVer}</span></>}
           subtitle={agent.active_version
             ? `Forking from v${agent.active_version.version}. Changes below produce a new immutable version.`
@@ -245,22 +252,13 @@ export default function VersionNewScreen({ agentId }: { agentId: string }) {
               <span>
                 <div style={{ fontSize: 13 }}>Activate immediately after create</div>
                 <div className="muted" style={{ fontSize: 11.5, marginTop: 2 }}>
-                  Calls <span className="mono">POST /agents/{'{id}'}/versions/{'{verId}'}/activate</span> right after creation.
+                  Set this version as the active one right after it's created.
                 </div>
               </span>
             </label>
           </div>
         </div>
 
-        <div style={{ height: 16 }} />
-
-        <Banner tone="info" title="What the backend accepts">
-          <>
-            <span className="mono">POST /agents/{'{id}'}/versions</span> requires <Chip>instruction_spec</Chip> and accepts
-            <Chip>memory_scope_config</Chip> <Chip>tool_scope_config</Chip> <Chip>approval_rules</Chip> <Chip>model_chain_config</Chip> as generic objects.
-            This form currently submits empty objects for the first three.
-          </>
-        </Banner>
       </div>
     </AppShell>
   )

@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from 'react'
 import { AppShell } from '../components/shell'
-import { PageHeader, Btn, Chip, Status } from '../components/common'
+import { PageHeader, Btn, Chip, Status, InfoHint } from '../components/common'
 import { Banner, LoadingList } from '../components/states'
 import { IconAlert, IconArrowRight, IconCheck, IconPlay } from '../components/icons'
 import { Link, useRouter } from '../router'
@@ -80,12 +80,19 @@ export default function TaskNewScreen() {
     <AppShell crumbs={[{ label: 'home', to: '/' }, { label: 'tasks', to: '/tasks' }, { label: created ? 'created' : 'new' }]}>
       <div className="page page--narrow">
         <PageHeader
-          eyebrow="POST /tasks"
+          eyebrow={
+            <>
+              DISPATCH TASK{' '}
+              <InfoHint>
+                Creates a task via <span className="mono">POST /tasks</span>. Requires an agent and user_input. The orchestrator attaches a run asynchronously — the task response doesn't include a run_id.
+              </InfoHint>
+            </>
+          }
           title={created ? <><em>Dispatched</em></> : <>Dispatch <em>a task.</em></>}
           subtitle={
             created
               ? 'Task queued. Open its detail to watch the orchestrator attach a run.'
-              : 'POST /tasks requires an agent and user_input. The backend starts a run but Task response does not return run_id.'
+              : 'Pick an agent, describe what it should do, fire it off.'
           }
           actions={
             created ? (
@@ -127,7 +134,7 @@ export default function TaskNewScreen() {
             {/* AGENT PICKER */}
             <div className="card">
               <div className="card__head">
-                <div className="card__title">Agent · agent_id</div>
+                <div className="card__title">Agent</div>
                 {agent && !agentRunnable && (
                   <Chip tone="warn">
                     {agent.status !== 'active' ? `${agent.status} · can't run` : 'no active version'}
@@ -233,7 +240,7 @@ export default function TaskNewScreen() {
                 </div>
                 <div className="form-row">
                   <div>
-                    <div className="form-row__label">user_input <span className="danger">*</span></div>
+                    <div className="form-row__label">Input <span className="danger">*</span></div>
                     <div className="form-row__hint">Required. The message the agent will see.</div>
                   </div>
                   <div className="form-row__control">
@@ -259,15 +266,9 @@ export default function TaskNewScreen() {
             </div>
 
             <div style={{ height: 16 }} />
-            <Banner tone="info" title="What POST /tasks returns">
-              The endpoint responds with the Task (id, type, status=pending, created_at, …). run_id is not part of the
-              Task schema — open the task detail to find the run once the orchestrator attaches one.
+            <Banner tone="info" title="What gets created">
+              A pending Task is created and the orchestrator picks it up shortly. You won't see a run ID until the orchestrator attaches one — open the task detail to watch for it.
             </Banner>
-
-            <div style={{ height: 20 }} />
-            <div className="mono" style={{ fontSize: 10.5, color: 'var(--text-dim)', textAlign: 'right' }}>
-              endpoint · <span className="accent">POST /tasks</span>
-            </div>
           </>
         )}
       </div>

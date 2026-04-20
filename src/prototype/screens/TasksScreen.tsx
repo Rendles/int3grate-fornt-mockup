@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from 'react'
 import { AppShell } from '../components/shell'
-import { PageHeader, Btn, Chip, Status } from '../components/common'
+import { PageHeader, Btn, Chip, Status, InfoHint } from '../components/common'
 import { EmptyState, ErrorState, LoadingList } from '../components/states'
 import { IconArrowRight, IconPlus, IconTask } from '../components/icons'
 import { Link } from '../router'
@@ -41,9 +41,16 @@ export default function TasksScreen() {
     <AppShell crumbs={[{ label: 'home', to: '/' }, { label: 'tasks' }]}>
       <div className="page page--wide">
         <PageHeader
-          eyebrow="TASKS · GET /tasks"
+          eyebrow={
+            <>
+              TASKS{' '}
+              <InfoHint>
+                List from <span className="mono">GET /tasks</span>. Status filter is applied server-side. Runs and step details are fetched separately.
+              </InfoHint>
+            </>
+          }
           title={<>Work <em>in motion.</em></>}
-          subtitle="Each task is dispatched to an agent. The backend returns only task-level metadata — runs are fetched separately."
+          subtitle="Each task is dispatched to an agent. Runs are fetched separately."
           actions={
             <Btn variant="primary" href="/tasks/new" icon={<IconPlus />}>Create task</Btn>
           }
@@ -133,10 +140,6 @@ export default function TasksScreen() {
           </div>
         )}
 
-        <div style={{ height: 20 }} />
-        <div className="mono" style={{ fontSize: 10.5, color: 'var(--text-dim)', textAlign: 'right' }}>
-          endpoint · <span className="accent">GET /tasks{status === 'all' ? '' : `?status=${status}`}</span>
-        </div>
       </div>
     </AppShell>
   )

@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from 'react'
 import { AppShell } from '../components/shell'
-import { PageHeader, Chip, Status } from '../components/common'
+import { PageHeader, Chip, Status, InfoHint } from '../components/common'
 import { EmptyState, ErrorState, LoadingList } from '../components/states'
 import { IconApproval, IconArrowRight, IconCheck, IconX } from '../components/icons'
 import { Link, useRouter } from '../router'
@@ -47,7 +47,14 @@ export default function ApprovalsScreen() {
     <AppShell crumbs={[{ label: 'home', to: '/' }, { label: 'approvals' }]}>
       <div className="page page--wide">
         <PageHeader
-          eyebrow="APPROVALS · GET /approvals"
+          eyebrow={
+            <>
+              APPROVALS{' '}
+              <InfoHint>
+                List from <span className="mono">GET /approvals</span>. Status filter is applied server-side. Decide via <span className="mono">POST /approvals/{'{id}'}/decision</span>.
+              </InfoHint>
+            </>
+          }
           title={<>Decisions <em>owed.</em></>}
           subtitle="Approval requests created by the orchestrator when a policy or tool grant requires a human decision."
         />
@@ -175,11 +182,6 @@ export default function ApprovalsScreen() {
           </div>
         )}
 
-        <div style={{ height: 20 }} />
-        <div className="mono" style={{ fontSize: 10.5, color: 'var(--text-dim)', textAlign: 'right' }}>
-          endpoint · <span className="accent">GET /approvals{statusFilter === 'all' ? '' : `?status=${statusFilter}`}</span>{' '}
-          · decide via <span className="accent">POST /approvals/{'{approvalId}'}/decision</span>
-        </div>
       </div>
     </AppShell>
   )

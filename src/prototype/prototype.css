@@ -136,24 +136,27 @@
   color: inherit;
   text-decoration: none;
 }
-.prototype-root button,
-.prototype-root input,
-.prototype-root select,
-.prototype-root textarea {
+/* Native form-element resets. Wrapped in :where() so they carry zero
+   specificity — any component class (.btn / .input / .tb__action / …)
+   overrides freely. */
+:where(.prototype-root) button,
+:where(.prototype-root) input,
+:where(.prototype-root) select,
+:where(.prototype-root) textarea {
   font-family: inherit;
   font-size: inherit;
   color: inherit;
   line-height: inherit;
 }
-.prototype-root button {
+:where(.prototype-root) button {
   background: none;
   border: 0;
   padding: 0;
   cursor: pointer;
 }
-.prototype-root input,
-.prototype-root select,
-.prototype-root textarea {
+:where(.prototype-root) input,
+:where(.prototype-root) select,
+:where(.prototype-root) textarea {
   background: transparent;
   border: 0;
   outline: 0;
@@ -820,15 +823,22 @@
   display: block;
   width: 100%;
   padding: 8px 12px;
-  background: var(--surface-2);
-  border: 1px solid var(--border-2);
+  background: var(--bg);
+  border: 1px solid var(--border-strong);
   border-radius: 4px;
   font-size: 13px;
-  transition: border-color 120ms, background 120ms;
+  color: var(--text);
+  box-shadow: inset 0 1px 0 rgba(0, 0, 0, 0.08);
+  transition: border-color 120ms, background 120ms, box-shadow 120ms;
+}
+.input:hover:not(:disabled):not(:focus) {
+  border-color: var(--text-dim);
 }
 .input:focus {
-  border-color: var(--accent-border);
-  background: var(--surface);
+  border-color: var(--accent);
+  background: var(--bg);
+  box-shadow: inset 0 1px 0 rgba(0, 0, 0, 0.08), 0 0 0 3px var(--accent-soft);
+  outline: none;
 }
 .input::placeholder { color: var(--text-dim); }
 .input--mono { font-family: var(--font-mono); font-size: 12px; }
@@ -842,10 +852,12 @@
 .select {
   width: 100%;
   padding: 8px 30px 8px 12px;
-  background: var(--surface-2);
-  border: 1px solid var(--border-2);
+  background: var(--bg);
+  border: 1px solid var(--border-strong);
   border-radius: 4px;
   font-size: 13px;
+  color: var(--text);
+  box-shadow: inset 0 1px 0 rgba(0, 0, 0, 0.08);
   appearance: none;
   background-image:
     linear-gradient(45deg, transparent 50%, var(--text-muted) 50%),
@@ -1512,6 +1524,75 @@
   height: 6px;
   border-radius: 999px;
   background: var(--warn);
+}
+
+/* ============================================================= INFO HINT
+   Tiny `?` icon that reveals a popover on hover / focus. Used next to
+   field labels, page titles, or section headers to expose technical
+   context (endpoint, schema note, etc.) without cluttering the UI. */
+
+.info-hint {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  position: relative;
+  width: 14px;
+  height: 14px;
+  color: var(--text-dim);
+  cursor: help;
+  background: transparent;
+  border: 0;
+  padding: 0;
+  vertical-align: middle;
+  transition: color 120ms ease;
+  flex: none;
+}
+.info-hint:hover,
+.info-hint:focus-visible {
+  color: var(--text);
+  outline: none;
+}
+.info-hint__icon {
+  width: 13px;
+  height: 13px;
+}
+.info-hint__bubble {
+  position: fixed;
+  min-width: 220px;
+  max-width: min(320px, calc(100vw - 24px));
+  padding: 10px 12px;
+  background: var(--surface-hi);
+  border: 1px solid var(--border-strong);
+  border-radius: 5px;
+  color: var(--text);
+  font-family: var(--font-sans);
+  font-size: 11.5px;
+  font-weight: 400;
+  letter-spacing: 0;
+  text-transform: none;
+  line-height: 1.5;
+  text-align: left;
+  pointer-events: none;
+  z-index: 1000;
+  box-shadow: 0 10px 28px rgba(0, 0, 0, 0.32);
+  white-space: normal;
+  animation: info-hint-in 120ms ease-out;
+}
+.info-hint__bubble .mono {
+  font-family: var(--font-mono);
+  letter-spacing: -0.02em;
+  color: var(--text);
+}
+@keyframes info-hint-in {
+  from { opacity: 0; transform: translateY(-2px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+.info-hint__bubble--top {
+  animation-name: info-hint-in-up;
+}
+@keyframes info-hint-in-up {
+  from { opacity: 0; transform: translateY(2px); }
+  to { opacity: 1; transform: translateY(0); }
 }
 
 /* ============================================================= MOCK MARKERS

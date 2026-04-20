@@ -1,5 +1,7 @@
-import type { ReactNode } from 'react'
+import { useLayoutEffect, useRef, useState, type ReactNode } from 'react'
+import { createPortal } from 'react-dom'
 import { Link } from '../router'
+import { IconHelp } from './icons'
 
 export function Avatar({
   initials,
@@ -265,6 +267,103 @@ export function Status({
         {s.label}
       </span>
     </span>
+  )
+}
+
+export function InfoHint({
+  children,
+  size = 13,
+}: {
+  children: ReactNode
+  size?: number
+}) {
+  const iconRef = useRef<HTMLSpanElement>(null)
+  const bubbleRef = useRef<HTMLDivElement>(null)
+  const [open, setOpen] = useState(false)
+  const [pos, setPos] = useState<{ top: number; left: number; placement: 'bottom' | 'top' } | null>(null)
+
+  const compute = () => {
+    const icon = iconRef.current
+    if (!icon) return
+    const rect = icon.getBoundingClientRect()
+    const margin = 12
+    const gap = 8
+    const vw = window.innerWidth
+    const vh = window.innerHeight
+
+    const bubble = bubbleRef.current
+    const bubbleW = bubble?.offsetWidth ?? 280
+    const bubbleH = bubble?.offsetHeight ?? 80
+
+    const cx = rect.left + rect.width / 2
+
+    // Horizontal: centre on the icon, clamp to viewport.
+    let left = cx - bubbleW / 2
+    if (left < margin) left = margin
+    if (left + bubbleW > vw - margin) left = vw - margin - bubbleW
+
+    // Vertical: prefer below; flip above if not enough room.
+    const spaceBelow = vh - rect.bottom - margin
+    const spaceAbove = rect.top - margin
+    const placement: 'bottom' | 'top' =
+      spaceBelow >= bubbleH + gap || spaceBelow >= spaceAbove ? 'bottom' : 'top'
+    const top = placement === 'bottom'
+      ? rect.bottom + gap
+      : rect.top - bubbleH - gap
+
+    setPos({ top, left, placement })
+  }
+
+  const show = () => {
+    setOpen(true)
+    // compute after bubble mounts so we know its size
+    requestAnimationFrame(compute)
+  }
+  const hide = () => setOpen(false)
+
+  // Re-measure when the window changes size while open
+  useLayoutEffect(() => {
+    if (!open) return
+    compute()
+    const onResize = () => compute()
+    window.addEventListener('resize', onResize)
+    window.addEventListener('scroll', onResize, true)
+    return () => {
+      window.removeEventListener('resize', onResize)
+      window.removeEventListener('scroll', onResize, true)
+    }
+  }, [open])
+
+  return (
+    <>
+      <span
+        ref={iconRef}
+        className="info-hint"
+        tabIndex={0}
+        role="button"
+        aria-label="More information"
+        onMouseEnter={show}
+        onMouseLeave={hide}
+        onFocus={show}
+        onBlur={hide}
+      >
+        <IconHelp size={size} className="info-hint__icon" />
+      </span>
+      {open && typeof document !== 'undefined' && createPortal(
+        <div
+          ref={bubbleRef}
+          className={`info-hint__bubble${pos ? ` info-hint__bubble--${pos.placement}` : ''}`}
+          style={{
+            top: pos?.top ?? -9999,
+            left: pos?.left ?? -9999,
+            visibility: pos ? 'visible' : 'hidden',
+          }}
+        >
+          {children}
+        </div>,
+        document.querySelector('.prototype-root') ?? document.body,
+      )}
+    </>
   )
 }
 

@@ -1,6 +1,6 @@
 import { useState } from 'react'
 import { AppShell } from '../components/shell'
-import { PageHeader, Btn, Chip } from '../components/common'
+import { PageHeader, Btn, Chip, InfoHint } from '../components/common'
 import { Banner, NoAccessState } from '../components/states'
 import { IconAlert } from '../components/icons'
 import { useRouter } from '../router'
@@ -33,7 +33,7 @@ export default function AgentNewScreen() {
     return (
       <AppShell crumbs={[{ label: 'home', to: '/' }, { label: 'agents', to: '/agents' }, { label: 'new' }]}>
         <div className="page page--narrow">
-          <PageHeader eyebrow="POST /agents" title={<>Admins only</>} />
+          <PageHeader eyebrow="CREATE AGENT" title={<>Admins only</>} />
           <NoAccessState
             requiredRole="domain_admin or admin"
             body="Creating agents is restricted to admins."
@@ -70,9 +70,16 @@ export default function AgentNewScreen() {
     <AppShell crumbs={[{ label: 'home', to: '/' }, { label: 'agents', to: '/agents' }, { label: 'new' }]}>
       <div className="page page--narrow">
         <PageHeader
-          eyebrow="POST /agents"
+          eyebrow={
+            <>
+              CREATE AGENT{' '}
+              <InfoHint>
+                <span className="mono">POST /agents</span> accepts <span className="mono">name</span>, <span className="mono">description</span>, and <span className="mono">domain_id</span>. Owner is inferred from the caller.
+              </InfoHint>
+            </>
+          }
           title={<>New <em>agent.</em></>}
-          subtitle="POST /agents accepts name, description, domain_id. Owner is inferred from the caller."
+          subtitle="Name, description, domain. Owner is inferred from you."
           actions={
             <>
               <Btn variant="ghost" href="/agents" disabled={busy}>Cancel</Btn>
@@ -85,8 +92,7 @@ export default function AgentNewScreen() {
 
         {success && (
           <Banner tone="info" title="Agent created · redirecting">
-            The new agent is in <Chip>draft</Chip>. Next step is creating its first version via{' '}
-            <span className="mono">POST /agents/{'{id}'}/versions</span>.
+            The new agent is in <Chip>draft</Chip>. Next step is creating its first version.
           </Banner>
         )}
 
@@ -162,10 +168,6 @@ export default function AgentNewScreen() {
           </div>
         </div>
 
-        <div style={{ height: 20 }} />
-        <div className="mono" style={{ fontSize: 10.5, color: 'var(--text-dim)', textAlign: 'right' }}>
-          endpoint · <span className="accent">POST /agents</span>
-        </div>
       </div>
     </AppShell>
   )

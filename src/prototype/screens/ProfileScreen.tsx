@@ -1,5 +1,5 @@
 import { AppShell } from '../components/shell'
-import { PageHeader, Avatar, Btn, Chip } from '../components/common'
+import { PageHeader, Avatar, Btn, Chip, InfoHint } from '../components/common'
 import { useAuth } from '../auth'
 import { roleLabel, absTime } from '../lib/format'
 
@@ -13,7 +13,14 @@ export default function ProfileScreen() {
     <AppShell crumbs={[{ label: 'home', to: '/' }, { label: 'profile' }]}>
       <div className="page page--narrow">
         <PageHeader
-          eyebrow="PROFILE · GET /me"
+          eyebrow={
+            <>
+              PROFILE{' '}
+              <InfoHint>
+                Loaded via <span className="mono">GET /me</span>. Only your own user record is exposed by the gateway.
+              </InfoHint>
+            </>
+          }
           title={<>Hello, <em>{user.name.split(' ')[0]}.</em></>}
           actions={<Btn variant="ghost" onClick={logout}>Sign out</Btn>}
         />
@@ -21,7 +28,6 @@ export default function ProfileScreen() {
         <div className="card">
           <div className="card__head">
             <div className="card__title">Identity</div>
-            <Chip square>GET /me</Chip>
           </div>
           <div className="card__body">
             <div className="row" style={{ gap: 20 }}>

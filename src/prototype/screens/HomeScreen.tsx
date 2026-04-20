@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from 'react'
 import { AppShell } from '../components/shell'
-import { PageHeader, Btn, Chip, Status } from '../components/common'
+import { PageHeader, Btn, Chip, Status, InfoHint } from '../components/common'
 import { ErrorState, LoadingList } from '../components/states'
 import {
   IconAgent,
@@ -95,11 +95,28 @@ export default function HomeScreen() {
     <AppShell crumbs={[{ label: 'home', to: '/' }]}>
       <div className="page">
         <PageHeader
-          eyebrow={`${nowDate.toLocaleDateString('en-US', { weekday: 'long', month: 'short', day: 'numeric' }).toUpperCase()} · TENANT ${user?.tenant_id ?? '—'}`}
+          eyebrow={
+            <>
+              {nowDate.toLocaleDateString('en-US', { weekday: 'long', month: 'short', day: 'numeric' }).toUpperCase()}
+              {' · TENANT '}{user?.tenant_id ?? '—'}
+              {!isMember && (
+                <>
+                  {' '}
+                  <InfoHint>
+                    Dashboard tiles are derived from{' '}
+                    <span className="mono">GET /agents</span>,{' '}
+                    <span className="mono">GET /tasks</span>,{' '}
+                    <span className="mono">GET /approvals</span>, and{' '}
+                    <span className="mono">GET /dashboard/spend</span>.
+                  </InfoHint>
+                </>
+              )}
+            </>
+          }
           title={<>Good {nowDate.getHours() < 12 ? 'morning' : nowDate.getHours() < 18 ? 'afternoon' : 'evening'}, <em>{user?.name.split(' ')[0]}.</em></>}
           subtitle={isMember
             ? 'Your tasks and approval requests.'
-            : 'Tenant-level counts from GET /agents, GET /tasks, GET /approvals and GET /dashboard/spend.'}
+            : 'Fleet-wide counts, live approvals, and spend this week.'}
           actions={
             <>
               <Btn variant="ghost" href="/approvals">Approvals</Btn>

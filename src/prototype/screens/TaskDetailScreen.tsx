@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react'
 import { AppShell } from '../components/shell'
-import { PageHeader, Btn, Chip, Status, CommandBar } from '../components/common'
-import { LoadingList, NoAccessState, Banner } from '../components/states'
+import { PageHeader, Btn, Chip, Status, CommandBar, InfoHint } from '../components/common'
+import { LoadingList, NoAccessState } from '../components/states'
 import { IconPlay } from '../components/icons'
 import { Link } from '../router'
 import { api } from '../lib/api'
@@ -38,14 +38,16 @@ export default function TaskDetailScreen({ taskId }: { taskId: string }) {
     >
       <div className="page page--wide">
         <PageHeader
-          eyebrow={`TASK · ${task.id} · GET /tasks/{id}`}
-          title={task.title ?? <>Untitled task</>}
-          subtitle={
+          eyebrow={
             <>
-              Task metadata from <span className="mono">GET /tasks/{'{id}'}</span>. To inspect the run, open it directly by ID —
-              the Task response doesn't carry run_id.
+              {`TASK · ${task.id}`}{' '}
+              <InfoHint>
+                Loaded via <span className="mono">GET /tasks/{'{id}'}</span>. The task response doesn't include a run ID — open runs directly by ID.
+              </InfoHint>
             </>
           }
+          title={task.title ?? <>Untitled task</>}
+          subtitle="Task metadata. To inspect the run, open it by ID."
           actions={
             <>
               <Status status={task.status} />
@@ -74,15 +76,15 @@ export default function TaskDetailScreen({ taskId }: { taskId: string }) {
 
         <div style={{ height: 20 }} />
 
-        <Banner tone="info" title="What the Task schema contains">
-          Gateway Task has <span className="mono">id, tenant_id, domain_id, type, status, created_by, assigned_agent_id, assigned_agent_version_id, title, created_at, updated_at</span>.
-          No run_id, no steps, no spend. Open a run directly via <span className="mono">GET /runs/{'{id}'}</span>.
-        </Banner>
-
-        <div style={{ height: 16 }} />
-
         <div className="card">
-          <div className="card__head"><div className="card__title">Metadata</div></div>
+          <div className="card__head">
+            <div className="card__title row row--sm">
+              Metadata{' '}
+              <InfoHint>
+                All fields stored on the Task. There is no run ID, step count, or spend on this record — those live on the run.
+              </InfoHint>
+            </div>
+          </div>
           <div className="card__body">
             <MetaRow label="id" value={<span className="mono">{task.id}</span>} />
             <MetaRow label="tenant_id" value={<span className="mono">{task.tenant_id}</span>} />

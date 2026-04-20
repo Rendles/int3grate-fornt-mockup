@@ -34,7 +34,8 @@
       "Bash(C:/Program Files/nodejs/npx.cmd tsc *)",
       "Bash(C:/Program Files/nodejs/node.exe *)",
       "Bash(\"C:/Program Files/nodejs/node.exe\" ./node_modules/typescript/bin/tsc -b --noEmit)",
-      "Bash(\"C:/Program Files/nodejs/node.exe\" ./node_modules/eslint/bin/eslint.js .)"
+      "Bash(\"C:/Program Files/nodejs/node.exe\" ./node_modules/eslint/bin/eslint.js .)",
+      "Bash(\"C:/Program Files/nodejs/node.exe\" ./node_modules/vite/bin/vite.js build)"
     ]
   }
 }

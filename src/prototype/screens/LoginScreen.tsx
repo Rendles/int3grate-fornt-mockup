@@ -75,8 +75,8 @@ export default function LoginScreen() {
           Keep humans <em>in control.</em>
         </h1>
         <div className="login__meta">
-          <span className="mono">POST /auth/login</span>
           <span>Region · eu-west-1</span>
+          <span>Build · 2026.04.17-a7c</span>
           <span>Status · nominal</span>
         </div>
       </div>

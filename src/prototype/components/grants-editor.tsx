@@ -111,7 +111,7 @@ export function GrantsEditor({
             disabled={!dirty || saving}
             icon={<IconCheck />}
           >
-            {saving ? 'saving…' : 'PUT /grants'}
+            {saving ? 'saving…' : 'Save grants'}
           </Btn>
         </div>
       </div>
@@ -229,10 +229,6 @@ export function GrantsEditor({
         </>
       )}
 
-      <div style={{ height: 12 }} />
-      <div className="mono" style={{ fontSize: 10.5, color: 'var(--text-dim)', textAlign: 'right' }}>
-        endpoint · <span className="accent">GET /agents/{agent.id}/grants</span> · <span className="accent">PUT /agents/{agent.id}/grants</span>
-      </div>
     </div>
   )
 }

@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react'
 import { AppShell } from '../components/shell'
-import { PageHeader, Btn, Chip, Status, Tabs, CommandBar } from '../components/common'
+import { PageHeader, Btn, Chip, Status, Tabs, CommandBar, InfoHint } from '../components/common'
 import { Banner, LoadingList, NoAccessState } from '../components/states'
 import { IconPlay, IconPlus } from '../components/icons'
 import { GrantsEditor } from '../components/grants-editor'
@@ -65,7 +65,14 @@ export default function AgentDetailScreen({
     >
       <div className="page page--wide">
         <PageHeader
-          eyebrow={`AGENT · ${agent.id} · GET /agents/{id}`}
+          eyebrow={
+            <>
+              {`AGENT · ${agent.id}`}{' '}
+              <InfoHint>
+                Loaded via <span className="mono">GET /agents/{'{id}'}</span>. The active version is embedded in the response.
+              </InfoHint>
+            </>
+          }
           title={agent.name}
           subtitle={agent.description ?? ''}
           actions={
@@ -173,9 +180,8 @@ function OverviewTab({ agent, version, canEdit }: { agent: Agent; version: Agent
         </div>
       </div>
 
-      <Banner tone="info" title="Gateway exposes only the active version">
-        There is no <span className="mono">GET /agents/{'{id}'}/versions</span> endpoint — version history can't be listed.
-        Only <span className="mono">POST /versions</span> and <span className="mono">POST /versions/{'{id}'}/activate</span> are supported.
+      <Banner tone="info" title="Only the active version is exposed">
+        Version history isn't listable in this build. You can still create a new version and activate it.
       </Banner>
     </div>
   )
@@ -199,9 +205,8 @@ function SettingsTab({ agent }: { agent: Agent }) {
         </div>
       </div>
 
-      <Banner tone="warn" title="Writes aren't in the gateway yet">
-        There is no <span className="mono">PATCH /agents/{'{id}'}</span> or <span className="mono">DELETE /agents/{'{id}'}</span>.
-        Editing and archiving are not supported.
+      <Banner tone="warn" title="Editing and archiving are not yet available">
+        Agent records can be created and viewed in this build. Editing, archiving, and deletion are planned.
       </Banner>
 
       <div className="card">
@@ -209,14 +214,14 @@ function SettingsTab({ agent }: { agent: Agent }) {
           <div className="row row--between" style={{ padding: '8px 0' }}>
             <div>
               <div style={{ fontSize: 13 }}>Archive agent</div>
-              <div className="muted" style={{ fontSize: 11.5, marginTop: 2 }}>No backend endpoint — planned.</div>
+              <div className="muted" style={{ fontSize: 11.5, marginTop: 2 }}>Planned.</div>
             </div>
             <Btn variant="danger" disabled>Archive (planned)</Btn>
           </div>
           <div className="row row--between" style={{ padding: '8px 0' }}>
             <div>
               <div style={{ fontSize: 13 }}>Delete agent</div>
-              <div className="muted" style={{ fontSize: 11.5, marginTop: 2 }}>No backend endpoint — planned.</div>
+              <div className="muted" style={{ fontSize: 11.5, marginTop: 2 }}>Planned.</div>
             </div>
             <Btn variant="danger" disabled>Delete (planned)</Btn>
           </div>
