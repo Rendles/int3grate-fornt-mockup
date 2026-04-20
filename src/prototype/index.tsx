@@ -3,6 +3,7 @@ import { AuthProvider, useAuth } from './auth'
 import { RouterProvider, matchRoute, useRouter } from './router'
 import { ThemeProvider, useTheme } from './theme'
 import LoginScreen from './screens/LoginScreen'
+import RegisterScreen from './screens/RegisterScreen'
 import HomeScreen from './screens/HomeScreen'
 import AgentsScreen from './screens/AgentsScreen'
 import AgentDetailScreen from './screens/AgentDetailScreen'
@@ -30,6 +31,10 @@ function Router() {
         </div>
       </div>
     )
+  }
+
+  if (path === '/register') {
+    return <RegisterScreen />
   }
 
   if (!user || path === '/login') {

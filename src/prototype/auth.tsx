@@ -8,6 +8,7 @@ interface AuthValue {
   user: User | null
   loading: boolean
   login: (email: string, password: string) => Promise<User>
+  register: (input: { name: string; email: string; password: string; workspaceName: string }) => Promise<User>
   logout: () => void
 }
 
@@ -45,12 +46,19 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     return u
   }, [])
 
+  const register = useCallback(async (input: { name: string; email: string; password: string; workspaceName: string }) => {
+    const u = await api.register(input)
+    setUser(u)
+    localStorage.setItem(STORAGE_KEY, JSON.stringify({ userId: u.id }))
+    return u
+  }, [])
+
   const logout = useCallback(() => {
     setUser(null)
     localStorage.removeItem(STORAGE_KEY)
   }, [])
 
-  const value = useMemo<AuthValue>(() => ({ user, loading, login, logout }), [user, loading, login, logout])
+  const value = useMemo<AuthValue>(() => ({ user, loading, login, register, logout }), [user, loading, login, register, logout])
 
   return <AuthCtx.Provider value={value}>{children}</AuthCtx.Provider>
 }

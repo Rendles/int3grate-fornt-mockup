@@ -383,6 +383,7 @@ export function Btn({
   href,
   icon,
   title,
+  type = 'button',
 }: {
   children?: ReactNode
   variant?: 'default' | 'primary' | 'ghost' | 'danger'
@@ -392,6 +393,7 @@ export function Btn({
   href?: string
   icon?: ReactNode
   title?: string
+  type?: 'button' | 'submit'
 }) {
   const cls = ['btn']
   if (variant !== 'default') cls.push(`btn--${variant}`)
@@ -410,7 +412,7 @@ export function Btn({
       </Link>
     )
   return (
-    <button className={cls.join(' ')} onClick={onClick} disabled={disabled} title={title}>
+    <button className={cls.join(' ')} type={type} onClick={onClick} disabled={disabled} title={title}>
       {content}
     </button>
   )

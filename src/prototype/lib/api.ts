@@ -23,6 +23,16 @@ import type {
 
 const delay = () => new Promise(r => setTimeout(r, 120 + Math.random() * 260))
 
+function toIdSegment(value: string, fallback: string, maxLength = 24): string {
+  const slug = value
+    .trim()
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, '_')
+    .replace(/^_+|_+$/g, '')
+    .slice(0, maxLength)
+  return slug || fallback
+}
+
 export const api = {
   // ── Auth ───────────────────────────────────────────────────────────
   async login(email: string, password: string): Promise<User> {
@@ -31,6 +41,44 @@ export const api = {
     const u = fxUsers.find(u => u.email === email)
     if (!u) throw new Error('No such user')
     return u
+  },
+
+  async register(input: { name: string; email: string; password: string; workspaceName: string }): Promise<User> {
+    void input.password
+    await delay()
+    const email = input.email.trim().toLowerCase()
+    if (fxUsers.some(u => u.email.toLowerCase() === email)) {
+      throw new Error('Email already registered')
+    }
+
+    const userSegment = toIdSegment(email.split('@')[0] ?? '', 'user')
+    let userId = `usr_${userSegment}`
+    let userSuffix = 2
+    while (fxUsers.some(u => u.id === userId)) {
+      userId = `usr_${userSegment}_${userSuffix}`
+      userSuffix += 1
+    }
+
+    const tenantSegment = toIdSegment(input.workspaceName, 'workspace')
+    let tenantId = `ten_${tenantSegment}`
+    let tenantSuffix = 2
+    while (fxUsers.some(u => u.tenant_id === tenantId)) {
+      tenantId = `ten_${tenantSegment}_${tenantSuffix}`
+      tenantSuffix += 1
+    }
+
+    const user: User = {
+      id: userId,
+      tenant_id: tenantId,
+      domain_id: null,
+      email,
+      name: input.name.trim(),
+      role: 'admin',
+      approval_level: 4,
+      created_at: new Date().toISOString(),
+    }
+    fxUsers.unshift(user)
+    return user
   },
 
   // ── GET /me ────────────────────────────────────────────────────────

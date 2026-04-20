@@ -157,7 +157,7 @@ export default function LoginScreen() {
           <Btn
             variant="primary"
             size="lg"
-            onClick={() => submit()}
+            type="submit"
             disabled={busy}
             icon={busy ? undefined : <IconArrowRight />}
           >
@@ -168,6 +168,11 @@ export default function LoginScreen() {
               </span>
             ) : 'Continue'}
           </Btn>
+
+          <div className="row row--sm" style={{ justifyContent: 'space-between', color: 'var(--text-muted)', fontSize: 12.5 }}>
+            <span>New to Int3grate.ai?</span>
+            <Btn variant="ghost" href="/register">Create account</Btn>
+          </div>
         </form>
       </div>
     </div>
