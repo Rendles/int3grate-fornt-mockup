@@ -1,4 +1,6 @@
 import type { ReactNode } from 'react'
+import { Code } from '@radix-ui/themes'
+
 import { useEffect, useState } from 'react'
 import { Link, useRouter } from '../router'
 import { useAuth } from '../auth'
@@ -114,8 +116,8 @@ export function Sidebar() {
                   fontSize: 9,
                   letterSpacing: '0.14em',
                   textTransform: 'uppercase',
-                  color: 'var(--text-dim)',
-                  border: '1px dashed var(--border-2)',
+                  color: 'var(--gray-10)',
+                  border: '1px dashed var(--gray-7)',
                   borderRadius: 3,
                   padding: '1px 5px',
                   marginLeft: 6,
@@ -184,9 +186,9 @@ export function Topbar({
 
       {user && (
         <div className="tb__meta">
-          <span className="mono" style={{ fontSize: 11, color: 'var(--text-dim)' }}>
+          <Code variant="ghost" style={{ fontSize: 11, color: 'var(--gray-10)' }}>
             {user.email}
-          </span>
+          </Code>
         </div>
       )}
 

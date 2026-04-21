@@ -1,4 +1,5 @@
 import { useState, type ReactNode } from 'react'
+import { Code, DataList, Text } from '@radix-ui/themes'
 import { AppShell } from '../components/shell'
 import {
   Avatar,
@@ -6,12 +7,15 @@ import {
   Chip,
   CommandBar,
   InfoHint,
+  MetaRow,
+  MetricCard,
   PageHeader,
   Pagination,
   Status,
   Tabs,
   Toggle,
 } from '../components/common'
+import { SelectField, TextAreaField, TextInput } from '../components/fields'
 import { Banner, EmptyState, ErrorState, LoadingList, NoAccessState } from '../components/states'
 import {
   IconAlert,
@@ -22,20 +26,22 @@ import {
 } from '../components/icons'
 
 const COLOR_TOKENS = [
-  { token: '--bg', dark: '#0a0b0c', light: '#ffffff', usage: 'App background' },
-  { token: '--surface', dark: '#0e1012', light: '#f8f9fb', usage: 'Shell and cards' },
-  { token: '--surface-2', dark: '#13161a', light: '#f2f3f6', usage: 'Raised panels' },
-  { token: '--surface-3', dark: '#181c21', light: '#eaecf0', usage: 'Hover and tiles' },
-  { token: '--border', dark: '#20242b', light: '#e3e5ea', usage: 'Default border' },
-  { token: '--border-strong', dark: '#373d47', light: '#b8bcc4', usage: 'Inputs and focus base' },
-  { token: '--text', dark: '#e5e6e9', light: '#0a0b0c', usage: 'Primary text' },
-  { token: '--text-muted', dark: '#9a9ea6', light: '#4a4f56', usage: 'Secondary text' },
-  { token: '--text-dim', dark: '#60646c', light: '#7b7f86', usage: 'Labels and metadata' },
-  { token: '--accent', dark: '#0F62FE', light: '#0F62FE', usage: 'Primary action' },
-  { token: '--warn', dark: '#ffb347', light: '#b45309', usage: 'Needs attention' },
-  { token: '--danger', dark: '#ff5a4d', light: '#b42318', usage: 'Destructive or failed' },
-  { token: '--success', dark: '#55d991', light: '#107c41', usage: 'Positive result' },
-  { token: '--info', dark: '#6aa6ff', light: '#0043ce', usage: 'Informational accent' },
+  { token: '--gray-1', scale: 'slate', usage: 'App background' },
+  { token: '--gray-2', scale: 'slate', usage: 'Shell and cards' },
+  { token: '--gray-3', scale: 'slate', usage: 'Raised panels · hover tiles' },
+  { token: '--gray-4', scale: 'slate', usage: 'Secondary raised surfaces' },
+  { token: '--gray-6', scale: 'slate', usage: 'Default border' },
+  { token: '--gray-8', scale: 'slate', usage: 'Input border · strong border' },
+  { token: '--gray-10', scale: 'slate', usage: 'Dim text · metadata labels' },
+  { token: '--gray-11', scale: 'slate', usage: 'Secondary text' },
+  { token: '--gray-12', scale: 'slate', usage: 'Primary text' },
+  { token: '--accent-9', scale: 'blue', usage: 'Primary action (solid)' },
+  { token: '--accent-a3', scale: 'blue', usage: 'Accent soft tint' },
+  { token: '--accent-a7', scale: 'blue', usage: 'Accent border' },
+  { token: '--amber-11', scale: 'amber', usage: 'Warn foreground' },
+  { token: '--red-11', scale: 'red', usage: 'Danger foreground' },
+  { token: '--green-11', scale: 'green', usage: 'Success foreground' },
+  { token: '--cyan-11', scale: 'cyan', usage: 'Info foreground' },
 ]
 
 const TYPE_SPECS = [
@@ -47,16 +53,20 @@ const TYPE_SPECS = [
 ]
 
 const RADIX_MAP = [
-  { current: 'Btn', radix: 'Button / Slot', figma: 'Variants: default, primary, ghost, danger; sizes: sm, md, lg; states: hover, disabled, icon-only.' },
-  { current: 'Chip', radix: 'Badge', figma: 'Variants: accent, warn, danger, success, info, ghost, square. Use for tags and compact metadata.' },
-  { current: 'Tabs', radix: 'Tabs.Root / Tabs.List / Tabs.Trigger', figma: 'Active trigger uses accent underline. Count is a nested badge text token.' },
-  { current: 'Toggle', radix: 'Switch', figma: 'Use on/off variants plus disabled state. Current thumb movement is 14px.' },
-  { current: 'Input / Select / Textarea', radix: 'TextField / Select / TextArea', figma: 'Use one field shell: bg, border-strong, 4px radius, accent focus ring.' },
-  { current: 'Banner', radix: 'Callout', figma: 'Variants: info and warn. Icon slot at left, optional action at right.' },
-  { current: 'Avatar', radix: 'Avatar', figma: 'Initials in 4px radius square. Tone controls text, border, and soft fill.' },
-  { current: 'InfoHint', radix: 'Tooltip / Popover', figma: 'Small help trigger with floating content. Use for API and contract notes.' },
-  { current: 'LoadingList', radix: 'Skeleton', figma: 'Skeleton rows use surface-2 to surface-3 shimmer.' },
-  { current: 'AppShell', radix: 'Layout shell', figma: 'Sidebar 240px, topbar 48px, content page padding 32px desktop.' },
+  { current: 'Btn', radix: '@radix-ui/themes · Button / IconButton', figma: 'Migrated: solid/ghost/surface variants via Button; color="red" for danger; IconButton when icon-only. Sizes map sm/md/lg в†’ 1/2/3.' },
+  { current: 'Chip / PolicyModeChip', radix: '@radix-ui/themes · Badge', figma: 'Migrated: tone в†’ color (accentв†’blue, warnв†’amber, dangerв†’red, successв†’green, infoв†’cyan, ghostв†’gray/outline). square в†’ radius="small".' },
+  { current: 'Tabs', radix: '@radix-ui/themes · Tabs / TabNav', figma: 'Migrated: navigation-mode (href) renders TabNav, controlled-mode (onSelect) renders Tabs.Root + Tabs.List + Tabs.Trigger.' },
+  { current: 'Toggle', radix: '@radix-ui/themes · Switch', figma: 'Migrated: on в†’ checked, onChange в†’ onCheckedChange, size="1" for compact density, label via Text as="label".' },
+  { current: 'TextInput / TextAreaField / SelectField / PasswordField', radix: '@radix-ui/themes · TextField / TextArea / Select', figma: 'Migrated. Error state via color="red", auto aria-invalid and aria-describedby. Password eye toggle via TextField.Slot + IconButton.' },
+  { current: 'FieldLabel / FieldHint / FieldError', radix: '@radix-ui/themes · Text / Flex', figma: 'Shared chrome: Text as="label" for FieldLabel, Flex + IconAlert + Text color="red" for FieldError.' },
+  { current: 'Banner', radix: '@radix-ui/themes · Callout', figma: 'Migrated: tone info в†’ color="blue", warn в†’ color="amber". Icon in Callout.Icon slot, title as Text weight="medium", body as Callout.Text color="gray".' },
+  { current: 'Avatar', radix: '@radix-ui/themes · Avatar', figma: 'Migrated: tone в†’ color, pixel size в†’ nearest Radix size 1-9 (16/20/24/28/32/40/48/56/64), variant="soft", radius="small".' },
+  { current: 'InfoHint', radix: '@radix-ui/themes · Tooltip', figma: 'Migrated: ~95 lines of custom portal/positioning/flip logic replaced with Radix Tooltip. Trigger is a <button class="info-hint">.' },
+  { current: 'LoadingList', radix: '@radix-ui/themes · Skeleton + Flex', figma: 'Migrated: Flex direction="column" gap="2" + Skeleton height="48px" rows.' },
+  { current: 'MetaRow', radix: '@radix-ui/themes · DataList', figma: 'Migrated: DataList.Item + DataList.Label minWidth="120px" + DataList.Value. Wrap rows in DataList.Root size="2".' },
+  { current: 'MetricCard', radix: '@radix-ui/themes · Card + Heading/Text', figma: 'Migrated: Card variant="surface" size="2" + Heading size="7" for value + Text for label/delta. tone="warn" tints border via var(--amber-6).' },
+  { current: 'EmptyState / ErrorState / NoAccessState', radix: '@radix-ui/themes · Card + Heading/Text', figma: 'Migrated: shared StateShell with Card + Flex column + Heading + Text. Icon in coloured Box with red-a3/amber-a3/gray-a3 bg.' },
+  { current: 'AppShell', radix: 'custom layout', figma: 'Product shell. Sidebar 240px, topbar 48px, content page padding 32px desktop. Not migrated — keeps custom layout.' },
 ]
 
 const CHIP_TONES = ['accent', 'warn', 'danger', 'success', 'info', 'ghost'] as const
@@ -92,9 +102,9 @@ export default function StyleGuideScreen() {
         <CommandBar
           parts={[
             { label: 'Route', value: '#/components', tone: 'accent' },
-            { label: 'Library target', value: 'Radix UI / Radix Themes' },
-            { label: 'Theme', value: 'dark + light tokens' },
-            { label: 'Density', value: 'operator console' },
+            { label: 'Library', value: '@radix-ui/themes' },
+            { label: 'Theme', value: 'appearance=dark|light · accentColor=blue · grayColor=slate' },
+            { label: 'Density', value: 'scaling=90% · radius=small' },
           ]}
         />
 
@@ -103,7 +113,7 @@ export default function StyleGuideScreen() {
         <Section
           eyebrow="handoff"
           title="How to use this page in Figma"
-          body="Create Figma pages for Foundations, Components, Patterns, and States. Keep Radix components as the base structure, then apply these product tokens and variants."
+          body="Components below are built on @radix-ui/themes (not raw Primitives). Figma targets should mirror Radix Themes components and their standard props (size, color, variant, radius). Product layout chrome (AppShell, form-row, login, card head/body) remains custom."
         >
           <div className="grid grid--3">
             <GuidanceCard
@@ -141,13 +151,13 @@ export default function StyleGuideScreen() {
               <div className="card__head"><div className="card__title">Type scale</div></div>
               <div className="card__body stack">
                 {TYPE_SPECS.map(t => (
-                  <div key={t.name} style={{ borderBottom: '1px dashed var(--border)', paddingBottom: 12 }}>
-                    <div className="mono uppercase muted" style={{ marginBottom: 6 }}>{t.name}</div>
-                    <div style={{ fontFamily: t.name.includes('Hero') || t.name.includes('Form') ? 'var(--font-serif)' : 'var(--font-sans)', fontSize: t.name.includes('Hero') ? 32 : t.name.includes('Form') ? 26 : t.name.includes('Eyebrow') ? 11 : 14, color: 'var(--text)' }}>
+                  <div key={t.name} style={{ borderBottom: '1px dashed var(--gray-6)', paddingBottom: 12 }}>
+                    <Text as="div" size="1" color="gray" className="uppercase" style={{ marginBottom: 6 }}>{t.name}</Text>
+                    <div style={{ fontFamily: t.name.includes('Hero') || t.name.includes('Form') ? 'var(--heading-font-family)' : 'var(--default-font-family)', fontSize: t.name.includes('Hero') ? 32 : t.name.includes('Form') ? 26 : t.name.includes('Eyebrow') ? 11 : 14, color: 'var(--gray-12)' }}>
                       {t.sample}
                     </div>
-                    <div className="mono" style={{ color: 'var(--text-dim)', fontSize: 11, marginTop: 6 }}>{t.spec}</div>
-                    <div style={{ color: 'var(--text-muted)', fontSize: 12, marginTop: 2 }}>{t.usage}</div>
+                    <div className="mono" style={{ color: 'var(--gray-10)', fontSize: 11, marginTop: 6 }}>{t.spec}</div>
+                    <div style={{ color: 'var(--gray-11)', fontSize: 12, marginTop: 2 }}>{t.usage}</div>
                   </div>
                 ))}
               </div>
@@ -176,11 +186,11 @@ export default function StyleGuideScreen() {
             <div
               style={{
                 display: 'grid',
-                gridTemplateColumns: '180px 220px minmax(0, 1fr)',
+                gridTemplateColumns: 'minmax(180px, 240px) minmax(200px, 260px) minmax(0, 1fr)',
                 gap: 14,
                 padding: '10px 16px',
-                borderBottom: '1px solid var(--border)',
-                background: 'var(--surface-2)',
+                borderBottom: '1px solid var(--gray-6)',
+                background: 'var(--gray-3)',
               }}
               className="mono uppercase muted"
             >
@@ -193,16 +203,16 @@ export default function StyleGuideScreen() {
                 key={row.current}
                 style={{
                   display: 'grid',
-                  gridTemplateColumns: '180px 220px minmax(0, 1fr)',
+                  gridTemplateColumns: 'minmax(180px, 240px) minmax(200px, 260px) minmax(0, 1fr)',
                   gap: 14,
                   padding: '12px 16px',
-                  borderBottom: '1px solid var(--border)',
+                  borderBottom: '1px solid var(--gray-6)',
                   alignItems: 'start',
                 }}
               >
-                <span className="mono" style={{ color: 'var(--text)' }}>{row.current}</span>
-                <span style={{ color: 'var(--accent)' }}>{row.radix}</span>
-                <span style={{ color: 'var(--text-muted)', fontSize: 12.5, lineHeight: 1.55 }}>{row.figma}</span>
+                <Code variant="ghost" style={{ color: 'var(--gray-12)' }}>{row.current}</Code>
+                <span style={{ color: 'var(--accent-9)' }}>{row.radix}</span>
+                <span style={{ color: 'var(--gray-11)', fontSize: 12.5, lineHeight: 1.55 }}>{row.figma}</span>
               </div>
             ))}
           </div>
@@ -248,22 +258,12 @@ export default function StyleGuideScreen() {
           <div className="grid grid--2">
             <ComponentCard title="Inputs" radix="Radix target: TextField, Select, TextArea">
               <div className="stack">
-                <label>
-                  <div className="mono uppercase muted" style={{ marginBottom: 6 }}>Email</div>
-                  <input className="input" defaultValue="frontend@int3grate.ai" />
-                </label>
-                <label>
-                  <div className="mono uppercase muted" style={{ marginBottom: 6 }}>Domain</div>
-                  <select className="select" defaultValue="dom_sales">
-                    <option value="dom_hq">HQ / Platform</option>
-                    <option value="dom_sales">Sales / Revenue</option>
-                    <option value="dom_support">Support / CX</option>
-                  </select>
-                </label>
-                <label>
-                  <div className="mono uppercase muted" style={{ marginBottom: 6 }}>Instruction</div>
-                  <textarea className="input textarea" defaultValue="Never take tool actions that require approval without a granted ApprovalRequest." />
-                </label>
+                <TextInput label="Email" defaultValue="frontend@int3grate.ai" />
+                <StyleGuideSelectDemo />
+                <TextAreaField
+                  label="Instruction"
+                  defaultValue="Never take tool actions that require approval without a granted ApprovalRequest."
+                />
               </div>
             </ComponentCard>
             <ComponentCard title="Tabs, switch, hint" radix="Radix target: Tabs, Switch, Tooltip">
@@ -283,7 +283,7 @@ export default function StyleGuideScreen() {
                   label={approvalRequired ? 'Approval required' : 'No approval required'}
                 />
                 <div className="row row--sm">
-                  <span className="mono uppercase muted">Policy helper</span>
+                  <Text size="1" color="gray" className="uppercase">Policy helper</Text>
                   <InfoHint>
                     In Figma, build this as a Tooltip or Popover trigger. Use it for API contract notes and risky states.
                   </InfoHint>
@@ -319,12 +319,14 @@ export default function StyleGuideScreen() {
                 ]}
               />
             </ComponentCard>
-            <ComponentCard title="Metadata row" radix="Radix target: Card + Text">
-              <div className="card" style={{ background: 'var(--surface-2)' }}>
+            <ComponentCard title="Metadata row" radix="Radix target: DataList">
+              <div className="card" style={{ background: 'var(--gray-3)' }}>
                 <div className="card__body">
-                  <MetaRow label="agent_id" value="agt_lead_qualifier" />
-                  <MetaRow label="model" value="gpt-5-mini" />
-                  <MetaRow label="approval_level" value="L4" />
+                  <DataList.Root size="2">
+                    <MetaRow label="agent_id" value={<Code variant="ghost">agt_lead_qualifier</Code>} />
+                    <MetaRow label="model" value={<Code variant="ghost">gpt-5-mini</Code>} />
+                    <MetaRow label="approval_level" value={<Code variant="ghost">L4</Code>} />
+                  </DataList.Root>
                 </div>
               </div>
             </ComponentCard>
@@ -374,8 +376,8 @@ export default function StyleGuideScreen() {
                 gridTemplateColumns: 'minmax(0, 1fr) 120px 140px 120px 32px',
                 gap: 14,
                 padding: '10px 16px',
-                background: 'var(--surface-2)',
-                borderBottom: '1px solid var(--border)',
+                background: 'var(--gray-3)',
+                borderBottom: '1px solid var(--gray-6)',
               }}
               className="mono uppercase muted"
             >
@@ -392,20 +394,20 @@ export default function StyleGuideScreen() {
                 style={{ gridTemplateColumns: 'minmax(0, 1fr) 120px 140px 120px 32px' }}
               >
                 <div style={{ minWidth: 0 }}>
-                  <div style={{ fontSize: 13.5, color: 'var(--text)' }}>{name}</div>
+                  <div style={{ fontSize: 13.5, color: 'var(--gray-12)' }}>{name}</div>
                   <div className="agent-row__desc truncate" style={{ marginTop: 2 }}>
                     {i === 0 ? 'Scores inbound leads and drafts outreach.' : i === 1 ? 'Reviews charges and prepares refunds.' : 'Onboards and offboards SaaS access.'}
                   </div>
-                  <div className="mono" style={{ fontSize: 10.5, color: 'var(--text-dim)', marginTop: 4 }}>
+                  <div className="mono" style={{ fontSize: 10.5, color: 'var(--gray-10)', marginTop: 4 }}>
                     agt_{name.toLowerCase().replace(/\s+/g, '_')}
                   </div>
                 </div>
                 <Status status={i === 2 ? 'paused' : 'active'} />
                 <div>
-                  <div className="mono" style={{ fontSize: 11, color: 'var(--text)' }}>{i === 0 ? 'usr_marcelo' : 'usr_priya'}</div>
-                  <div className="mono" style={{ fontSize: 10.5, color: 'var(--text-dim)', marginTop: 4 }}>{i === 0 ? 'dom_sales' : 'dom_support'}</div>
+                  <div className="mono" style={{ fontSize: 11, color: 'var(--gray-12)' }}>{i === 0 ? 'usr_marcelo' : 'usr_priya'}</div>
+                  <div className="mono" style={{ fontSize: 10.5, color: 'var(--gray-10)', marginTop: 4 }}>{i === 0 ? 'dom_sales' : 'dom_support'}</div>
                 </div>
-                <div className="mono" style={{ fontSize: 11, color: 'var(--text-muted)' }}>{i + 1}d ago</div>
+                <div className="mono" style={{ fontSize: 11, color: 'var(--gray-11)' }}>{i + 1}d ago</div>
                 <IconArrowRight className="ic" />
               </div>
             ))}
@@ -459,7 +461,7 @@ function Section({
     <section style={{ marginTop: 34 }}>
       <div style={{ marginBottom: 14 }}>
         <div className="page__eyebrow">{eyebrow}</div>
-        <h2 style={{ fontFamily: 'var(--font-serif)', fontSize: 28, lineHeight: 1.1, marginBottom: 6 }}>{title}</h2>
+        <h2 style={{ fontFamily: 'var(--heading-font-family)', fontSize: 28, lineHeight: 1.1, marginBottom: 6 }}>{title}</h2>
         <p className="muted" style={{ maxWidth: 760, fontSize: 13.5 }}>{body}</p>
       </div>
       {children}
@@ -471,8 +473,8 @@ function GuidanceCard({ title, body }: { title: string; body: string }) {
   return (
     <div className="card">
       <div className="card__body">
-        <div style={{ fontFamily: 'var(--font-serif)', fontSize: 20, color: 'var(--text)', marginBottom: 8 }}>{title}</div>
-        <p style={{ color: 'var(--text-muted)', fontSize: 12.5, lineHeight: 1.55 }}>{body}</p>
+        <div style={{ fontFamily: 'var(--heading-font-family)', fontSize: 20, color: 'var(--gray-12)', marginBottom: 8 }}>{title}</div>
+        <p style={{ color: 'var(--gray-11)', fontSize: 12.5, lineHeight: 1.55 }}>{body}</p>
       </div>
     </div>
   )
@@ -480,13 +482,11 @@ function GuidanceCard({ title, body }: { title: string; body: string }) {
 
 function ColorToken({
   token,
-  dark,
-  light,
+  scale,
   usage,
 }: {
   token: string
-  dark: string
-  light: string
+  scale: string
   usage: string
 }) {
   return (
@@ -495,18 +495,17 @@ function ColorToken({
         style={{
           height: 54,
           borderRadius: 4,
-          border: '1px solid var(--border-strong)',
+          border: '1px solid var(--gray-8)',
           background: `var(${token})`,
           marginBottom: 12,
         }}
       />
       <div className="card__body" style={{ padding: 0 }}>
-        <div className="mono" style={{ fontSize: 12, color: 'var(--text)' }}>{token}</div>
-        <div style={{ fontSize: 12, color: 'var(--text-muted)', marginTop: 4 }}>{usage}</div>
-        <div className="mono" style={{ fontSize: 10.5, color: 'var(--text-dim)', marginTop: 8 }}>
-          dark {dark}<br />
-          light {light}
-        </div>
+        <Code variant="ghost" style={{ fontSize: 12 }}>{token}</Code>
+        <Text as="div" size="1" color="gray" mt="1">{usage}</Text>
+        <Text as="div" size="1" color="gray" mt="2">
+          Radix scale: <Code variant="ghost">{scale}</Code> · appearance follows Theme
+        </Text>
       </div>
     </div>
   )
@@ -514,13 +513,29 @@ function ColorToken({
 
 function TokenRow({ name, value, note }: { name: string; value: string; note: string }) {
   return (
-    <div className="row row--between" style={{ alignItems: 'flex-start', borderBottom: '1px dashed var(--border)', paddingBottom: 10 }}>
+    <div className="row row--between" style={{ alignItems: 'flex-start', borderBottom: '1px dashed var(--gray-6)', paddingBottom: 10 }}>
       <div>
-        <div style={{ color: 'var(--text)', fontSize: 13 }}>{name}</div>
-        <div style={{ color: 'var(--text-muted)', fontSize: 12, marginTop: 2 }}>{note}</div>
+        <div style={{ color: 'var(--gray-12)', fontSize: 13 }}>{name}</div>
+        <div style={{ color: 'var(--gray-11)', fontSize: 12, marginTop: 2 }}>{note}</div>
       </div>
       <Chip>{value}</Chip>
     </div>
+  )
+}
+
+function StyleGuideSelectDemo() {
+  const [value, setValue] = useState('dom_sales')
+  return (
+    <SelectField
+      label="Domain"
+      value={value}
+      onChange={setValue}
+      options={[
+        { value: 'dom_hq', label: 'HQ / Platform' },
+        { value: 'dom_sales', label: 'Sales / Revenue' },
+        { value: 'dom_support', label: 'Support / CX' },
+      ]}
+    />
   )
 }
 
@@ -546,41 +561,6 @@ function ComponentCard({
   )
 }
 
-function MetricCard({
-  label,
-  value,
-  unit,
-  delta,
-  tone,
-}: {
-  label: string
-  value: string
-  unit: string
-  delta: string
-  tone?: 'warn'
-}) {
-  return (
-    <div className="card card--metric">
-      <div className="card__body">
-        <div className="metric__label">{label}</div>
-        <div className="row" style={{ alignItems: 'baseline', gap: 6 }}>
-          <div className="metric__value" style={tone === 'warn' ? { color: 'var(--warn)' } : undefined}>{value}</div>
-          <span className="metric__unit">{unit}</span>
-        </div>
-        <div className="metric__delta">{delta}</div>
-      </div>
-    </div>
-  )
-}
-
-function MetaRow({ label, value }: { label: string; value: string }) {
-  return (
-    <div className="row row--between" style={{ padding: '6px 0', borderBottom: '1px dashed var(--border)' }}>
-      <span className="mono uppercase muted" style={{ fontSize: 10.5 }}>{label}</span>
-      <span className="mono" style={{ fontSize: 12 }}>{value}</span>
-    </div>
-  )
-}
 
 function ChecklistCard({ title, items }: { title: string; items: string[] }) {
   return (
@@ -592,8 +572,8 @@ function ChecklistCard({ title, items }: { title: string; items: string[] }) {
       <div className="card__body stack stack--sm">
         {items.map(item => (
           <div key={item} className="row" style={{ alignItems: 'flex-start', gap: 10 }}>
-            <span style={{ color: 'var(--success)', marginTop: 2 }}><IconCheck className="ic ic--sm" /></span>
-            <span style={{ fontSize: 12.5, color: 'var(--text-muted)', lineHeight: 1.5 }}>{item}</span>
+            <span style={{ color: 'var(--green-11)', marginTop: 2 }}><IconCheck className="ic ic--sm" /></span>
+            <span style={{ fontSize: 12.5, color: 'var(--gray-11)', lineHeight: 1.5 }}>{item}</span>
           </div>
         ))}
       </div>

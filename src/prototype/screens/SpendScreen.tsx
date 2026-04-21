@@ -1,6 +1,8 @@
 import { useEffect, useState } from 'react'
+import { Code, Text } from '@radix-ui/themes'
+
 import { AppShell } from '../components/shell'
-import { PageHeader, Chip, InfoHint, Pagination } from '../components/common'
+import { PageHeader, Chip, InfoHint, MetricCard, Pagination } from '../components/common'
 import { EmptyState, ErrorState, LoadingList, NoAccessState } from '../components/states'
 import { IconAgent, IconArrowRight, IconSpend } from '../components/icons'
 import { Link } from '../router'
@@ -94,7 +96,7 @@ export default function SpendScreen() {
             <>
               {`SPEND · ${data.range} · ${data.group_by}`}{' '}
               <InfoHint>
-                Loaded via <span className="mono">GET /dashboard/spend</span> with <span className="mono">range</span> and <span className="mono">group_by</span> parameters. Only cost and token aggregates are returned.
+                Loaded via <Code variant="ghost">GET /dashboard/spend</Code> with <Code variant="ghost">range</Code> and <Code variant="ghost">group_by</Code> parameters. Only cost and token aggregates are returned.
               </InfoHint>
             </>
           }
@@ -104,7 +106,7 @@ export default function SpendScreen() {
 
         {/* Controls */}
         <div className="row" style={{ gap: 6, marginBottom: 16, flexWrap: 'wrap', alignItems: 'center' }}>
-          <span className="mono uppercase muted" style={{ marginRight: 4 }}>range</span>
+          <Text size="1" color="gray" className="uppercase" style={{ marginRight: 4 }}>range</Text>
           {RANGES.map(r => (
             <button
               key={r}
@@ -115,8 +117,8 @@ export default function SpendScreen() {
               {r}
             </button>
           ))}
-          <span style={{ width: 1, height: 16, background: 'var(--border)', margin: '0 6px' }} />
-          <span className="mono uppercase muted" style={{ marginRight: 4 }}>group_by</span>
+          <span style={{ width: 1, height: 16, background: 'var(--gray-6)', margin: '0 6px' }} />
+          <Text size="1" color="gray" className="uppercase" style={{ marginRight: 4 }}>group_by</Text>
           {GROUPINGS.map(g => (
             <button
               key={g}
@@ -131,35 +133,23 @@ export default function SpendScreen() {
 
         {/* Summary cards — all derived from the response */}
         <div className="grid grid--3" style={{ marginBottom: 18 }}>
-          <div className="card card--metric">
-            <div className="card__body">
-              <div className="metric__label">Total spend</div>
-              <div className="row" style={{ alignItems: 'baseline', gap: 6 }}>
-                <div className="metric__value">{money(data.total_usd, { compact: true })}</div>
-                <span className="metric__unit">USD</span>
-              </div>
-              <div className="metric__delta">across the selected window</div>
-            </div>
-          </div>
-          <div className="card card--metric">
-            <div className="card__body">
-              <div className="metric__label">Total runs</div>
-              <div className="metric__value">{num(totalRuns)}</div>
-              <div className="metric__delta">across {items.length} {groupBy}{items.length === 1 ? '' : 's'}</div>
-            </div>
-          </div>
-          <div className="card card--metric">
-            <div className="card__body">
-              <div className="metric__label">tokens · in / out</div>
-              <div className="row" style={{ alignItems: 'baseline', gap: 6 }}>
-                <div className="metric__value">{num(Math.round((totalTokensIn + totalTokensOut) / 1000))}</div>
-                <span className="metric__unit">k</span>
-              </div>
-              <div className="metric__delta">
-                in {num(Math.round(totalTokensIn / 1000))}k · out {num(Math.round(totalTokensOut / 1000))}k
-              </div>
-            </div>
-          </div>
+          <MetricCard
+            label="Total spend"
+            value={money(data.total_usd, { compact: true })}
+            unit="USD"
+            delta="across the selected window"
+          />
+          <MetricCard
+            label="Total runs"
+            value={num(totalRuns)}
+            delta={`across ${items.length} ${groupBy}${items.length === 1 ? '' : 's'}`}
+          />
+          <MetricCard
+            label="tokens · in / out"
+            value={num(Math.round((totalTokensIn + totalTokensOut) / 1000))}
+            unit="k"
+            delta={`in ${num(Math.round(totalTokensIn / 1000))}k · out ${num(Math.round(totalTokensOut / 1000))}k`}
+          />
         </div>
 
         {/* Horizontal bars — derived from items */}
@@ -190,7 +180,7 @@ export default function SpendScreen() {
                         style={{ width: `${Math.max(2, share * 100)}%` }}
                       />
                     </div>
-                    <div className="mono" style={{ fontSize: 11.5, color: 'var(--text)', textAlign: 'right' }}>
+                    <div className="mono" style={{ fontSize: 11.5, color: 'var(--gray-12)', textAlign: 'right' }}>
                       {money(r.total_usd, { compact: true })}{' '}
                       <span className="muted">· {pctOfTotal.toFixed(1)}%</span>
                     </div>
@@ -213,10 +203,10 @@ export default function SpendScreen() {
               className="spend-row"
               style={{
                 gridTemplateColumns: TABLE_COLS,
-                background: 'var(--surface-2)',
-                fontFamily: 'var(--font-mono)',
+                background: 'var(--gray-3)',
+                fontFamily: 'var(--code-font-family)',
                 fontSize: 10,
-                color: 'var(--text-dim)',
+                color: 'var(--gray-10)',
                 textTransform: 'uppercase',
                 letterSpacing: '0.14em',
               }}
@@ -234,29 +224,29 @@ export default function SpendScreen() {
                   <div style={{ minWidth: 0 }}>
                     <div className="row row--sm">
                       {groupBy === 'agent' && (
-                        <span style={{ color: 'var(--text-dim)' }}>
+                        <span style={{ color: 'var(--gray-10)' }}>
                           <IconAgent className="ic ic--sm" />
                         </span>
                       )}
-                      <div className="truncate" style={{ fontSize: 13, color: 'var(--text)' }}>{r.label}</div>
+                      <div className="truncate" style={{ fontSize: 13, color: 'var(--gray-12)' }}>{r.label}</div>
                     </div>
-                    <div className="mono" style={{ fontSize: 10.5, color: 'var(--text-dim)', marginTop: 2 }}>
+                    <div className="mono" style={{ fontSize: 10.5, color: 'var(--gray-10)', marginTop: 2 }}>
                       {r.id}
                     </div>
                   </div>
-                  <div className="mono" style={{ fontSize: 13, color: 'var(--text)', textAlign: 'right' }}>
+                  <div className="mono" style={{ fontSize: 13, color: 'var(--gray-12)', textAlign: 'right' }}>
                     {money(r.total_usd, { cents: r.total_usd < 100 })}
                   </div>
-                  <div className="mono" style={{ fontSize: 12, color: 'var(--text)', textAlign: 'right' }}>
+                  <div className="mono" style={{ fontSize: 12, color: 'var(--gray-12)', textAlign: 'right' }}>
                     {num(r.run_count)}
                   </div>
-                  <div className="mono" style={{ fontSize: 11, color: 'var(--text-muted)', textAlign: 'right' }}>
+                  <div className="mono" style={{ fontSize: 11, color: 'var(--gray-11)', textAlign: 'right' }}>
                     {num(r.total_tokens_in)}
                   </div>
-                  <div className="mono" style={{ fontSize: 11, color: 'var(--text-muted)', textAlign: 'right' }}>
+                  <div className="mono" style={{ fontSize: 11, color: 'var(--gray-11)', textAlign: 'right' }}>
                     {num(r.total_tokens_out)}
                   </div>
-                  <div className="mono" style={{ fontSize: 11, color: 'var(--text-dim)', textAlign: 'right' }}>
+                  <div className="mono" style={{ fontSize: 11, color: 'var(--gray-10)', textAlign: 'right' }}>
                     {r.spend_date ? shortDate(r.spend_date) : '—'}
                   </div>
                 </>

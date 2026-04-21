@@ -1,8 +1,10 @@
 import { useEffect, useState } from 'react'
+import { Code } from '@radix-ui/themes'
+
 import { AppShell } from '../components/shell'
 import { PageHeader, Btn, InfoHint } from '../components/common'
-import { LoadingList, NoAccessState } from '../components/states'
-import { IconAlert } from '../components/icons'
+import { SelectField, TextAreaField, TextInput } from '../components/fields'
+import { Banner, LoadingList, NoAccessState } from '../components/states'
 import { useRouter } from '../router'
 import { useAuth } from '../auth'
 import { api } from '../lib/api'
@@ -129,11 +131,11 @@ export default function VersionNewScreen({ agentId }: { agentId: string }) {
             <>
               NEW VERSION{' '}
               <InfoHint>
-                Creates an immutable version via <span className="mono">POST /agents/{'{id}'}/versions</span>. If you check "activate immediately", the new version is then set active via <span className="mono">POST /versions/{'{verId}'}/activate</span>.
+                Creates an immutable version via <Code variant="ghost">POST /agents/{'{id}'}/versions</Code>. If you check "activate immediately", the new version is then set active via <Code variant="ghost">POST /versions/{'{verId}'}/activate</Code>.
               </InfoHint>
             </>
           }
-          title={<>New <em>version</em> <span style={{ color: 'var(--text-muted)', fontSize: 26, marginLeft: 6 }}>v{nextVer}</span></>}
+          title={<>New <em>version</em> <span style={{ color: 'var(--gray-11)', fontSize: 26, marginLeft: 6 }}>v{nextVer}</span></>}
           subtitle={agent.active_version
             ? `Forking from v${agent.active_version.version}. Changes below produce a new immutable version.`
             : 'This is the first version for this agent.'}
@@ -148,14 +150,13 @@ export default function VersionNewScreen({ agentId }: { agentId: string }) {
         />
 
         {saveError && (
-          <div className="banner banner--warn" role="alert">
-            <span className="banner__icon"><IconAlert className="ic" /></span>
-            <div style={{ flex: 1 }}>
-              <div className="banner__title">Couldn't create version</div>
-              <div className="banner__body">{saveError}</div>
-            </div>
-            <Btn variant="ghost" onClick={() => setSaveError(null)}>Dismiss</Btn>
-          </div>
+          <Banner
+            tone="warn"
+            title="Couldn't create version"
+            action={<Btn variant="ghost" onClick={() => setSaveError(null)}>Dismiss</Btn>}
+          >
+            {saveError}
+          </Banner>
         )}
 
         <div className="card">
@@ -163,23 +164,17 @@ export default function VersionNewScreen({ agentId }: { agentId: string }) {
             <div className="card__title">instruction_spec <span className="danger">*</span></div>
           </div>
           <div className="card__body">
-            <textarea
-              className="input textarea"
+            <TextAreaField
               style={{
                 minHeight: 260,
-                fontFamily: 'var(--font-mono)',
+                fontFamily: 'var(--code-font-family)',
                 fontSize: 12.5,
                 lineHeight: 1.5,
-                borderColor: showInstructionErr ? 'var(--danger-border)' : undefined,
               }}
               value={instruction}
               onChange={e => setInstruction(e.target.value)}
+              error={showInstructionErr ? instructionError : undefined}
             />
-            {showInstructionErr && (
-              <div className="row row--sm" style={{ marginTop: 6, color: 'var(--danger)', fontSize: 11.5 }}>
-                <IconAlert className="ic ic--sm" /> {instructionError}
-              </div>
-            )}
           </div>
         </div>
 
@@ -194,13 +189,11 @@ export default function VersionNewScreen({ agentId }: { agentId: string }) {
                 <div className="form-row__hint">Model the agent uses by default.</div>
               </div>
               <div className="form-row__control">
-                <select
-                  className="select"
+                <SelectField
                   value={primary}
-                  onChange={e => setPrimary(e.target.value)}
-                >
-                  {MODELS.map(m => <option key={m} value={m}>{m}</option>)}
-                </select>
+                  onChange={setPrimary}
+                  options={MODELS.map(m => ({ value: m }))}
+                />
               </div>
             </div>
             <div className="form-row">
@@ -209,9 +202,8 @@ export default function VersionNewScreen({ agentId }: { agentId: string }) {
                 <div className="form-row__hint">Output budget.</div>
               </div>
               <div className="form-row__control">
-                <input
+                <TextInput
                   type="number"
-                  className="input"
                   value={maxTokens}
                   min={64}
                   max={32000}
@@ -225,12 +217,11 @@ export default function VersionNewScreen({ agentId }: { agentId: string }) {
                 <div className="form-row__hint">0 = deterministic, 1 = exploratory.</div>
               </div>
               <div className="form-row__control">
-                <input
+                <TextInput
                   type="number"
                   step={0.1}
                   min={0}
                   max={1}
-                  className="input"
                   value={temperature}
                   onChange={e => setTemperature(Number(e.target.value))}
                 />

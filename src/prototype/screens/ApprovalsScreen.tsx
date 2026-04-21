@@ -1,7 +1,9 @@
 import { useEffect, useMemo, useState } from 'react'
+import { Code, Text } from '@radix-ui/themes'
+
 import { AppShell } from '../components/shell'
 import { PageHeader, Chip, Status, InfoHint, Pagination } from '../components/common'
-import { EmptyState, ErrorState, LoadingList } from '../components/states'
+import { Banner, EmptyState, ErrorState, LoadingList } from '../components/states'
 import { IconApproval, IconArrowRight, IconCheck, IconX } from '../components/icons'
 import { Link, useRouter } from '../router'
 import { api } from '../lib/api'
@@ -56,7 +58,7 @@ export default function ApprovalsScreen() {
             <>
               APPROVALS{' '}
               <InfoHint>
-                List from <span className="mono">GET /approvals</span>. Status filter is applied server-side. Decide via <span className="mono">POST /approvals/{'{id}'}/decision</span>.
+                List from <Code variant="ghost">GET /approvals</Code>. Status filter is applied server-side. Decide via <Code variant="ghost">POST /approvals/{'{id}'}/decision</Code>.
               </InfoHint>
             </>
           }
@@ -67,7 +69,7 @@ export default function ApprovalsScreen() {
         <PolicyBanner />
 
         <div className="row" style={{ gap: 6, marginBottom: 16, flexWrap: 'wrap' }}>
-          <span className="mono uppercase muted" style={{ marginRight: 4 }}>status</span>
+          <Text size="1" color="gray" className="uppercase" style={{ marginRight: 4 }}>status</Text>
           {STATUSES.map(f => (
             <button
               key={f}
@@ -76,7 +78,7 @@ export default function ApprovalsScreen() {
               onClick={() => { setStatusFilter(f); setPage(0) }}
             >
               {f}{' '}
-              <span className="mono" style={{ color: 'var(--text-dim)' }}>{counts[f] ?? 0}</span>
+              <Code variant="ghost" style={{ color: 'var(--gray-10)' }}>{counts[f] ?? 0}</Code>
             </button>
           ))}
         </div>
@@ -98,14 +100,14 @@ export default function ApprovalsScreen() {
           <div className="card" style={{ padding: 0 }}>
             <div style={{
               padding: '10px 16px',
-              background: 'var(--surface-2)',
-              borderBottom: '1px solid var(--border)',
+              background: 'var(--gray-3)',
+              borderBottom: '1px solid var(--gray-6)',
               display: 'grid',
               gridTemplateColumns: '130px minmax(0, 1fr) 160px 130px 120px 120px 28px',
               gap: 14,
-              fontFamily: 'var(--font-mono)',
+              fontFamily: 'var(--code-font-family)',
               fontSize: 10,
-              color: 'var(--text-dim)',
+              color: 'var(--gray-10)',
               textTransform: 'uppercase',
               letterSpacing: '0.12em',
             }}>
@@ -129,33 +131,33 @@ export default function ApprovalsScreen() {
                   }}
                 >
                   <div>
-                    <div className="mono" style={{ fontSize: 11.5, color: 'var(--text)' }}>{a.id}</div>
-                    <div className="mono" style={{ fontSize: 10.5, color: 'var(--text-dim)', marginTop: 2 }}>{ago(a.created_at)}</div>
+                    <div className="mono" style={{ fontSize: 11.5, color: 'var(--gray-12)' }}>{a.id}</div>
+                    <div className="mono" style={{ fontSize: 10.5, color: 'var(--gray-10)', marginTop: 2 }}>{ago(a.created_at)}</div>
                   </div>
                   <div style={{ minWidth: 0 }}>
-                    <div className="truncate" style={{ fontSize: 13, color: 'var(--text)' }}>{a.requested_action}</div>
-                    <div className="mono" style={{ fontSize: 10.5, color: 'var(--text-dim)', marginTop: 2 }}>
+                    <div className="truncate" style={{ fontSize: 13, color: 'var(--gray-12)' }}>{a.requested_action}</div>
+                    <div className="mono" style={{ fontSize: 10.5, color: 'var(--gray-10)', marginTop: 2 }}>
                       run {a.run_id} · {a.task_id ? `task ${a.task_id}` : 'standalone'}
                     </div>
                   </div>
                   <div>
                     <div style={{ fontSize: 12 }}>{a.requested_by_name ?? '—'}</div>
-                    <div className="mono" style={{ fontSize: 10.5, color: 'var(--text-dim)', marginTop: 2 }}>{a.requested_by ?? '—'}</div>
+                    <div className="mono" style={{ fontSize: 10.5, color: 'var(--gray-10)', marginTop: 2 }}>{a.requested_by ?? '—'}</div>
                   </div>
                   <div>
                     <Chip>{a.approver_role ?? '—'}</Chip>
                     {a.approver_user_id && (
-                      <div className="mono" style={{ fontSize: 10.5, color: 'var(--text-dim)', marginTop: 4 }}>{a.approver_user_id}</div>
+                      <div className="mono" style={{ fontSize: 10.5, color: 'var(--gray-10)', marginTop: 4 }}>{a.approver_user_id}</div>
                     )}
                   </div>
                   <div>
                     <Status status={a.status} />
                     {isPending && a.expires_at ? (
-                      <div className="mono" style={{ fontSize: 10.5, color: 'var(--text-dim)', marginTop: 4 }}>
+                      <div className="mono" style={{ fontSize: 10.5, color: 'var(--gray-10)', marginTop: 4 }}>
                         expires {ago(a.expires_at)}
                       </div>
                     ) : a.resolved_at ? (
-                      <div className="mono" style={{ fontSize: 10.5, color: 'var(--text-dim)', marginTop: 4 }}>
+                      <div className="mono" style={{ fontSize: 10.5, color: 'var(--gray-10)', marginTop: 4 }}>
                         resolved {ago(a.resolved_at)}
                       </div>
                     ) : null}
@@ -202,14 +204,10 @@ export default function ApprovalsScreen() {
 
 function PolicyBanner() {
   return (
-    <div className="banner banner--info" style={{ marginBottom: 16 }}>
-      <span className="banner__icon"><IconApproval className="ic" /></span>
-      <div style={{ flex: 1 }}>
-        <div className="banner__title">Approval is a policy, not an AI decision</div>
-        <div className="banner__body">
-          The orchestrator creates an approval request whenever a grant or rule requires a human decision. The agent doesn't choose — it's gated.
-        </div>
-      </div>
+    <div style={{ marginBottom: 16 }}>
+      <Banner tone="info" title="Approval is a policy, not an AI decision" icon={<IconApproval className="ic" />}>
+        The orchestrator creates an approval request whenever a grant or rule requires a human decision. The agent doesn't choose — it's gated.
+      </Banner>
     </div>
   )
 }
@@ -222,9 +220,9 @@ function QuickActionButton({
   onClick: () => void
   icon: React.ReactNode
 }) {
-  const color = tone === 'success' ? 'var(--success)' : 'var(--danger)'
-  const bg = tone === 'success' ? 'var(--success-soft)' : 'var(--danger-soft)'
-  const border = tone === 'success' ? 'var(--success-border)' : 'var(--danger-border)'
+  const color = tone === 'success' ? 'var(--green-11)' : 'var(--red-11)'
+  const bg = tone === 'success' ? 'var(--green-a3)' : 'var(--red-a3)'
+  const border = tone === 'success' ? 'var(--green-a6)' : 'var(--red-a6)'
   return (
     <button
       title={title}

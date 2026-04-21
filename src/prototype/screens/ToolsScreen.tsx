@@ -1,6 +1,9 @@
 import { useEffect, useMemo, useState } from 'react'
+import { Code, Text } from '@radix-ui/themes'
+
 import { AppShell } from '../components/shell'
 import { PageHeader, CommandBar, InfoHint, PolicyModeChip } from '../components/common'
+import { TextInput } from '../components/fields'
 import { EmptyState, ErrorState, LoadingList } from '../components/states'
 import { IconArrowRight, IconTool } from '../components/icons'
 import { api } from '../lib/api'
@@ -65,7 +68,7 @@ export default function ToolsScreen() {
             <>
               TOOLS{' '}
               <InfoHint>
-                Public catalog from <span className="mono">GET /tools</span> (gateway v0.2.0). Used by the UI tool-picker and for validating dispatch before the orchestrator runs.
+                Public catalog from <Code variant="ghost">GET /tools</Code> (gateway v0.2.0). Used by the UI tool-picker and for validating dispatch before the orchestrator runs.
               </InfoHint>
             </>
           }
@@ -85,14 +88,15 @@ export default function ToolsScreen() {
         <div style={{ height: 16 }} />
 
         <div className="row" style={{ gap: 8, marginBottom: 16, flexWrap: 'wrap', alignItems: 'center' }}>
-          <input
-            className="input"
-            placeholder="filter by name or description…"
-            value={query}
-            onChange={e => setQuery(e.target.value)}
-            style={{ flex: '1 1 260px', maxWidth: 420 }}
-          />
-          <span className="mono uppercase muted" style={{ marginLeft: 4 }}>default_mode</span>
+          <div style={{ flex: '1 1 260px', maxWidth: 420 }}>
+            <TextInput
+              size="1"
+              placeholder="filter by name or description…"
+              value={query}
+              onChange={e => setQuery(e.target.value)}
+            />
+          </div>
+          <Text size="1" color="gray" className="uppercase" style={{ marginLeft: 4 }}>default_mode</Text>
           {MODES.map(m => (
             <button
               key={m}
@@ -101,7 +105,7 @@ export default function ToolsScreen() {
               onClick={() => setMode(m)}
             >
               {m}{' '}
-              <span className="mono" style={{ color: 'var(--text-dim)' }}>{counts[m] ?? 0}</span>
+              <Code variant="ghost" style={{ color: 'var(--gray-10)' }}>{counts[m] ?? 0}</Code>
             </button>
           ))}
         </div>
@@ -124,11 +128,11 @@ export default function ToolsScreen() {
                 gridTemplateColumns: '240px 140px minmax(0, 1fr) 28px',
                 gap: 14,
                 padding: '10px 16px',
-                background: 'var(--surface-2)',
-                borderBottom: '1px solid var(--border)',
-                fontFamily: 'var(--font-mono)',
+                background: 'var(--gray-3)',
+                borderBottom: '1px solid var(--gray-6)',
+                fontFamily: 'var(--code-font-family)',
                 fontSize: 10,
-                color: 'var(--text-dim)',
+                color: 'var(--gray-10)',
                 textTransform: 'uppercase',
                 letterSpacing: '0.12em',
               }}
@@ -141,7 +145,7 @@ export default function ToolsScreen() {
             {filtered.map(t => {
               const open = expanded.has(t.name)
               return (
-                <div key={t.name} style={{ borderBottom: '1px solid var(--border)' }}>
+                <div key={t.name} style={{ borderBottom: '1px solid var(--gray-6)' }}>
                   <button
                     onClick={() => toggle(t.name)}
                     style={{
@@ -153,12 +157,12 @@ export default function ToolsScreen() {
                       textAlign: 'left',
                       alignItems: 'start',
                       background: 'transparent',
-                      color: 'var(--text)',
+                      color: 'var(--gray-12)',
                     }}
                   >
-                    <span className="mono" style={{ fontSize: 12, color: 'var(--text)' }}>{t.name}</span>
+                    <Code variant="ghost" style={{ fontSize: 12, color: 'var(--gray-12)' }}>{t.name}</Code>
                     <span><PolicyModeChip mode={t.default_mode} /></span>
-                    <span style={{ fontSize: 12.5, color: 'var(--text-muted)', lineHeight: 1.5 }}>
+                    <span style={{ fontSize: 12.5, color: 'var(--gray-11)', lineHeight: 1.5 }}>
                       {t.description ?? <span className="muted">—</span>}
                     </span>
                     <IconArrowRight
@@ -168,16 +172,16 @@ export default function ToolsScreen() {
                   </button>
                   {open && (
                     <div style={{ padding: '0 16px 16px' }}>
-                      <div className="mono uppercase muted" style={{ fontSize: 9.5, marginBottom: 6 }}>
+                      <Text as="div" size="1" color="gray" className="uppercase" style={{ fontSize: 9.5, marginBottom: 6 }}>
                         input_schema
-                      </div>
+                      </Text>
                       <pre
                         style={{
-                          fontFamily: 'var(--font-mono)',
+                          fontFamily: 'var(--code-font-family)',
                           fontSize: 11,
-                          color: 'var(--text)',
-                          background: 'var(--surface-2)',
-                          border: '1px solid var(--border)',
+                          color: 'var(--gray-12)',
+                          background: 'var(--gray-3)',
+                          border: '1px solid var(--gray-6)',
                           padding: 12,
                           borderRadius: 4,
                           margin: 0,

@@ -1,8 +1,10 @@
 import { useState } from 'react'
+import { Code } from '@radix-ui/themes'
+
 import { AppShell } from '../components/shell'
 import { PageHeader, Btn, Chip, InfoHint } from '../components/common'
+import { SelectField, TextAreaField, TextInput } from '../components/fields'
 import { Banner, NoAccessState } from '../components/states'
-import { IconAlert } from '../components/icons'
 import { useRouter } from '../router'
 import { useAuth } from '../auth'
 import { api } from '../lib/api'
@@ -27,7 +29,7 @@ export default function AgentNewScreen() {
   const [err, setErr] = useState<string | null>(null)
 
   const nameError = !name.trim() ? 'Required' : name.trim().length < 3 ? 'Use at least 3 characters' : undefined
-  const nameErrVisible = submitted && nameError
+  const nameErrVisible = submitted && nameError ? nameError : undefined
 
   if (isMember) {
     return (
@@ -74,7 +76,7 @@ export default function AgentNewScreen() {
             <>
               CREATE AGENT{' '}
               <InfoHint>
-                <span className="mono">POST /agents</span> accepts <span className="mono">name</span>, <span className="mono">description</span>, and <span className="mono">domain_id</span>. Owner is inferred from the caller.
+                <Code variant="ghost">POST /agents</Code> accepts <Code variant="ghost">name</Code>, <Code variant="ghost">description</Code>, and <Code variant="ghost">domain_id</Code>. Owner is inferred from the caller.
               </InfoHint>
             </>
           }
@@ -97,13 +99,9 @@ export default function AgentNewScreen() {
         )}
 
         {err && (
-          <div className="banner banner--warn" role="alert">
-            <span className="banner__icon"><IconAlert className="ic" /></span>
-            <div style={{ flex: 1 }}>
-              <div className="banner__title">Couldn't create agent</div>
-              <div className="banner__body">{err}</div>
-            </div>
-          </div>
+          <Banner tone="warn" title="Couldn't create agent">
+            {err}
+          </Banner>
         )}
 
         <div style={{ height: 20 }} />
@@ -116,22 +114,14 @@ export default function AgentNewScreen() {
                 <div className="form-row__hint">1–200 characters. Shown everywhere.</div>
               </div>
               <div className="form-row__control">
-                <input
-                  className="input"
+                <TextInput
                   value={name}
                   onChange={e => setName(e.target.value)}
                   onBlur={() => setSubmitted(true)}
                   placeholder="Lead Qualifier"
                   maxLength={200}
-                  aria-invalid={!!nameErrVisible}
-                  style={nameErrVisible ? { borderColor: 'var(--danger-border)' } : undefined}
+                  error={nameErrVisible}
                 />
-                {nameErrVisible && (
-                  <div className="row row--sm" style={{ marginTop: 6, color: 'var(--danger)', fontSize: 11.5 }}>
-                    <IconAlert className="ic ic--sm" />
-                    {nameError}
-                  </div>
-                )}
               </div>
             </div>
             <div className="form-row">
@@ -140,8 +130,7 @@ export default function AgentNewScreen() {
                 <div className="form-row__hint">Optional. One-line summary.</div>
               </div>
               <div className="form-row__control">
-                <textarea
-                  className="input textarea"
+                <TextAreaField
                   value={desc}
                   onChange={e => setDesc(e.target.value)}
                   placeholder="Triages inbound leads and drafts personalised outreach."
@@ -156,13 +145,11 @@ export default function AgentNewScreen() {
                 </div>
               </div>
               <div className="form-row__control">
-                <select
-                  className="select"
+                <SelectField
                   value={domainId}
-                  onChange={e => setDomainId(e.target.value)}
-                >
-                  {DOMAINS.map(d => <option key={d.id} value={d.id}>{d.name} · {d.id}</option>)}
-                </select>
+                  onChange={setDomainId}
+                  options={DOMAINS.map(d => ({ value: d.id, label: `${d.name} · ${d.id}` }))}
+                />
               </div>
             </div>
           </div>

@@ -1,4 +1,6 @@
 import { useEffect, useMemo, useState } from 'react'
+import { Code, Text } from '@radix-ui/themes'
+
 import { AppShell } from '../components/shell'
 import { PageHeader, Btn, Chip, Status, InfoHint, Pagination } from '../components/common'
 import { Banner, EmptyState, ErrorState, LoadingList } from '../components/states'
@@ -50,7 +52,7 @@ export default function TasksScreen() {
             <>
               TASKS{' '}
               <InfoHint>
-                List from <span className="mono">GET /tasks</span>. Status filter is applied server-side. Runs and step details are fetched separately.
+                List from <Code variant="ghost">GET /tasks</Code>. Status filter is applied server-side. Runs and step details are fetched separately.
               </InfoHint>
             </>
           }
@@ -62,12 +64,12 @@ export default function TasksScreen() {
         />
 
         <Banner tone="warn" title="Task concept is MVP-deferred (ADR-0003)">
-          Gateway v0.2.0 marks <span className="mono">/tasks/*</span> as <span className="mono">x-mvp-deferred</span>. Runs can exist without a task; these screens remain in the prototype for design continuity.
+          Gateway v0.2.0 marks <Code variant="ghost">/tasks/*</Code> as <Code variant="ghost">x-mvp-deferred</Code>. Runs can exist without a task; these screens remain in the prototype for design continuity.
         </Banner>
         <div style={{ height: 16 }} />
 
         <div className="row" style={{ gap: 6, marginBottom: 16, flexWrap: 'wrap' }}>
-          <span className="mono uppercase muted" style={{ marginRight: 4 }}>status</span>
+          <Text size="1" color="gray" className="uppercase" style={{ marginRight: 4 }}>status</Text>
           {STATUSES.map(s => (
             <button
               key={s}
@@ -75,7 +77,7 @@ export default function TasksScreen() {
               onClick={() => { setStatus(s); setPage(0) }}
               style={{ cursor: 'pointer' }}
             >
-              {s} <span className="mono" style={{ color: 'var(--text-dim)' }}>{counts[s] ?? 0}</span>
+              {s} <Code variant="ghost" style={{ color: 'var(--gray-10)' }}>{counts[s] ?? 0}</Code>
             </button>
           ))}
         </div>
@@ -98,14 +100,14 @@ export default function TasksScreen() {
           <div className="card" style={{ padding: 0 }}>
             <div style={{
               padding: '10px 16px',
-              background: 'var(--surface-2)',
-              borderBottom: '1px solid var(--border)',
+              background: 'var(--gray-3)',
+              borderBottom: '1px solid var(--gray-6)',
               display: 'grid',
               gridTemplateColumns: 'minmax(0, 1fr) 80px 130px 140px 140px 120px 32px',
               gap: 14,
-              fontFamily: 'var(--font-mono)',
+              fontFamily: 'var(--code-font-family)',
               fontSize: 10,
-              color: 'var(--text-dim)',
+              color: 'var(--gray-10)',
               textTransform: 'uppercase',
               letterSpacing: '0.12em',
             }}>
@@ -125,8 +127,8 @@ export default function TasksScreen() {
                 style={{ gridTemplateColumns: 'minmax(0, 1fr) 80px 130px 140px 140px 120px 32px' }}
               >
                 <div style={{ minWidth: 0 }}>
-                  <div className="mono" style={{ fontSize: 11, color: 'var(--text-dim)' }}>{t.id}</div>
-                  <div style={{ fontSize: 13, color: 'var(--text)', marginTop: 2 }} className="truncate">
+                  <div className="mono" style={{ fontSize: 11, color: 'var(--gray-10)' }}>{t.id}</div>
+                  <div style={{ fontSize: 13, color: 'var(--gray-12)', marginTop: 2 }} className="truncate">
                     {t.title ?? <span className="muted">— untitled —</span>}
                   </div>
                 </div>
@@ -134,14 +136,14 @@ export default function TasksScreen() {
                   {t.type.replace('_', ' ')}
                 </Chip>
                 <Status status={t.status} />
-                <div className="mono" style={{ fontSize: 11, color: 'var(--text-muted)' }}>
+                <div className="mono" style={{ fontSize: 11, color: 'var(--gray-11)' }}>
                   <div className="truncate">{t.assigned_agent_id ?? '—'}</div>
-                  <div style={{ color: 'var(--text-dim)', marginTop: 2 }}>{t.assigned_agent_version_id ?? '—'}</div>
+                  <div style={{ color: 'var(--gray-10)', marginTop: 2 }}>{t.assigned_agent_version_id ?? '—'}</div>
                 </div>
-                <div className="mono truncate" style={{ fontSize: 11, color: 'var(--text-muted)' }}>
+                <div className="mono truncate" style={{ fontSize: 11, color: 'var(--gray-11)' }}>
                   {t.created_by ?? '—'}
                 </div>
-                <div className="mono" style={{ fontSize: 11, color: 'var(--text-dim)' }}>
+                <div className="mono" style={{ fontSize: 11, color: 'var(--gray-10)' }}>
                   {ago(t.updated_at)}
                 </div>
                 <IconArrowRight className="ic" />

@@ -1,6 +1,8 @@
 import { useEffect, useMemo, useState } from 'react'
+import { Code, DataList } from '@radix-ui/themes'
 import { AppShell } from '../components/shell'
-import { PageHeader, Btn, Chip, Status, InfoHint } from '../components/common'
+import { PageHeader, Btn, Chip, MetaRow, Status, InfoHint } from '../components/common'
+import { TextAreaField, TextInput } from '../components/fields'
 import { Banner, LoadingList } from '../components/states'
 import { IconAlert, IconArrowRight, IconCheck, IconPlay } from '../components/icons'
 import { Link, useRouter } from '../router'
@@ -84,7 +86,7 @@ export default function TaskNewScreen() {
             <>
               DISPATCH TASK{' '}
               <InfoHint>
-                Creates a task via <span className="mono">POST /tasks</span>. Requires an agent and user_input. The orchestrator attaches a run asynchronously — the task response doesn't include a run_id.
+                Creates a task via <Code variant="ghost">POST /tasks</Code>. Requires an agent and user_input. The orchestrator attaches a run asynchronously — the task response doesn't include a run_id.
               </InfoHint>
             </>
           }
@@ -115,7 +117,7 @@ export default function TaskNewScreen() {
         />
 
         <Banner tone="warn" title="Task concept is MVP-deferred (ADR-0003)">
-          Gateway v0.2.0 marks <span className="mono">POST /tasks</span> as <span className="mono">x-mvp-deferred</span>. The production path will dispatch runs directly; this form remains for design continuity.
+          Gateway v0.2.0 marks <Code variant="ghost">POST /tasks</Code> as <Code variant="ghost">x-mvp-deferred</Code>. The production path will dispatch runs directly; this form remains for design continuity.
         </Banner>
         <div style={{ height: 16 }} />
 
@@ -126,14 +128,13 @@ export default function TaskNewScreen() {
         ) : (
           <>
             {saveError && (
-              <div className="banner banner--warn" role="alert">
-                <span className="banner__icon"><IconAlert className="ic" style={{ color: 'var(--danger)' }} /></span>
-                <div style={{ flex: 1 }}>
-                  <div className="banner__title" style={{ color: 'var(--danger)' }}>Couldn't start task</div>
-                  <div className="banner__body">{saveError}</div>
-                </div>
-                <Btn variant="ghost" onClick={() => setSaveError(null)}>Dismiss</Btn>
-              </div>
+              <Banner
+                tone="warn"
+                title="Couldn't start task"
+                action={<Btn variant="ghost" onClick={() => setSaveError(null)}>Dismiss</Btn>}
+              >
+                {saveError}
+              </Banner>
             )}
 
             {/* AGENT PICKER */}
@@ -157,8 +158,8 @@ export default function TaskNewScreen() {
                         style={{
                           textAlign: 'left',
                           padding: 12,
-                          borderColor: on ? 'var(--accent-border)' : undefined,
-                          background: on ? 'var(--accent-soft)' : 'var(--surface-2)',
+                          borderColor: on ? 'var(--accent-a7)' : undefined,
+                          background: on ? 'var(--accent-a3)' : 'var(--gray-3)',
                           display: 'grid',
                           gridTemplateColumns: 'minmax(0, 1fr) 100px',
                           gap: 14,
@@ -168,15 +169,15 @@ export default function TaskNewScreen() {
                         onClick={() => setAgentId(a.id)}
                       >
                         <div style={{ minWidth: 0, textAlign: 'left' }}>
-                          <div style={{ color: 'var(--text)', fontSize: 13 }}>{a.name}</div>
-                          <div className="mono truncate" style={{ fontSize: 10.5, color: 'var(--text-dim)', marginTop: 2 }}>
+                          <div style={{ color: 'var(--gray-12)', fontSize: 13 }}>{a.name}</div>
+                          <div className="mono truncate" style={{ fontSize: 10.5, color: 'var(--gray-10)', marginTop: 2 }}>
                             {a.id}
                           </div>
                         </div>
                         <div style={{ textAlign: 'right' }}>
                           <Status status={a.status} />
                           {a.active_version && (
-                            <div className="mono" style={{ fontSize: 10.5, color: 'var(--text-dim)', marginTop: 3 }}>
+                            <div className="mono" style={{ fontSize: 10.5, color: 'var(--gray-10)', marginTop: 3 }}>
                               v{a.active_version.version}
                             </div>
                           )}
@@ -186,7 +187,7 @@ export default function TaskNewScreen() {
                   })}
                 </div>
                 {show('agent') && (
-                  <div className="row row--sm" style={{ marginTop: 8, color: 'var(--danger)', fontSize: 11.5 }}>
+                  <div className="row row--sm" style={{ marginTop: 8, color: 'var(--red-11)', fontSize: 11.5 }}>
                     <IconAlert className="ic ic--sm" /> {fieldErrors.agent}
                   </div>
                 )}
@@ -209,15 +210,15 @@ export default function TaskNewScreen() {
                         style={{
                           textAlign: 'left',
                           padding: 14,
-                          borderColor: on ? 'var(--accent-border)' : undefined,
-                          background: on ? 'var(--accent-soft)' : 'var(--surface-2)',
+                          borderColor: on ? 'var(--accent-a7)' : undefined,
+                          background: on ? 'var(--accent-a3)' : 'var(--gray-3)',
                         }}
                         onClick={() => setType(t)}
                       >
-                        <div style={{ fontFamily: 'var(--font-serif)', fontSize: 18, color: 'var(--text)', marginBottom: 6 }}>
+                        <div style={{ fontFamily: 'var(--heading-font-family)', fontSize: 18, color: 'var(--gray-12)', marginBottom: 6 }}>
                           {t.replace('_', ' ')}
                         </div>
-                        <div style={{ fontSize: 11.5, color: 'var(--text-muted)', lineHeight: 1.5 }}>{TYPE_DESC[t]}</div>
+                        <div style={{ fontSize: 11.5, color: 'var(--gray-11)', lineHeight: 1.5 }}>{TYPE_DESC[t]}</div>
                       </button>
                     )
                   })}
@@ -235,8 +236,7 @@ export default function TaskNewScreen() {
                     <div className="form-row__hint">Optional — shows in task lists.</div>
                   </div>
                   <div className="form-row__control">
-                    <input
-                      className="input"
+                    <TextInput
                       value={title}
                       onChange={e => setTitle(e.target.value)}
                       placeholder="Triage today's inbound leads"
@@ -249,22 +249,13 @@ export default function TaskNewScreen() {
                     <div className="form-row__hint">Required. The message the agent will see.</div>
                   </div>
                   <div className="form-row__control">
-                    <textarea
-                      className="input textarea"
-                      style={{
-                        minHeight: 140,
-                        borderColor: show('input') ? 'var(--danger-border)' : undefined,
-                      }}
+                    <TextAreaField
+                      style={{ minHeight: 140 }}
                       value={input}
                       onChange={e => setInput(e.target.value)}
                       placeholder="Describe what needs to happen…"
-                      aria-invalid={!!show('input')}
+                      error={show('input') ? fieldErrors.input : undefined}
                     />
-                    {show('input') && (
-                      <div className="row row--sm" style={{ marginTop: 6, color: 'var(--danger)', fontSize: 11.5 }}>
-                        <IconAlert className="ic ic--sm" /> {fieldErrors.input}
-                      </div>
-                    )}
                   </div>
                 </div>
               </div>
@@ -287,8 +278,8 @@ function SuccessPanel({ task }: { task: Task }) {
       <div
         className="card"
         style={{
-          borderColor: 'var(--success-border)',
-          background: 'var(--success-soft)',
+          borderColor: 'var(--green-a6)',
+          background: 'var(--green-a3)',
         }}
       >
         <div className="card__body">
@@ -296,19 +287,19 @@ function SuccessPanel({ task }: { task: Task }) {
             <div
               className="state__icon"
               style={{
-                background: 'var(--success-soft)',
-                borderColor: 'var(--success-border)',
-                color: 'var(--success)',
+                background: 'var(--green-a3)',
+                borderColor: 'var(--green-a6)',
+                color: 'var(--green-11)',
                 margin: 0,
               }}
             >
               <IconCheck />
             </div>
             <div style={{ flex: 1 }}>
-              <div style={{ fontFamily: 'var(--font-serif)', fontSize: 26, color: 'var(--text)', letterSpacing: '-0.01em' }}>
+              <div style={{ fontFamily: 'var(--heading-font-family)', fontSize: 26, color: 'var(--gray-12)', letterSpacing: '-0.01em' }}>
                 Task queued.
               </div>
-              <div style={{ fontSize: 13, color: 'var(--text-muted)', marginTop: 6, lineHeight: 1.5 }}>
+              <div style={{ fontSize: 13, color: 'var(--gray-11)', marginTop: 6, lineHeight: 1.5 }}>
                 The orchestrator will pick it up shortly. Open the task detail to watch for run attachment.
               </div>
             </div>
@@ -322,27 +313,20 @@ function SuccessPanel({ task }: { task: Task }) {
           <Status status={task.status} />
         </div>
         <div className="card__body">
-          <MetaRow label="task id" value={<span className="mono">{task.id}</span>} />
-          <MetaRow label="agent_id" value={<Link to={`/agents/${task.assigned_agent_id}`}><span className="mono">{task.assigned_agent_id}</span></Link>} />
-          <MetaRow label="version_id" value={<span className="mono">{task.assigned_agent_version_id ?? '—'}</span>} />
-          <MetaRow label="type" value={<Chip>{task.type.replace('_', ' ')}</Chip>} />
-          <MetaRow label="tenant_id" value={<span className="mono">{task.tenant_id}</span>} />
-          <MetaRow label="domain_id" value={<span className="mono">{task.domain_id ?? '—'}</span>} />
+          <DataList.Root size="2">
+            <MetaRow label="task id" value={<Code variant="ghost">{task.id}</Code>} />
+            <MetaRow label="agent_id" value={<Link to={`/agents/${task.assigned_agent_id}`}><Code variant="ghost">{task.assigned_agent_id}</Code></Link>} />
+            <MetaRow label="version_id" value={<Code variant="ghost">{task.assigned_agent_version_id ?? '—'}</Code>} />
+            <MetaRow label="type" value={<Chip>{task.type.replace('_', ' ')}</Chip>} />
+            <MetaRow label="tenant_id" value={<Code variant="ghost">{task.tenant_id}</Code>} />
+            <MetaRow label="domain_id" value={<Code variant="ghost">{task.domain_id ?? '—'}</Code>} />
+          </DataList.Root>
         </div>
       </div>
 
       <div className="row" style={{ gap: 8, justifyContent: 'flex-end' }}>
         <Btn variant="primary" href={`/tasks/${task.id}`} icon={<IconArrowRight />}>Open task detail</Btn>
       </div>
-    </div>
-  )
-}
-
-function MetaRow({ label, value }: { label: string; value: React.ReactNode }) {
-  return (
-    <div className="row row--between" style={{ padding: '6px 0', borderBottom: '1px dashed var(--border)' }}>
-      <span className="mono uppercase muted" style={{ fontSize: 10.5 }}>{label}</span>
-      <span style={{ fontSize: 12 }}>{value}</span>
     </div>
   )
 }

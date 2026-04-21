@@ -1,6 +1,9 @@
 import { useEffect, useMemo, useState } from 'react'
+import { Code } from '@radix-ui/themes'
+
 import { AppShell } from '../components/shell'
 import { PageHeader, Btn, Chip, Status, InfoHint, Pagination } from '../components/common'
+import { TextInput } from '../components/fields'
 import { EmptyState, ErrorState, LoadingList } from '../components/states'
 import { IconAgent, IconArrowRight, IconLock, IconPlus } from '../components/icons'
 import { Link } from '../router'
@@ -67,7 +70,7 @@ export default function AgentsScreen() {
             <>
               AGENTS{' '}
               <InfoHint>
-                List from <span className="mono">GET /agents</span>. Each row is one agent record returned by the gateway.
+                List from <Code variant="ghost">GET /agents</Code>. Each row is one agent record returned by the gateway.
               </InfoHint>
             </>
           }
@@ -90,18 +93,19 @@ export default function AgentsScreen() {
                 style={{ cursor: 'pointer' }}
               >
                 {f}
-                <span className="mono" style={{ color: 'var(--text-dim)' }}>{counts[f] ?? 0}</span>
+                <Code variant="ghost" style={{ color: 'var(--gray-10)' }}>{counts[f] ?? 0}</Code>
               </button>
             ))}
           </div>
           <div style={{ flex: 1 }} />
-          <input
-            className="input"
-            style={{ width: 260, padding: '6px 10px', fontSize: 12 }}
-            placeholder="Filter by name or description..."
-            value={query}
-            onChange={e => { setQuery(e.target.value); setPage(0) }}
-          />
+          <div style={{ width: 260 }}>
+            <TextInput
+              size="1"
+              placeholder="Filter by name or description..."
+              value={query}
+              onChange={e => { setQuery(e.target.value); setPage(0) }}
+            />
+          </div>
         </div>
 
         {error ? (
@@ -123,10 +127,10 @@ export default function AgentsScreen() {
             <div style={{
               display: 'grid',
               gridTemplateColumns: 'minmax(0, 1fr) 120px 130px 160px 120px 32px',
-              gap: 14, padding: '10px 16px', background: 'var(--surface-2)',
-              fontFamily: 'var(--font-mono)', fontSize: 10, color: 'var(--text-dim)',
+              gap: 14, padding: '10px 16px', background: 'var(--gray-3)',
+              fontFamily: 'var(--code-font-family)', fontSize: 10, color: 'var(--gray-10)',
               textTransform: 'uppercase', letterSpacing: '0.14em',
-              borderBottom: '1px solid var(--border)',
+              borderBottom: '1px solid var(--gray-6)',
             }}>
               <span>name · description</span>
               <span>status</span>
@@ -143,11 +147,11 @@ export default function AgentsScreen() {
                 style={{ gridTemplateColumns: 'minmax(0, 1fr) 120px 130px 160px 120px 32px' }}
               >
                 <div style={{ minWidth: 0 }}>
-                  <div style={{ fontSize: 13.5, color: 'var(--text)' }}>{a.name}</div>
+                  <div style={{ fontSize: 13.5, color: 'var(--gray-12)' }}>{a.name}</div>
                   {a.description && (
                     <div className="agent-row__desc truncate" style={{ marginTop: 2 }}>{a.description}</div>
                   )}
-                  <div className="mono" style={{ fontSize: 10.5, color: 'var(--text-dim)', marginTop: 4 }}>
+                  <div className="mono" style={{ fontSize: 10.5, color: 'var(--gray-10)', marginTop: 4 }}>
                     {a.id}
                   </div>
                 </div>
@@ -156,7 +160,7 @@ export default function AgentsScreen() {
                   {a.active_version ? (
                     <>
                       <Chip tone="accent">v{a.active_version.version}</Chip>
-                      <div className="mono" style={{ fontSize: 10.5, color: 'var(--text-dim)', marginTop: 4 }}>
+                      <div className="mono" style={{ fontSize: 10.5, color: 'var(--gray-10)', marginTop: 4 }}>
                         {(a.active_version.model_chain_config as { primary?: string })?.primary ?? '—'}
                       </div>
                     </>
@@ -165,14 +169,14 @@ export default function AgentsScreen() {
                   )}
                 </div>
                 <div>
-                  <div className="mono" style={{ fontSize: 11, color: 'var(--text)' }}>
+                  <div className="mono" style={{ fontSize: 11, color: 'var(--gray-12)' }}>
                     {a.owner_user_id ?? '—'}
                   </div>
-                  <div className="mono" style={{ fontSize: 10.5, color: 'var(--text-dim)', marginTop: 4 }}>
+                  <div className="mono" style={{ fontSize: 10.5, color: 'var(--gray-10)', marginTop: 4 }}>
                     {a.domain_id ?? '—'}
                   </div>
                 </div>
-                <div className="mono" style={{ fontSize: 11, color: 'var(--text-muted)' }}>
+                <div className="mono" style={{ fontSize: 11, color: 'var(--gray-11)' }}>
                   {ago(a.updated_at)}
                 </div>
                 <IconArrowRight className="ic" />

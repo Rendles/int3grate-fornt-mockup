@@ -1,8 +1,11 @@
 import { useEffect, useState } from 'react'
+import { Code, Text } from '@radix-ui/themes'
+
 import { api } from '../lib/api'
 import type { Agent, ToolDefinition, ToolGrant, ToolGrantMode, ToolGrantScopeType } from '../lib/types'
 import { Banner, LoadingList, NoAccessState } from './states'
 import { Btn, Chip, Toggle } from './common'
+import { SelectField, TextInput } from './fields'
 import { IconAlert, IconCheck, IconPlus, IconX } from './icons'
 
 const MODES: ToolGrantMode[] = ['read', 'write', 'read_write']
@@ -115,9 +118,9 @@ export function GrantsEditor({
   return (
     <div>
       <div className="row row--between" style={{ marginBottom: 12 }}>
-        <div className="mono uppercase muted">
+        <Text as="div" size="1" color="gray" className="uppercase">
           {local.length} grants · {local.filter(g => g.approval_required).length} require approval
-        </div>
+        </Text>
         <div className="row row--sm">
           {dirty && <Btn variant="ghost" size="sm" onClick={reset} disabled={saving}>Reset</Btn>}
           <Btn
@@ -145,11 +148,11 @@ export function GrantsEditor({
             gridTemplateColumns: 'minmax(0, 1fr) 130px 110px 110px 32px',
             gap: 12,
             padding: '10px 16px',
-            background: 'var(--surface-2)',
-            borderBottom: '1px solid var(--border)',
-            fontFamily: 'var(--font-mono)',
+            background: 'var(--gray-3)',
+            borderBottom: '1px solid var(--gray-6)',
+            fontFamily: 'var(--code-font-family)',
             fontSize: 10,
-            color: 'var(--text-dim)',
+            color: 'var(--gray-10)',
             textTransform: 'uppercase',
             letterSpacing: '0.14em',
           }}
@@ -161,7 +164,7 @@ export function GrantsEditor({
           <span />
         </div>
         {local.length === 0 ? (
-          <div style={{ padding: '20px 16px', color: 'var(--text-muted)', fontSize: 12.5, textAlign: 'center' }}>
+          <div style={{ padding: '20px 16px', color: 'var(--gray-11)', fontSize: 12.5, textAlign: 'center' }}>
             No grants yet. Add one below.
           </div>
         ) : (
@@ -174,26 +177,22 @@ export function GrantsEditor({
                 gap: 12,
                 padding: '10px 16px',
                 alignItems: 'center',
-                borderBottom: '1px solid var(--border)',
+                borderBottom: '1px solid var(--gray-6)',
               }}
             >
-              <span className="mono" style={{ fontSize: 12 }}>{g.tool_name}</span>
-              <select
-                className="select"
+              <Code variant="ghost" style={{ fontSize: 12 }}>{g.tool_name}</Code>
+              <SelectField
+                size="1"
                 value={g.scope_type}
-                style={{ fontSize: 11, padding: '4px 6px' }}
-                onChange={e => updateGrant(g.id, { scope_type: e.target.value as ToolGrantScopeType })}
-              >
-                {SCOPES.map(s => <option key={s} value={s}>{s}</option>)}
-              </select>
-              <select
-                className="select"
+                onChange={v => updateGrant(g.id, { scope_type: v as ToolGrantScopeType })}
+                options={SCOPES.map(s => ({ value: s }))}
+              />
+              <SelectField
+                size="1"
                 value={g.mode}
-                style={{ fontSize: 11, padding: '4px 6px' }}
-                onChange={e => updateGrant(g.id, { mode: e.target.value as ToolGrantMode })}
-              >
-                {MODES.map(m => <option key={m} value={m}>{m}</option>)}
-              </select>
+                onChange={v => updateGrant(g.id, { mode: v as ToolGrantMode })}
+                options={MODES.map(m => ({ value: m }))}
+              />
               <Toggle
                 on={g.approval_required}
                 onChange={v => updateGrant(g.id, { approval_required: v })}
@@ -203,7 +202,7 @@ export function GrantsEditor({
                 onClick={() => removeGrant(g.id)}
                 title="Remove grant"
                 className="tb__action"
-                style={{ color: 'var(--danger)' }}
+                style={{ color: 'var(--red-11)' }}
               >
                 <IconX className="ic ic--sm" />
               </button>
@@ -217,18 +216,17 @@ export function GrantsEditor({
             gridTemplateColumns: 'minmax(0, 1fr) auto',
             gap: 8,
             padding: '10px 16px',
-            background: 'var(--surface-2)',
-            borderTop: '1px solid var(--border)',
+            background: 'var(--gray-3)',
+            borderTop: '1px solid var(--gray-6)',
           }}
         >
-          <input
-            className="input"
+          <TextInput
+            size="1"
             placeholder="tool_name (e.g. stripe.refund, slack.post_message)"
             value={newTool}
             onChange={e => setNewTool(e.target.value)}
             onKeyDown={e => { if (e.key === 'Enter') addGrant() }}
             list={`tool-catalog-${agent.id}`}
-            style={{ fontSize: 12, padding: '6px 10px' }}
           />
           <datalist id={`tool-catalog-${agent.id}`}>
             {catalog.map(t => (
@@ -270,10 +268,10 @@ function ReadOnlyGrants({ grants }: { grants: ToolGrant[] }) {
             gap: 12,
             padding: '10px 16px',
             alignItems: 'center',
-            borderBottom: '1px solid var(--border)',
+            borderBottom: '1px solid var(--gray-6)',
           }}
         >
-          <span className="mono" style={{ fontSize: 12 }}>{g.tool_name}</span>
+          <Code variant="ghost" style={{ fontSize: 12 }}>{g.tool_name}</Code>
           <Chip>{g.scope_type}</Chip>
           <Chip>{g.mode}</Chip>
           {g.approval_required ? <Chip tone="warn">approval</Chip> : <Chip tone="ghost">auto</Chip>}

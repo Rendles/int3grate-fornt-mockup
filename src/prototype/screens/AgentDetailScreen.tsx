@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react'
+import { Code, DataList, Text } from '@radix-ui/themes'
 import { AppShell } from '../components/shell'
-import { PageHeader, Btn, Chip, Status, Tabs, CommandBar, InfoHint, PolicyModeChip } from '../components/common'
+import { PageHeader, Btn, Chip, MetaRow, Status, Tabs, CommandBar, InfoHint, PolicyModeChip } from '../components/common'
 import { Banner, LoadingList, NoAccessState } from '../components/states'
 import { IconPlay, IconPlus } from '../components/icons'
 import { GrantsEditor } from '../components/grants-editor'
@@ -69,7 +70,7 @@ export default function AgentDetailScreen({
             <>
               {`AGENT · ${agent.id}`}{' '}
               <InfoHint>
-                Loaded via <span className="mono">GET /agents/{'{id}'}</span>. The active version is embedded in the response.
+                Loaded via <Code variant="ghost">GET /agents/{'{id}'}</Code>. The active version is embedded in the response.
               </InfoHint>
             </>
           }
@@ -137,19 +138,21 @@ function OverviewTab({ agent, version, canEdit }: { agent: Agent; version: Agent
         <div className="card__body">
           {version ? (
             <div>
-              <MetaRow label="id" value={<span className="mono">{version.id}</span>} />
-              <MetaRow label="version" value={<span className="mono">{version.version}</span>} />
-              <MetaRow label="is_active" value={version.is_active ? 'true' : 'false'} />
-              <MetaRow label="created_by" value={<span className="mono">{version.created_by ?? '—'}</span>} />
-              <MetaRow label="created_at" value={<span className="mono">{absTime(version.created_at)}</span>} />
-              <div className="mono uppercase muted" style={{ marginTop: 16, marginBottom: 6 }}>instruction_spec</div>
+              <DataList.Root size="2">
+                <MetaRow label="id" value={<Code variant="ghost">{version.id}</Code>} />
+                <MetaRow label="version" value={<Code variant="ghost">{version.version}</Code>} />
+                <MetaRow label="is_active" value={version.is_active ? 'true' : 'false'} />
+                <MetaRow label="created_by" value={<Code variant="ghost">{version.created_by ?? '—'}</Code>} />
+                <MetaRow label="created_at" value={<Code variant="ghost">{absTime(version.created_at)}</Code>} />
+              </DataList.Root>
+              <Text as="div" size="1" color="gray" className="uppercase" style={{ marginTop: 16, marginBottom: 6 }}>instruction_spec</Text>
               <pre
                 style={{
-                  fontFamily: 'var(--font-mono)',
+                  fontFamily: 'var(--code-font-family)',
                   fontSize: 12,
-                  color: 'var(--text)',
-                  background: 'var(--surface-2)',
-                  border: '1px solid var(--border)',
+                  color: 'var(--gray-12)',
+                  background: 'var(--gray-3)',
+                  border: '1px solid var(--gray-6)',
                   padding: 12,
                   borderRadius: 4,
                   margin: 0,
@@ -174,7 +177,7 @@ function OverviewTab({ agent, version, canEdit }: { agent: Agent; version: Agent
               )}
             </div>
           ) : (
-            <div style={{ padding: '20px 0', textAlign: 'center', color: 'var(--text-muted)' }}>
+            <div style={{ padding: '20px 0', textAlign: 'center', color: 'var(--gray-11)' }}>
               <div style={{ fontSize: 13, marginBottom: 16 }}>
                 This agent has no active version. {canEdit ? 'Create one to make it runnable.' : 'An admin needs to create one.'}
               </div>
@@ -199,15 +202,15 @@ function SettingsTab({ agent }: { agent: Agent }) {
       <div className="card">
         <div className="card__head"><div className="card__title">Agent metadata</div></div>
         <div className="card__body">
-          <MetaRow label="id" value={<span className="mono">{agent.id}</span>} />
+          <MetaRow label="id" value={<Code variant="ghost">{agent.id}</Code>} />
           <MetaRow label="name" value={agent.name} />
           <MetaRow label="description" value={agent.description ?? <span className="muted">null</span>} />
           <MetaRow label="status" value={<Status status={agent.status} />} />
-          <MetaRow label="tenant_id" value={<span className="mono">{agent.tenant_id}</span>} />
-          <MetaRow label="domain_id" value={<span className="mono">{agent.domain_id ?? '—'}</span>} />
-          <MetaRow label="owner_user_id" value={<span className="mono">{agent.owner_user_id ?? '—'}</span>} />
-          <MetaRow label="created_at" value={<span className="mono">{absTime(agent.created_at)}</span>} />
-          <MetaRow label="updated_at" value={<span className="mono">{absTime(agent.updated_at)} · {ago(agent.updated_at)}</span>} />
+          <MetaRow label="tenant_id" value={<Code variant="ghost">{agent.tenant_id}</Code>} />
+          <MetaRow label="domain_id" value={<Code variant="ghost">{agent.domain_id ?? '—'}</Code>} />
+          <MetaRow label="owner_user_id" value={<Code variant="ghost">{agent.owner_user_id ?? '—'}</Code>} />
+          <MetaRow label="created_at" value={<Code variant="ghost">{absTime(agent.created_at)}</Code>} />
+          <MetaRow label="updated_at" value={<Code variant="ghost">{absTime(agent.updated_at)} · {ago(agent.updated_at)}</Code>} />
         </div>
       </div>
 
@@ -237,14 +240,6 @@ function SettingsTab({ agent }: { agent: Agent }) {
   )
 }
 
-function MetaRow({ label, value }: { label: string; value: React.ReactNode }) {
-  return (
-    <div className="row row--between" style={{ padding: '6px 0', borderBottom: '1px dashed var(--border)' }}>
-      <span className="mono uppercase muted" style={{ fontSize: 10.5 }}>{label}</span>
-      <span style={{ fontSize: 12 }}>{value}</span>
-    </div>
-  )
-}
 
 function PolicySnapshotPanel({ agentId, grantsVersion }: { agentId: string; grantsVersion: number }) {
   const [snapshot, setSnapshot] = useState<GrantsSnapshot | null>(null)
@@ -266,8 +261,8 @@ function PolicySnapshotPanel({ agentId, grantsVersion }: { agentId: string; gran
       className="card"
       style={{
         borderStyle: 'dashed',
-        borderColor: 'var(--border-2)',
-        background: 'color-mix(in oklab, var(--text-dim) 4%, var(--surface))',
+        borderColor: 'var(--gray-7)',
+        background: 'color-mix(in oklab, var(--gray-10) 4%, var(--gray-2))',
       }}
     >
       <div className="card__head">
@@ -275,8 +270,8 @@ function PolicySnapshotPanel({ agentId, grantsVersion }: { agentId: string; gran
           Policy snapshot{' '}
           <Chip tone="ghost" square>internal</Chip>{' '}
           <InfoHint>
-            Rendered from <span className="mono">GET /internal/agents/{'{id}'}/grants/snapshot</span>{' '}
-            (<span className="mono">x-internal: true</span>, service-to-service only).
+            Rendered from <Code variant="ghost">GET /internal/agents/{'{id}'}/grants/snapshot</Code>{' '}
+            (<Code variant="ghost">x-internal: true</Code>, service-to-service only).
             The orchestrator calls this at run start to pin policy for the lifetime of a run.
             <br /><br />
             Shown here only so operators can preview what the orchestrator sees.
@@ -292,7 +287,7 @@ function PolicySnapshotPanel({ agentId, grantsVersion }: { agentId: string; gran
         {loading || !snapshot ? (
           <div style={{ padding: 20 }}><LoadingList rows={3} /></div>
         ) : snapshot.grants.length === 0 ? (
-          <div style={{ padding: 20, fontSize: 12.5, color: 'var(--text-muted)', textAlign: 'center' }}>
+          <div style={{ padding: 20, fontSize: 12.5, color: 'var(--gray-11)', textAlign: 'center' }}>
             No effective policy entries — this agent has no grants.
           </div>
         ) : (
@@ -303,11 +298,11 @@ function PolicySnapshotPanel({ agentId, grantsVersion }: { agentId: string; gran
                 gridTemplateColumns: 'minmax(0, 1fr) 180px minmax(0, 1fr)',
                 gap: 14,
                 padding: '10px 16px',
-                background: 'var(--surface-2)',
-                borderBottom: '1px solid var(--border)',
-                fontFamily: 'var(--font-mono)',
+                background: 'var(--gray-3)',
+                borderBottom: '1px solid var(--gray-6)',
+                fontFamily: 'var(--code-font-family)',
                 fontSize: 10,
-                color: 'var(--text-dim)',
+                color: 'var(--gray-10)',
                 textTransform: 'uppercase',
                 letterSpacing: '0.14em',
               }}
@@ -325,12 +320,12 @@ function PolicySnapshotPanel({ agentId, grantsVersion }: { agentId: string; gran
                   gap: 14,
                   padding: '10px 16px',
                   alignItems: 'center',
-                  borderBottom: '1px solid var(--border)',
+                  borderBottom: '1px solid var(--gray-6)',
                 }}
               >
-                <span className="mono" style={{ fontSize: 12 }}>{g.tool}</span>
+                <Code variant="ghost" style={{ fontSize: 12 }}>{g.tool}</Code>
                 <span><PolicyModeChip mode={g.mode} /></span>
-                <span style={{ fontSize: 11.5, color: 'var(--text-muted)' }}>
+                <span style={{ fontSize: 11.5, color: 'var(--gray-11)' }}>
                   {g.scopes && g.scopes.length > 0
                     ? g.scopes.join(', ')
                     : <span className="muted">—</span>}
@@ -342,9 +337,9 @@ function PolicySnapshotPanel({ agentId, grantsVersion }: { agentId: string; gran
               style={{
                 padding: '8px 16px',
                 fontSize: 10.5,
-                color: 'var(--text-dim)',
-                background: 'var(--surface-2)',
-                borderTop: '1px solid var(--border)',
+                color: 'var(--gray-10)',
+                background: 'var(--gray-3)',
+                borderTop: '1px solid var(--gray-6)',
               }}
             >
               issued_at {absTime(snapshot.issued_at)} · tenant {snapshot.tenant_id}
@@ -359,14 +354,14 @@ function PolicySnapshotPanel({ agentId, grantsVersion }: { agentId: string; gran
 function JsonPanel({ title, value }: { title: string; value: Record<string, unknown> }) {
   return (
     <div>
-      <div className="mono uppercase muted" style={{ fontSize: 9.5, marginBottom: 6 }}>{title}</div>
+      <Text as="div" size="1" color="gray" className="uppercase" style={{ fontSize: 9.5, marginBottom: 6 }}>{title}</Text>
       <pre
         style={{
-          fontFamily: 'var(--font-mono)',
+          fontFamily: 'var(--code-font-family)',
           fontSize: 11,
-          color: 'var(--text)',
-          background: 'var(--surface-2)',
-          border: '1px solid var(--border)',
+          color: 'var(--gray-12)',
+          background: 'var(--gray-3)',
+          border: '1px solid var(--gray-6)',
           padding: 10,
           borderRadius: 4,
           margin: 0,
