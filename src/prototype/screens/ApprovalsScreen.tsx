@@ -2,7 +2,7 @@ import { useEffect, useMemo, useState } from 'react'
 import { Code, Text } from '@radix-ui/themes'
 
 import { AppShell } from '../components/shell'
-import { PageHeader, Chip, Status, InfoHint, Pagination } from '../components/common'
+import { Caption, PageHeader, Chip, Status, InfoHint, Pagination } from '../components/common'
 import { Banner, EmptyState, ErrorState, LoadingList } from '../components/states'
 import { IconApproval, IconArrowRight, IconCheck, IconX } from '../components/icons'
 import { Link, useRouter } from '../router'
@@ -69,17 +69,16 @@ export default function ApprovalsScreen() {
         <PolicyBanner />
 
         <div className="row" style={{ gap: 6, marginBottom: 16, flexWrap: 'wrap' }}>
-          <Text size="1" color="gray" className="uppercase" style={{ marginRight: 4 }}>status</Text>
+          <Caption style={{ marginRight: 4 }}>status</Caption>
           {STATUSES.map(f => (
-            <button
+            <Chip
               key={f}
-              className={`chip${statusFilter === f ? (f === 'pending' ? ' chip--warn' : ' chip--accent') : ''}`}
-              style={{ cursor: 'pointer' }}
+              tone={statusFilter === f ? (f === 'pending' ? 'warn' : 'accent') : undefined}
               onClick={() => { setStatusFilter(f); setPage(0) }}
             >
               {f}{' '}
               <Code variant="ghost" style={{ color: 'var(--gray-10)' }}>{counts[f] ?? 0}</Code>
-            </button>
+            </Chip>
           ))}
         </div>
 
@@ -131,33 +130,33 @@ export default function ApprovalsScreen() {
                   }}
                 >
                   <div>
-                    <div className="mono" style={{ fontSize: 11.5, color: 'var(--gray-12)' }}>{a.id}</div>
-                    <div className="mono" style={{ fontSize: 10.5, color: 'var(--gray-10)', marginTop: 2 }}>{ago(a.created_at)}</div>
+                    <div style={{ fontSize: 11.5, color: 'var(--gray-12)' }}>{a.id}</div>
+                    <div style={{ fontSize: 10.5, color: 'var(--gray-10)', marginTop: 2 }}>{ago(a.created_at)}</div>
                   </div>
                   <div style={{ minWidth: 0 }}>
                     <div className="truncate" style={{ fontSize: 13, color: 'var(--gray-12)' }}>{a.requested_action}</div>
-                    <div className="mono" style={{ fontSize: 10.5, color: 'var(--gray-10)', marginTop: 2 }}>
+                    <div style={{ fontSize: 10.5, color: 'var(--gray-10)', marginTop: 2 }}>
                       run {a.run_id} · {a.task_id ? `task ${a.task_id}` : 'standalone'}
                     </div>
                   </div>
                   <div>
                     <div style={{ fontSize: 12 }}>{a.requested_by_name ?? '—'}</div>
-                    <div className="mono" style={{ fontSize: 10.5, color: 'var(--gray-10)', marginTop: 2 }}>{a.requested_by ?? '—'}</div>
+                    <div style={{ fontSize: 10.5, color: 'var(--gray-10)', marginTop: 2 }}>{a.requested_by ?? '—'}</div>
                   </div>
                   <div>
                     <Chip>{a.approver_role ?? '—'}</Chip>
                     {a.approver_user_id && (
-                      <div className="mono" style={{ fontSize: 10.5, color: 'var(--gray-10)', marginTop: 4 }}>{a.approver_user_id}</div>
+                      <div style={{ fontSize: 10.5, color: 'var(--gray-10)', marginTop: 4 }}>{a.approver_user_id}</div>
                     )}
                   </div>
                   <div>
                     <Status status={a.status} />
                     {isPending && a.expires_at ? (
-                      <div className="mono" style={{ fontSize: 10.5, color: 'var(--gray-10)', marginTop: 4 }}>
+                      <div style={{ fontSize: 10.5, color: 'var(--gray-10)', marginTop: 4 }}>
                         expires {ago(a.expires_at)}
                       </div>
                     ) : a.resolved_at ? (
-                      <div className="mono" style={{ fontSize: 10.5, color: 'var(--gray-10)', marginTop: 4 }}>
+                      <div style={{ fontSize: 10.5, color: 'var(--gray-10)', marginTop: 4 }}>
                         resolved {ago(a.resolved_at)}
                       </div>
                     ) : null}
@@ -179,7 +178,7 @@ export default function ApprovalsScreen() {
                         />
                       </div>
                     ) : (
-                      <span className="mono muted" style={{ fontSize: 10.5 }}>resolved</span>
+                      <Text color="gray" style={{ fontSize: 10.5 }}>resolved</Text>
                     )}
                   </div>
                   <IconArrowRight className="ic" />

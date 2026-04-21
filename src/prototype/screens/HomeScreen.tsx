@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from 'react'
-import { Code } from '@radix-ui/themes'
+import { Code, Text } from '@radix-ui/themes'
 
 import { AppShell } from '../components/shell'
 import { PageHeader, Btn, Chip, MetricCard, Status, InfoHint } from '../components/common'
@@ -199,14 +199,14 @@ function AdminView({
         <div className="card">
           <div className="card__head">
             <div className="card__title">Recent tasks</div>
-            <Link to="/tasks" className="btn btn--ghost btn--sm">
-              All tasks <IconArrowRight className="ic ic--sm" />
-            </Link>
+            <Btn href="/tasks" variant="ghost" size="sm" icon={<IconArrowRight className="ic ic--sm" />}>
+              All tasks
+            </Btn>
           </div>
           {recentTasks.length === 0 ? (
             <div className="card__body">
               <div style={{ padding: '30px 0', textAlign: 'center', color: 'var(--gray-11)', fontSize: 13 }}>
-                No tasks yet. <Link to="/tasks/new" className="accent">Dispatch a task →</Link>
+                No tasks yet. <Link to="/tasks/new"><Text color="blue">Dispatch a task →</Text></Link>
               </div>
             </div>
           ) : (
@@ -220,14 +220,14 @@ function AdminView({
                 >
                   <div style={{ minWidth: 0 }}>
                     <div className="truncate" style={{ fontSize: 13, color: 'var(--gray-12)' }}>
-                      {t.title ?? <span className="muted">untitled</span>}
+                      {t.title ?? <Text color="gray">untitled</Text>}
                     </div>
-                    <div className="mono" style={{ fontSize: 10.5, color: 'var(--gray-10)', marginTop: 2 }}>
+                    <div style={{ fontSize: 10.5, color: 'var(--gray-10)', marginTop: 2 }}>
                       {t.id} · {ago(t.updated_at)}
                     </div>
                   </div>
                   <Status status={t.status} />
-                  <div className="mono truncate" style={{ fontSize: 11, color: 'var(--gray-11)' }}>
+                  <div className="truncate" style={{ fontSize: 11, color: 'var(--gray-11)' }}>
                     {t.assigned_agent_id ?? '—'}
                   </div>
                   <Chip>{t.type.replace('_', ' ')}</Chip>
@@ -264,15 +264,13 @@ function AdminView({
                     <div style={{ fontSize: 12.5, color: 'var(--gray-12)', marginBottom: 4 }} className="truncate">
                       {a.requested_action}
                     </div>
-                    <div className="mono" style={{ fontSize: 10.5, color: 'var(--gray-11)' }}>
+                    <div style={{ fontSize: 10.5, color: 'var(--gray-11)' }}>
                       {a.requested_by_name ?? a.requested_by ?? '—'} · {ago(a.created_at)}
                     </div>
                   </div>
                 </Link>
               ))}
-              <Link to="/approvals" className="btn btn--ghost btn--sm" style={{ justifyContent: 'center' }}>
-                Open queue
-              </Link>
+              <Btn href="/approvals" variant="ghost" size="sm">Open queue</Btn>
             </div>
           )}
         </div>
@@ -292,12 +290,12 @@ function MemberView({
       <div className="card">
         <div className="card__head">
           <div className="card__title">My tasks</div>
-          <Link to="/tasks" className="btn btn--ghost btn--sm">All tasks <IconArrowRight className="ic ic--sm" /></Link>
+          <Btn href="/tasks" variant="ghost" size="sm" icon={<IconArrowRight className="ic ic--sm" />}>All tasks</Btn>
         </div>
         {myTasks.length === 0 ? (
           <div className="card__body">
             <div style={{ padding: '30px 0', textAlign: 'center', color: 'var(--gray-11)', fontSize: 13 }}>
-              You haven't started any tasks. <Link to="/tasks/new" className="accent">Create one →</Link>
+              You haven't started any tasks. <Link to="/tasks/new"><Text color="blue">Create one →</Text></Link>
             </div>
           </div>
         ) : (
@@ -306,9 +304,9 @@ function MemberView({
               <Link key={t.id} to={`/tasks/${t.id}`} className="agent-row" style={{ gridTemplateColumns: 'minmax(0, 1fr) 120px 80px 20px' }}>
                 <div style={{ minWidth: 0 }}>
                   <div className="truncate" style={{ fontSize: 13, color: 'var(--gray-12)' }}>
-                    {t.title ?? <span className="muted">untitled</span>}
+                    {t.title ?? <Text color="gray">untitled</Text>}
                   </div>
-                  <div className="mono" style={{ fontSize: 10.5, color: 'var(--gray-10)', marginTop: 2 }}>
+                  <div style={{ fontSize: 10.5, color: 'var(--gray-10)', marginTop: 2 }}>
                     {t.id} · {ago(t.updated_at)}
                   </div>
                 </div>
@@ -339,7 +337,7 @@ function MemberView({
                     <Status status={a.status} />
                   </div>
                   <div className="truncate" style={{ fontSize: 12.5, color: 'var(--gray-12)' }}>{a.requested_action}</div>
-                  <div className="mono" style={{ fontSize: 10.5, color: 'var(--gray-11)', marginTop: 2 }}>
+                  <div style={{ fontSize: 10.5, color: 'var(--gray-11)', marginTop: 2 }}>
                     {ago(a.created_at)}
                   </div>
                 </div>

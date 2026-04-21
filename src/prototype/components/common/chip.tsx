@@ -18,16 +18,26 @@ const TONE_COLOR: Record<Tone, BadgeColor> = {
 export function Chip({
   tone,
   square,
+  onClick,
   children,
 }: {
   tone?: Tone
   square?: boolean
+  onClick?: () => void
   children: ReactNode
 }) {
   const color: BadgeColor = tone ? TONE_COLOR[tone] : 'gray'
   const variant = tone === 'ghost' ? 'outline' : 'soft'
+  const radius = square ? 'small' : 'full'
+  if (onClick) {
+    return (
+      <Badge asChild color={color} variant={variant} radius={radius} size="1">
+        <button type="button" onClick={onClick}>{children}</button>
+      </Badge>
+    )
+  }
   return (
-    <Badge color={color} variant={variant} radius={square ? 'small' : 'full'} size="1">
+    <Badge color={color} variant={variant} radius={radius} size="1">
       {children}
     </Badge>
   )

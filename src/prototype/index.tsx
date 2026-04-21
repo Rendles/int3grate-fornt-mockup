@@ -30,7 +30,7 @@ function Router() {
   if (loading) {
     return (
       <div className="prototype-root" style={{ display: 'grid', placeItems: 'center', minHeight: '100svh' }}>
-        <div className="mono" style={{ color: 'var(--gray-10)', letterSpacing: '0.1em', textTransform: 'uppercase', fontSize: 11 }}>
+        <div style={{ color: 'var(--gray-10)', letterSpacing: '0.1em', textTransform: 'uppercase', fontSize: 11 }}>
           connecting …
         </div>
       </div>
@@ -79,7 +79,7 @@ function ThemedRoot() {
     <RadixTheme
       asChild
       appearance={theme}
-      accentColor="blue"
+      accentColor='indigo'
       grayColor="slate"
       panelBackground="solid"
       radius="small"

@@ -2,7 +2,7 @@ import { useEffect, useState } from 'react'
 import { Code, Text } from '@radix-ui/themes'
 
 import { AppShell } from '../components/shell'
-import { PageHeader, Btn, Chip, Status, CommandBar, InfoHint } from '../components/common'
+import { Caption, PageHeader, Btn, Chip, Status, CommandBar, InfoHint } from '../components/common'
 import { LoadingList, NoAccessState, Banner } from '../components/states'
 import { IconAlert, IconArrowRight } from '../components/icons'
 import { Link } from '../router'
@@ -162,7 +162,7 @@ export default function RunDetailScreen({ runId }: { runId: string }) {
                   {run.error_message ?? 'The run produced assistant output, but one or more tool calls failed.'}
                 </div>
                 {run.tool_errors && run.tool_errors.length > 0 && (
-                  <div className="mono" style={{ fontSize: 11, color: 'var(--gray-10)', marginTop: 8 }}>
+                  <div style={{ fontSize: 11, color: 'var(--gray-10)', marginTop: 8 }}>
                     {run.tool_errors.length} tool error{run.tool_errors.length === 1 ? '' : 's'} · see below
                   </div>
                 )}
@@ -223,8 +223,8 @@ export default function RunDetailScreen({ runId }: { runId: string }) {
             <MetaRow
               label="task_id"
               value={run.task_id
-                ? <Link to={`/tasks/${run.task_id}`} className="mono">{run.task_id}</Link>
-                : <span className="muted">null · standalone run (ADR-0003)</span>}
+                ? <Link to={`/tasks/${run.task_id}`}><Code variant="ghost">{run.task_id}</Code></Link>
+                : <Text color="gray">null · standalone run (ADR-0003)</Text>}
             />
             <MetaRow label="agent_version_id" value={<Code variant="ghost">{run.agent_version_id ?? '—'}</Code>} />
             <MetaRow label="status" value={<Status status={run.status} />} />
@@ -265,8 +265,8 @@ function StepRow({ step, expanded, onToggle }: { step: RunStep; expanded: boolea
           {STEP_KIND_LABEL[step.step_type]}
         </Code>
         <Chip tone={tone}>{step.status}</Chip>
-        <div className="mono truncate" style={{ fontSize: 11.5, color: 'var(--gray-12)' }}>
-          {step.model_name ?? step.tool_name ?? <span className="muted">—</span>}
+        <div className="truncate" style={{ fontSize: 11.5, color: 'var(--gray-12)' }}>
+          {step.model_name ?? step.tool_name ?? <Text color="gray">—</Text>}
         </div>
         <Code variant="ghost" style={{ fontSize: 11, color: 'var(--gray-10)', textAlign: 'right' }}>
           {durationMs(step.duration_ms)}
@@ -287,7 +287,7 @@ function StepRow({ step, expanded, onToggle }: { step: RunStep; expanded: boolea
             <JsonPanel title="input_ref" value={step.input_ref} />
             <JsonPanel title="output_ref" value={step.output_ref} />
           </div>
-          <div className="mono" style={{ fontSize: 10.5, color: 'var(--gray-10)', marginTop: 10 }}>
+          <div style={{ fontSize: 10.5, color: 'var(--gray-10)', marginTop: 10 }}>
             step_id · {step.id} · created {absTime(step.created_at)}
             {step.completed_at ? ` · completed ${absTime(step.completed_at)}` : ''}
           </div>
@@ -300,7 +300,7 @@ function StepRow({ step, expanded, onToggle }: { step: RunStep; expanded: boolea
 function JsonPanel({ title, value }: { title: string; value: Record<string, unknown> | null }) {
   return (
     <div>
-      <Text as="div" size="1" color="gray" className="uppercase" style={{ fontSize: 9.5, marginBottom: 6 }}>{title}</Text>
+      <Caption as="div" style={{ fontSize: 9.5, marginBottom: 6 }}>{title}</Caption>
       <pre
         style={{
           fontFamily: 'var(--code-font-family)',
@@ -325,7 +325,7 @@ function JsonPanel({ title, value }: { title: string; value: Record<string, unkn
 function MetaRow({ label, value }: { label: string; value: React.ReactNode }) {
   return (
     <div className="row row--between" style={{ padding: '6px 0', borderBottom: '1px dashed var(--gray-6)' }}>
-      <Text size="1" color="gray" className="uppercase" style={{ fontSize: 10.5 }}>{label}</Text>
+      <Caption style={{ fontSize: 10.5 }}>{label}</Caption>
       <span style={{ fontSize: 12 }}>{value}</span>
     </div>
   )
@@ -378,12 +378,12 @@ function ToolErrorsCard({ errors }: { errors: RunToolError[] }) {
               <Code variant="ghost" style={{ fontSize: 11.5, color: 'var(--gray-12)' }}>{e.tool}</Code>
               <Chip tone={tone}>{e.status}</Chip>
               <span style={{ fontSize: 12, color: 'var(--gray-11)', lineHeight: 1.55 }}>
-                {e.message ?? <span className="muted">—</span>}
+                {e.message ?? <Text color="gray">—</Text>}
               </span>
               <div style={{ fontSize: 10.5 }}>
-                <div className="mono" style={{ color: 'var(--gray-10)' }}>{e.at ? absTime(e.at) : '—'}</div>
+                <div style={{ color: 'var(--gray-10)' }}>{e.at ? absTime(e.at) : '—'}</div>
                 {e.tool_call_id && (
-                  <div className="mono" style={{ color: 'var(--gray-10)', marginTop: 2 }}>{e.tool_call_id}</div>
+                  <div style={{ color: 'var(--gray-10)', marginTop: 2 }}>{e.tool_call_id}</div>
                 )}
               </div>
             </div>

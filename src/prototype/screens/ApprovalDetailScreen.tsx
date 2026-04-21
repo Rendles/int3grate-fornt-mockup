@@ -2,7 +2,7 @@ import { useEffect, useState } from 'react'
 import { Code, Text } from '@radix-ui/themes'
 
 import { AppShell } from '../components/shell'
-import { PageHeader, Btn, Chip, Status, CommandBar, InfoHint } from '../components/common'
+import { Caption, PageHeader, Btn, Chip, Status, CommandBar, InfoHint } from '../components/common'
 import { TextAreaField } from '../components/fields'
 import { Banner, LoadingList, NoAccessState } from '../components/states'
 import {
@@ -213,7 +213,7 @@ export default function ApprovalDetailScreen({ approvalId }: { approvalId: strin
             >
               Another approver decided this while you were reviewing.
               {conflict.approver_user_id && (
-                <> Decided by <strong className="mono">{conflict.approver_user_id}</strong> at {absTime(conflict.resolved_at)}.</>
+                <> Decided by <strong>{conflict.approver_user_id}</strong> at {absTime(conflict.resolved_at)}.</>
               )}
             </Banner>
             <div style={{ height: 16 }} />
@@ -267,21 +267,21 @@ export default function ApprovalDetailScreen({ approvalId }: { approvalId: strin
           <div className="card__head"><div className="card__title">Approval fields</div></div>
           <div className="card__body">
             <MetaRow label="id" value={<Code variant="ghost">{approval.id}</Code>} />
-            <MetaRow label="run_id" value={<Link to={`/runs/${approval.run_id}`} className="mono">{approval.run_id}</Link>} />
+            <MetaRow label="run_id" value={<Link to={`/runs/${approval.run_id}`}><Code variant="ghost">{approval.run_id}</Code></Link>} />
             <MetaRow
               label="task_id"
               value={approval.task_id
-                ? <Link to={`/tasks/${approval.task_id}`} className="mono">{approval.task_id}</Link>
-                : <span className="muted">null · standalone run (ADR-0003)</span>}
+                ? <Link to={`/tasks/${approval.task_id}`}><Code variant="ghost">{approval.task_id}</Code></Link>
+                : <Text color="gray">null · standalone run (ADR-0003)</Text>}
             />
             <MetaRow label="tenant_id" value={<Code variant="ghost">{approval.tenant_id}</Code>} />
             <MetaRow label="requested_action" value={approval.requested_action} />
             <MetaRow label="requested_by" value={<Code variant="ghost">{approval.requested_by ?? '—'}</Code>} />
-            <MetaRow label="requested_by_name" value={approval.requested_by_name ?? <span className="muted">null</span>} />
+            <MetaRow label="requested_by_name" value={approval.requested_by_name ?? <Text color="gray">null</Text>} />
             <MetaRow label="approver_role" value={<Chip>{approval.approver_role ?? '—'}</Chip>} />
             <MetaRow label="approver_user_id" value={<Code variant="ghost">{approval.approver_user_id ?? '—'}</Code>} />
             <MetaRow label="status" value={<Status status={approval.status} />} />
-            <MetaRow label="reason" value={approval.reason ?? <span className="muted">null</span>} />
+            <MetaRow label="reason" value={approval.reason ?? <Text color="gray">null</Text>} />
             <MetaRow label="expires_at" value={<Code variant="ghost">{approval.expires_at ? absTime(approval.expires_at) : '—'}</Code>} />
             <MetaRow label="resolved_at" value={<Code variant="ghost">{approval.resolved_at ? absTime(approval.resolved_at) : '—'}</Code>} />
             <MetaRow label="created_at" value={<Code variant="ghost">{absTime(approval.created_at)}</Code>} />
@@ -398,7 +398,7 @@ function DecisionCTA({
       <div style={{ fontSize: 12.5, color: 'var(--gray-11)', lineHeight: 1.55, marginBottom: 10 }}>
         {sub}
       </div>
-      <div className="mono" style={{ fontSize: 10.5, color, letterSpacing: '0.12em', textTransform: 'uppercase' }}>
+      <div style={{ fontSize: 10.5, color, letterSpacing: '0.12em', textTransform: 'uppercase' }}>
         {reasonHint}
       </div>
     </button>
@@ -440,14 +440,13 @@ function DecisionConfirmCard({
             <div style={{ fontFamily: 'var(--heading-font-family)', fontSize: 22, color }}>
               {isApprove ? 'Approve' : 'Reject'} {approval.id}
             </div>
-            <div className="mono" style={{ fontSize: 11, color: 'var(--gray-10)', marginTop: 2 }}>
+            <div style={{ fontSize: 11, color: 'var(--gray-10)', marginTop: 2 }}>
               {isApprove ? 'approving resumes the suspended run' : 'rejecting stops the requested action'}
             </div>
           </div>
         </div>
         <button
           onClick={() => onSwitch(isApprove ? 'rejected' : 'approved')}
-          className="mono"
           style={{
             fontSize: 10.5,
             color: 'var(--gray-10)',
@@ -466,9 +465,9 @@ function DecisionConfirmCard({
       <div className="card__body">
         <div className="card" style={{ background: 'var(--gray-3)', marginBottom: 14 }}>
           <div style={{ padding: 12 }}>
-            <Text as="div" size="1" color="gray" className="uppercase" style={{ fontSize: 9.5, marginBottom: 6 }}>
+            <Caption as="div" style={{ fontSize: 9.5, marginBottom: 6 }}>
               What happens next
-            </Text>
+            </Caption>
             <div style={{ fontSize: 13, lineHeight: 1.55 }}>
               {isApprove ? (
                 <>
@@ -487,9 +486,9 @@ function DecisionConfirmCard({
 
         <label>
           <div className="row row--between" style={{ marginBottom: 6 }}>
-            <span className="mono uppercase muted">
-              reason {reasonRequired && <span className="danger">*</span>}
-            </span>
+            <Caption>
+              reason {reasonRequired && <Text as="span" color="red">*</Text>}
+            </Caption>
             <Code variant="ghost" style={{ fontSize: 10, color: 'var(--gray-10)' }}>
               {reasonRequired ? 'required for rejects' : 'optional'}
             </Code>
@@ -506,7 +505,7 @@ function DecisionConfirmCard({
           />
         </label>
 
-        <div className="mono" style={{ fontSize: 11, color: 'var(--gray-10)', marginTop: 14, lineHeight: 1.6 }}>
+        <div style={{ fontSize: 11, color: 'var(--gray-10)', marginTop: 14, lineHeight: 1.6 }}>
           <span style={{ color: 'var(--gray-11)' }}>Signing as:</span> {userLabel}<br />
           <span style={{ color: 'var(--gray-11)' }}>Decision:</span> {decision}
         </div>
@@ -571,12 +570,12 @@ function ResolvedCard({ approval }: { approval: ApprovalRequest }) {
               {approval.status[0].toUpperCase() + approval.status.slice(1)}
             </div>
             {approval.approver_user_id && (
-              <div className="mono" style={{ fontSize: 11, color: 'var(--gray-10)', marginTop: 4 }}>
+              <div style={{ fontSize: 11, color: 'var(--gray-10)', marginTop: 4 }}>
                 by {approval.approver_user_id}
               </div>
             )}
             {approval.resolved_at && (
-              <div className="mono" style={{ fontSize: 11, color: 'var(--gray-10)', marginTop: 2 }}>
+              <div style={{ fontSize: 11, color: 'var(--gray-10)', marginTop: 2 }}>
                 {absTime(approval.resolved_at)}
               </div>
             )}
@@ -586,9 +585,9 @@ function ResolvedCard({ approval }: { approval: ApprovalRequest }) {
               </div>
             )}
           </div>
-          <Link to={`/runs/${approval.run_id}`} className="btn btn--ghost btn--sm">
-            Open run <IconArrowRight className="ic ic--sm" />
-          </Link>
+          <Btn href={`/runs/${approval.run_id}`} variant="ghost" size="sm" icon={<IconArrowRight className="ic ic--sm" />}>
+            Open run
+          </Btn>
         </div>
       </div>
     </div>
@@ -598,7 +597,7 @@ function ResolvedCard({ approval }: { approval: ApprovalRequest }) {
 function MetaRow({ label, value }: { label: string; value: React.ReactNode }) {
   return (
     <div className="row row--between" style={{ padding: '6px 0', borderBottom: '1px dashed var(--gray-6)' }}>
-      <Text size="1" color="gray" className="uppercase" style={{ fontSize: 10.5 }}>{label}</Text>
+      <Caption style={{ fontSize: 10.5 }}>{label}</Caption>
       <span style={{ fontSize: 12 }}>{value}</span>
     </div>
   )

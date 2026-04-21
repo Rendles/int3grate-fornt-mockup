@@ -1,5 +1,6 @@
 export { Avatar } from './common/avatar'
 export { Btn } from './common/btn'
+export { Caption } from './common/caption'
 export { Chip, PolicyModeChip } from './common/chip'
 export { CommandBar } from './common/command-bar'
 export { InfoHint } from './common/info-hint'

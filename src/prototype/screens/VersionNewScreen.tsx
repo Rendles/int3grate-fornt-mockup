@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react'
-import { Code } from '@radix-ui/themes'
+import { Code, Text } from '@radix-ui/themes'
 
 import { AppShell } from '../components/shell'
 import { PageHeader, Btn, InfoHint } from '../components/common'
@@ -161,7 +161,7 @@ export default function VersionNewScreen({ agentId }: { agentId: string }) {
 
         <div className="card">
           <div className="card__head">
-            <div className="card__title">instruction_spec <span className="danger">*</span></div>
+            <div className="card__title">instruction_spec <Text as="span" color="red">*</Text></div>
           </div>
           <div className="card__body">
             <TextAreaField
@@ -242,9 +242,9 @@ export default function VersionNewScreen({ agentId }: { agentId: string }) {
               />
               <span>
                 <div style={{ fontSize: 13 }}>Activate immediately after create</div>
-                <div className="muted" style={{ fontSize: 11.5, marginTop: 2 }}>
+                <Text as="div" color="gray" style={{ fontSize: 11.5, marginTop: 2 }}>
                   Set this version as the active one right after it's created.
-                </div>
+                </Text>
               </span>
             </label>
           </div>

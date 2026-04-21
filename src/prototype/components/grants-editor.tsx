@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react'
 import { Code, Text } from '@radix-ui/themes'
+import { Caption } from './common/caption'
 
 import { api } from '../lib/api'
 import type { Agent, ToolDefinition, ToolGrant, ToolGrantMode, ToolGrantScopeType } from '../lib/types'
@@ -118,9 +119,9 @@ export function GrantsEditor({
   return (
     <div>
       <div className="row row--between" style={{ marginBottom: 12 }}>
-        <Text as="div" size="1" color="gray" className="uppercase">
+        <Caption as="div">
           {local.length} grants · {local.filter(g => g.approval_required).length} require approval
-        </Text>
+        </Caption>
         <div className="row row--sm">
           {dirty && <Btn variant="ghost" size="sm" onClick={reset} disabled={saving}>Reset</Btn>}
           <Btn
@@ -255,7 +256,7 @@ export function GrantsEditor({
 
 function ReadOnlyGrants({ grants }: { grants: ToolGrant[] }) {
   if (grants.length === 0) {
-    return <div className="muted" style={{ fontSize: 12.5 }}>No grants configured.</div>
+    return <Text as="div" color="gray" style={{ fontSize: 12.5 }}>No grants configured.</Text>
   }
   return (
     <div className="card" style={{ padding: 0 }}>

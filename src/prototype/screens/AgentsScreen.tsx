@@ -86,15 +86,14 @@ export default function AgentsScreen() {
         <div className="row" style={{ gap: 10, marginBottom: 16, flexWrap: 'wrap' }}>
           <div className="row row--sm">
             {STATUSES.map(f => (
-              <button
+              <Chip
                 key={f}
-                className={`chip${filter === f ? ' chip--accent' : ''}`}
+                tone={filter === f ? 'accent' : undefined}
                 onClick={() => { setFilter(f); setPage(0) }}
-                style={{ cursor: 'pointer' }}
               >
-                {f}
+                {f}{' '}
                 <Code variant="ghost" style={{ color: 'var(--gray-10)' }}>{counts[f] ?? 0}</Code>
-              </button>
+              </Chip>
             ))}
           </div>
           <div style={{ flex: 1 }} />
@@ -151,7 +150,7 @@ export default function AgentsScreen() {
                   {a.description && (
                     <div className="agent-row__desc truncate" style={{ marginTop: 2 }}>{a.description}</div>
                   )}
-                  <div className="mono" style={{ fontSize: 10.5, color: 'var(--gray-10)', marginTop: 4 }}>
+                  <div style={{ fontSize: 10.5, color: 'var(--gray-10)', marginTop: 4 }}>
                     {a.id}
                   </div>
                 </div>
@@ -160,7 +159,7 @@ export default function AgentsScreen() {
                   {a.active_version ? (
                     <>
                       <Chip tone="accent">v{a.active_version.version}</Chip>
-                      <div className="mono" style={{ fontSize: 10.5, color: 'var(--gray-10)', marginTop: 4 }}>
+                      <div style={{ fontSize: 10.5, color: 'var(--gray-10)', marginTop: 4 }}>
                         {(a.active_version.model_chain_config as { primary?: string })?.primary ?? '—'}
                       </div>
                     </>
@@ -169,14 +168,14 @@ export default function AgentsScreen() {
                   )}
                 </div>
                 <div>
-                  <div className="mono" style={{ fontSize: 11, color: 'var(--gray-12)' }}>
+                  <div style={{ fontSize: 11, color: 'var(--gray-12)' }}>
                     {a.owner_user_id ?? '—'}
                   </div>
-                  <div className="mono" style={{ fontSize: 10.5, color: 'var(--gray-10)', marginTop: 4 }}>
+                  <div style={{ fontSize: 10.5, color: 'var(--gray-10)', marginTop: 4 }}>
                     {a.domain_id ?? '—'}
                   </div>
                 </div>
-                <div className="mono" style={{ fontSize: 11, color: 'var(--gray-11)' }}>
+                <div style={{ fontSize: 11, color: 'var(--gray-11)' }}>
                   {ago(a.updated_at)}
                 </div>
                 <IconArrowRight className="ic" />

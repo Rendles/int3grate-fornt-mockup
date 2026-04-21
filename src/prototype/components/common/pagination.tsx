@@ -1,3 +1,5 @@
+import { Button, Flex, Select, Text } from '@radix-ui/themes'
+
 export function Pagination({
   page,
   pageSize,
@@ -21,42 +23,64 @@ export function Pagination({
   const end = Math.min((safePage + 1) * pageSize, total)
 
   return (
-    <div className="pagination">
-      <span className="pagination__info">
+    <Flex
+      align="center"
+      justify="between"
+      gap="4"
+      wrap="wrap"
+      style={{
+        padding: '10px 16px',
+        borderTop: '1px solid var(--gray-6)',
+        background: 'var(--gray-3)',
+      }}
+    >
+      <Text size="1" color="gray" style={{ whiteSpace: 'nowrap' }}>
         {start}–{end} of {total} {label}
-      </span>
-      <div className="pagination__controls">
+      </Text>
+      <Flex align="center" gap="2">
         {onPageSizeChange && (
-          <label className="pagination__size">
-            <span>rows/page</span>
-            <select
-              value={pageSize}
-              onChange={e => onPageSizeChange(Number(e.target.value))}
+          <Flex align="center" gap="2">
+            <Text size="1" color="gray" style={{ textTransform: 'uppercase', letterSpacing: '0.12em' }}>
+              rows/page
+            </Text>
+            <Select.Root
+              value={String(pageSize)}
+              onValueChange={v => onPageSizeChange(Number(v))}
+              size="1"
             >
-              {pageSizes.map(n => <option key={n} value={n}>{n}</option>)}
-            </select>
-          </label>
+              <Select.Trigger variant="soft" />
+              <Select.Content>
+                {pageSizes.map(n => (
+                  <Select.Item key={n} value={String(n)}>{n}</Select.Item>
+                ))}
+              </Select.Content>
+            </Select.Root>
+          </Flex>
         )}
-        <button
-          className="pagination__nav"
+        <Button
+          variant="soft"
+          size="1"
+          color="gray"
           onClick={() => onPageChange(Math.max(0, safePage - 1))}
           disabled={safePage <= 0}
           aria-label="Previous page"
         >
           ← prev
-        </button>
-        <span className="pagination__page">
+        </Button>
+        <Text size="1" style={{ minWidth: 48, textAlign: 'center' }}>
           {safePage + 1} / {totalPages}
-        </span>
-        <button
-          className="pagination__nav"
+        </Text>
+        <Button
+          variant="soft"
+          size="1"
+          color="gray"
           onClick={() => onPageChange(Math.min(totalPages - 1, safePage + 1))}
           disabled={safePage >= totalPages - 1}
           aria-label="Next page"
         >
           next →
-        </button>
-      </div>
-    </div>
+        </Button>
+      </Flex>
+    </Flex>
   )
 }

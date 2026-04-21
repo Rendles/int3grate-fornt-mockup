@@ -16,6 +16,7 @@ import {
   Toggle,
 } from '../components/common'
 import { SelectField, TextAreaField, TextInput } from '../components/fields'
+import { Caption } from '../components/common/caption'
 import { Banner, EmptyState, ErrorState, LoadingList, NoAccessState } from '../components/states'
 import {
   IconAlert,
@@ -152,11 +153,11 @@ export default function StyleGuideScreen() {
               <div className="card__body stack">
                 {TYPE_SPECS.map(t => (
                   <div key={t.name} style={{ borderBottom: '1px dashed var(--gray-6)', paddingBottom: 12 }}>
-                    <Text as="div" size="1" color="gray" className="uppercase" style={{ marginBottom: 6 }}>{t.name}</Text>
+                    <Caption as="div" style={{ marginBottom: 6 }}>{t.name}</Caption>
                     <div style={{ fontFamily: t.name.includes('Hero') || t.name.includes('Form') ? 'var(--heading-font-family)' : 'var(--default-font-family)', fontSize: t.name.includes('Hero') ? 32 : t.name.includes('Form') ? 26 : t.name.includes('Eyebrow') ? 11 : 14, color: 'var(--gray-12)' }}>
                       {t.sample}
                     </div>
-                    <div className="mono" style={{ color: 'var(--gray-10)', fontSize: 11, marginTop: 6 }}>{t.spec}</div>
+                    <div style={{ color: 'var(--gray-10)', fontSize: 11, marginTop: 6 }}>{t.spec}</div>
                     <div style={{ color: 'var(--gray-11)', fontSize: 12, marginTop: 2 }}>{t.usage}</div>
                   </div>
                 ))}
@@ -167,7 +168,6 @@ export default function StyleGuideScreen() {
               <div className="card__body stack">
                 <TokenRow name="Default radius" value="6px" note="Cards, banners, states." />
                 <TokenRow name="Control radius" value="4px" note="Buttons, inputs, chips, nav items." />
-                <TokenRow name="Large radius" value="10px" note="Reserved for larger panels." />
                 <TokenRow name="Shell sidebar" value="240px" note="Desktop AppShell navigation width." />
                 <TokenRow name="Topbar" value="48px" note="Sticky shell header height." />
                 <TokenRow name="Page padding" value="32px / 20px mobile" note="Content area spacing." />
@@ -191,8 +191,11 @@ export default function StyleGuideScreen() {
                 padding: '10px 16px',
                 borderBottom: '1px solid var(--gray-6)',
                 background: 'var(--gray-3)',
+                textTransform: 'uppercase',
+                letterSpacing: '0.08em',
+                fontSize: 11,
+                color: 'var(--gray-11)',
               }}
-              className="mono uppercase muted"
             >
               <span>Current</span>
               <span>Radix target</span>
@@ -283,7 +286,7 @@ export default function StyleGuideScreen() {
                   label={approvalRequired ? 'Approval required' : 'No approval required'}
                 />
                 <div className="row row--sm">
-                  <Text size="1" color="gray" className="uppercase">Policy helper</Text>
+                  <Caption>Policy helper</Caption>
                   <InfoHint>
                     In Figma, build this as a Tooltip or Popover trigger. Use it for API contract notes and risky states.
                   </InfoHint>
@@ -378,8 +381,11 @@ export default function StyleGuideScreen() {
                 padding: '10px 16px',
                 background: 'var(--gray-3)',
                 borderBottom: '1px solid var(--gray-6)',
+                textTransform: 'uppercase',
+                letterSpacing: '0.08em',
+                fontSize: 11,
+                color: 'var(--gray-11)',
               }}
-              className="mono uppercase muted"
             >
               <span>name / description</span>
               <span>status</span>
@@ -398,16 +404,16 @@ export default function StyleGuideScreen() {
                   <div className="agent-row__desc truncate" style={{ marginTop: 2 }}>
                     {i === 0 ? 'Scores inbound leads and drafts outreach.' : i === 1 ? 'Reviews charges and prepares refunds.' : 'Onboards and offboards SaaS access.'}
                   </div>
-                  <div className="mono" style={{ fontSize: 10.5, color: 'var(--gray-10)', marginTop: 4 }}>
+                  <div style={{ fontSize: 10.5, color: 'var(--gray-10)', marginTop: 4 }}>
                     agt_{name.toLowerCase().replace(/\s+/g, '_')}
                   </div>
                 </div>
                 <Status status={i === 2 ? 'paused' : 'active'} />
                 <div>
-                  <div className="mono" style={{ fontSize: 11, color: 'var(--gray-12)' }}>{i === 0 ? 'usr_marcelo' : 'usr_priya'}</div>
-                  <div className="mono" style={{ fontSize: 10.5, color: 'var(--gray-10)', marginTop: 4 }}>{i === 0 ? 'dom_sales' : 'dom_support'}</div>
+                  <div style={{ fontSize: 11, color: 'var(--gray-12)' }}>{i === 0 ? 'usr_marcelo' : 'usr_priya'}</div>
+                  <div style={{ fontSize: 10.5, color: 'var(--gray-10)', marginTop: 4 }}>{i === 0 ? 'dom_sales' : 'dom_support'}</div>
                 </div>
-                <div className="mono" style={{ fontSize: 11, color: 'var(--gray-11)' }}>{i + 1}d ago</div>
+                <div style={{ fontSize: 11, color: 'var(--gray-11)' }}>{i + 1}d ago</div>
                 <IconArrowRight className="ic" />
               </div>
             ))}
@@ -462,7 +468,7 @@ function Section({
       <div style={{ marginBottom: 14 }}>
         <div className="page__eyebrow">{eyebrow}</div>
         <h2 style={{ fontFamily: 'var(--heading-font-family)', fontSize: 28, lineHeight: 1.1, marginBottom: 6 }}>{title}</h2>
-        <p className="muted" style={{ maxWidth: 760, fontSize: 13.5 }}>{body}</p>
+        <Text as="p" color="gray" style={{ maxWidth: 760, fontSize: 13.5 }}>{body}</Text>
       </div>
       {children}
     </section>

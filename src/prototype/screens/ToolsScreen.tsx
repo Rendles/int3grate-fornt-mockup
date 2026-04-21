@@ -2,7 +2,7 @@ import { useEffect, useMemo, useState } from 'react'
 import { Code, Text } from '@radix-ui/themes'
 
 import { AppShell } from '../components/shell'
-import { PageHeader, CommandBar, InfoHint, PolicyModeChip } from '../components/common'
+import { Caption, Chip, PageHeader, CommandBar, InfoHint, PolicyModeChip } from '../components/common'
 import { TextInput } from '../components/fields'
 import { EmptyState, ErrorState, LoadingList } from '../components/states'
 import { IconArrowRight, IconTool } from '../components/icons'
@@ -96,17 +96,16 @@ export default function ToolsScreen() {
               onChange={e => setQuery(e.target.value)}
             />
           </div>
-          <Text size="1" color="gray" className="uppercase" style={{ marginLeft: 4 }}>default_mode</Text>
+          <Caption style={{ marginLeft: 4 }}>default_mode</Caption>
           {MODES.map(m => (
-            <button
+            <Chip
               key={m}
-              className={`chip${mode === m ? (m === 'requires_approval' ? ' chip--warn' : ' chip--accent') : ''}`}
-              style={{ cursor: 'pointer' }}
+              tone={mode === m ? (m === 'requires_approval' ? 'warn' : 'accent') : undefined}
               onClick={() => setMode(m)}
             >
               {m}{' '}
               <Code variant="ghost" style={{ color: 'var(--gray-10)' }}>{counts[m] ?? 0}</Code>
-            </button>
+            </Chip>
           ))}
         </div>
 
@@ -163,7 +162,7 @@ export default function ToolsScreen() {
                     <Code variant="ghost" style={{ fontSize: 12, color: 'var(--gray-12)' }}>{t.name}</Code>
                     <span><PolicyModeChip mode={t.default_mode} /></span>
                     <span style={{ fontSize: 12.5, color: 'var(--gray-11)', lineHeight: 1.5 }}>
-                      {t.description ?? <span className="muted">—</span>}
+                      {t.description ?? <Text color="gray">—</Text>}
                     </span>
                     <IconArrowRight
                       className="ic"
@@ -172,9 +171,9 @@ export default function ToolsScreen() {
                   </button>
                   {open && (
                     <div style={{ padding: '0 16px 16px' }}>
-                      <Text as="div" size="1" color="gray" className="uppercase" style={{ fontSize: 9.5, marginBottom: 6 }}>
+                      <Caption as="div" style={{ fontSize: 9.5, marginBottom: 6 }}>
                         input_schema
-                      </Text>
+                      </Caption>
                       <pre
                         style={{
                           fontFamily: 'var(--code-font-family)',

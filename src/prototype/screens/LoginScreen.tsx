@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { Code } from '@radix-ui/themes'
+import { Code, Text } from '@radix-ui/themes'
 
 import { useAuth } from '../auth'
 import { useRouter } from '../router'
@@ -93,9 +93,9 @@ export default function LoginScreen() {
           <div>
             <div className="page__eyebrow" style={{ marginBottom: 8 }}>SIGN IN</div>
             <h2>Welcome back.</h2>
-            <p className="muted" style={{ fontSize: 13, marginTop: 4 }}>
+            <Text as="p" color="gray" style={{ fontSize: 13, marginTop: 4 }}>
               Authenticate with your workspace email to access the control plane.
-            </p>
+            </Text>
           </div>
 
           {invalidCreds && (
@@ -142,7 +142,10 @@ export default function LoginScreen() {
           >
             {busy ? (
               <span className="row row--sm">
-                <span className="dot dot--accent dot--pulse" />
+                <span
+                  className="status-pulse"
+                  style={{ width: 6, height: 6, borderRadius: 999, background: 'var(--accent-9)', color: 'var(--accent-9)', display: 'inline-block' }}
+                />
                 signing in …
               </span>
             ) : 'Continue'}

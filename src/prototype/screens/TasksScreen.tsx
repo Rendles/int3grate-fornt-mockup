@@ -2,7 +2,7 @@ import { useEffect, useMemo, useState } from 'react'
 import { Code, Text } from '@radix-ui/themes'
 
 import { AppShell } from '../components/shell'
-import { PageHeader, Btn, Chip, Status, InfoHint, Pagination } from '../components/common'
+import { Caption, PageHeader, Btn, Chip, Status, InfoHint, Pagination } from '../components/common'
 import { Banner, EmptyState, ErrorState, LoadingList } from '../components/states'
 import { IconArrowRight, IconPlus, IconTask } from '../components/icons'
 import { Link } from '../router'
@@ -69,16 +69,15 @@ export default function TasksScreen() {
         <div style={{ height: 16 }} />
 
         <div className="row" style={{ gap: 6, marginBottom: 16, flexWrap: 'wrap' }}>
-          <Text size="1" color="gray" className="uppercase" style={{ marginRight: 4 }}>status</Text>
+          <Caption style={{ marginRight: 4 }}>status</Caption>
           {STATUSES.map(s => (
-            <button
+            <Chip
               key={s}
-              className={`chip${status === s ? ' chip--accent' : ''}`}
+              tone={status === s ? 'accent' : undefined}
               onClick={() => { setStatus(s); setPage(0) }}
-              style={{ cursor: 'pointer' }}
             >
               {s} <Code variant="ghost" style={{ color: 'var(--gray-10)' }}>{counts[s] ?? 0}</Code>
-            </button>
+            </Chip>
           ))}
         </div>
 
@@ -127,23 +126,23 @@ export default function TasksScreen() {
                 style={{ gridTemplateColumns: 'minmax(0, 1fr) 80px 130px 140px 140px 120px 32px' }}
               >
                 <div style={{ minWidth: 0 }}>
-                  <div className="mono" style={{ fontSize: 11, color: 'var(--gray-10)' }}>{t.id}</div>
+                  <div style={{ fontSize: 11, color: 'var(--gray-10)' }}>{t.id}</div>
                   <div style={{ fontSize: 13, color: 'var(--gray-12)', marginTop: 2 }} className="truncate">
-                    {t.title ?? <span className="muted">— untitled —</span>}
+                    {t.title ?? <Text color="gray">— untitled —</Text>}
                   </div>
                 </div>
                 <Chip tone={t.type === 'schedule' ? 'info' : t.type === 'chat' ? 'accent' : 'ghost'}>
                   {t.type.replace('_', ' ')}
                 </Chip>
                 <Status status={t.status} />
-                <div className="mono" style={{ fontSize: 11, color: 'var(--gray-11)' }}>
+                <div style={{ fontSize: 11, color: 'var(--gray-11)' }}>
                   <div className="truncate">{t.assigned_agent_id ?? '—'}</div>
                   <div style={{ color: 'var(--gray-10)', marginTop: 2 }}>{t.assigned_agent_version_id ?? '—'}</div>
                 </div>
-                <div className="mono truncate" style={{ fontSize: 11, color: 'var(--gray-11)' }}>
+                <div className="truncate" style={{ fontSize: 11, color: 'var(--gray-11)' }}>
                   {t.created_by ?? '—'}
                 </div>
-                <div className="mono" style={{ fontSize: 11, color: 'var(--gray-10)' }}>
+                <div style={{ fontSize: 11, color: 'var(--gray-10)' }}>
                   {ago(t.updated_at)}
                 </div>
                 <IconArrowRight className="ic" />

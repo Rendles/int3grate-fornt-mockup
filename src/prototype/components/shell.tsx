@@ -110,7 +110,6 @@ export function Sidebar() {
             <span>{item.label}</span>
             {item.note && (
               <span
-                className="mono"
                 title="MVP-deferred per ADR-0003"
                 style={{
                   fontSize: 9,

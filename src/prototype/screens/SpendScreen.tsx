@@ -2,7 +2,7 @@ import { useEffect, useState } from 'react'
 import { Code, Text } from '@radix-ui/themes'
 
 import { AppShell } from '../components/shell'
-import { PageHeader, Chip, InfoHint, MetricCard, Pagination } from '../components/common'
+import { Caption, PageHeader, Chip, InfoHint, MetricCard, Pagination } from '../components/common'
 import { EmptyState, ErrorState, LoadingList, NoAccessState } from '../components/states'
 import { IconAgent, IconArrowRight, IconSpend } from '../components/icons'
 import { Link } from '../router'
@@ -106,28 +106,26 @@ export default function SpendScreen() {
 
         {/* Controls */}
         <div className="row" style={{ gap: 6, marginBottom: 16, flexWrap: 'wrap', alignItems: 'center' }}>
-          <Text size="1" color="gray" className="uppercase" style={{ marginRight: 4 }}>range</Text>
+          <Caption style={{ marginRight: 4 }}>range</Caption>
           {RANGES.map(r => (
-            <button
+            <Chip
               key={r}
-              className={`chip${range === r ? ' chip--accent' : ''}`}
-              style={{ cursor: 'pointer' }}
+              tone={range === r ? 'accent' : undefined}
               onClick={() => { setRange(r); setPage(0) }}
             >
               {r}
-            </button>
+            </Chip>
           ))}
           <span style={{ width: 1, height: 16, background: 'var(--gray-6)', margin: '0 6px' }} />
-          <Text size="1" color="gray" className="uppercase" style={{ marginRight: 4 }}>group_by</Text>
+          <Caption style={{ marginRight: 4 }}>group_by</Caption>
           {GROUPINGS.map(g => (
-            <button
+            <Chip
               key={g}
-              className={`chip${groupBy === g ? ' chip--accent' : ''}`}
-              style={{ cursor: 'pointer' }}
+              tone={groupBy === g ? 'accent' : undefined}
               onClick={() => { setGroupBy(g); setPage(0) }}
             >
               {g}
-            </button>
+            </Chip>
           ))}
         </div>
 
@@ -180,9 +178,9 @@ export default function SpendScreen() {
                         style={{ width: `${Math.max(2, share * 100)}%` }}
                       />
                     </div>
-                    <div className="mono" style={{ fontSize: 11.5, color: 'var(--gray-12)', textAlign: 'right' }}>
+                    <div style={{ fontSize: 11.5, color: 'var(--gray-12)', textAlign: 'right' }}>
                       {money(r.total_usd, { compact: true })}{' '}
-                      <span className="muted">· {pctOfTotal.toFixed(1)}%</span>
+                      <Text color="gray">· {pctOfTotal.toFixed(1)}%</Text>
                     </div>
                   </div>
                 )
@@ -230,23 +228,23 @@ export default function SpendScreen() {
                       )}
                       <div className="truncate" style={{ fontSize: 13, color: 'var(--gray-12)' }}>{r.label}</div>
                     </div>
-                    <div className="mono" style={{ fontSize: 10.5, color: 'var(--gray-10)', marginTop: 2 }}>
+                    <div style={{ fontSize: 10.5, color: 'var(--gray-10)', marginTop: 2 }}>
                       {r.id}
                     </div>
                   </div>
-                  <div className="mono" style={{ fontSize: 13, color: 'var(--gray-12)', textAlign: 'right' }}>
+                  <div style={{ fontSize: 13, color: 'var(--gray-12)', textAlign: 'right' }}>
                     {money(r.total_usd, { cents: r.total_usd < 100 })}
                   </div>
-                  <div className="mono" style={{ fontSize: 12, color: 'var(--gray-12)', textAlign: 'right' }}>
+                  <div style={{ fontSize: 12, color: 'var(--gray-12)', textAlign: 'right' }}>
                     {num(r.run_count)}
                   </div>
-                  <div className="mono" style={{ fontSize: 11, color: 'var(--gray-11)', textAlign: 'right' }}>
+                  <div style={{ fontSize: 11, color: 'var(--gray-11)', textAlign: 'right' }}>
                     {num(r.total_tokens_in)}
                   </div>
-                  <div className="mono" style={{ fontSize: 11, color: 'var(--gray-11)', textAlign: 'right' }}>
+                  <div style={{ fontSize: 11, color: 'var(--gray-11)', textAlign: 'right' }}>
                     {num(r.total_tokens_out)}
                   </div>
-                  <div className="mono" style={{ fontSize: 11, color: 'var(--gray-10)', textAlign: 'right' }}>
+                  <div style={{ fontSize: 11, color: 'var(--gray-10)', textAlign: 'right' }}>
                     {r.spend_date ? shortDate(r.spend_date) : '—'}
                   </div>
                 </>

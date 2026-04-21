@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react'
 import { Code, DataList, Text } from '@radix-ui/themes'
 import { AppShell } from '../components/shell'
-import { PageHeader, Btn, Chip, MetaRow, Status, Tabs, CommandBar, InfoHint, PolicyModeChip } from '../components/common'
+import { Caption, PageHeader, Btn, Chip, MetaRow, Status, Tabs, CommandBar, InfoHint, PolicyModeChip } from '../components/common'
 import { Banner, LoadingList, NoAccessState } from '../components/states'
 import { IconPlay, IconPlus } from '../components/icons'
 import { GrantsEditor } from '../components/grants-editor'
@@ -145,7 +145,7 @@ function OverviewTab({ agent, version, canEdit }: { agent: Agent; version: Agent
                 <MetaRow label="created_by" value={<Code variant="ghost">{version.created_by ?? '—'}</Code>} />
                 <MetaRow label="created_at" value={<Code variant="ghost">{absTime(version.created_at)}</Code>} />
               </DataList.Root>
-              <Text as="div" size="1" color="gray" className="uppercase" style={{ marginTop: 16, marginBottom: 6 }}>instruction_spec</Text>
+              <Caption as="div" style={{ marginTop: 16, marginBottom: 6 }}>instruction_spec</Caption>
               <pre
                 style={{
                   fontFamily: 'var(--code-font-family)',
@@ -204,7 +204,7 @@ function SettingsTab({ agent }: { agent: Agent }) {
         <div className="card__body">
           <MetaRow label="id" value={<Code variant="ghost">{agent.id}</Code>} />
           <MetaRow label="name" value={agent.name} />
-          <MetaRow label="description" value={agent.description ?? <span className="muted">null</span>} />
+          <MetaRow label="description" value={agent.description ?? <Text color="gray">null</Text>} />
           <MetaRow label="status" value={<Status status={agent.status} />} />
           <MetaRow label="tenant_id" value={<Code variant="ghost">{agent.tenant_id}</Code>} />
           <MetaRow label="domain_id" value={<Code variant="ghost">{agent.domain_id ?? '—'}</Code>} />
@@ -223,14 +223,14 @@ function SettingsTab({ agent }: { agent: Agent }) {
           <div className="row row--between" style={{ padding: '8px 0' }}>
             <div>
               <div style={{ fontSize: 13 }}>Archive agent</div>
-              <div className="muted" style={{ fontSize: 11.5, marginTop: 2 }}>Planned.</div>
+              <Text as="div" color="gray" style={{ fontSize: 11.5, marginTop: 2 }}>Planned.</Text>
             </div>
             <Btn variant="danger" disabled>Archive (planned)</Btn>
           </div>
           <div className="row row--between" style={{ padding: '8px 0' }}>
             <div>
               <div style={{ fontSize: 13 }}>Delete agent</div>
-              <div className="muted" style={{ fontSize: 11.5, marginTop: 2 }}>Planned.</div>
+              <Text as="div" color="gray" style={{ fontSize: 11.5, marginTop: 2 }}>Planned.</Text>
             </div>
             <Btn variant="danger" disabled>Delete (planned)</Btn>
           </div>
@@ -328,12 +328,11 @@ function PolicySnapshotPanel({ agentId, grantsVersion }: { agentId: string; gran
                 <span style={{ fontSize: 11.5, color: 'var(--gray-11)' }}>
                   {g.scopes && g.scopes.length > 0
                     ? g.scopes.join(', ')
-                    : <span className="muted">—</span>}
+                    : <Text color="gray">—</Text>}
                 </span>
               </div>
             ))}
             <div
-              className="mono"
               style={{
                 padding: '8px 16px',
                 fontSize: 10.5,
@@ -354,7 +353,7 @@ function PolicySnapshotPanel({ agentId, grantsVersion }: { agentId: string; gran
 function JsonPanel({ title, value }: { title: string; value: Record<string, unknown> }) {
   return (
     <div>
-      <Text as="div" size="1" color="gray" className="uppercase" style={{ fontSize: 9.5, marginBottom: 6 }}>{title}</Text>
+      <Caption as="div" style={{ fontSize: 9.5, marginBottom: 6 }}>{title}</Caption>
       <pre
         style={{
           fontFamily: 'var(--code-font-family)',

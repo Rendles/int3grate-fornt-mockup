@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react'
-import { Code, DataList } from '@radix-ui/themes'
+import { Code, DataList, Text } from '@radix-ui/themes'
 import { AppShell } from '../components/shell'
 import { PageHeader, Btn, Chip, MetaRow, Status, CommandBar, InfoHint } from '../components/common'
 import { Banner, LoadingList, NoAccessState } from '../components/states'
@@ -101,12 +101,12 @@ export default function TaskDetailScreen({ taskId }: { taskId: string }) {
               <MetaRow
                 label="assigned_agent_id"
                 value={task.assigned_agent_id
-                  ? <Link to={`/agents/${task.assigned_agent_id}`} className="mono">{task.assigned_agent_id}</Link>
+                  ? <Link to={`/agents/${task.assigned_agent_id}`}><Code variant="ghost">{task.assigned_agent_id}</Code></Link>
                   : <Code variant="ghost" color="gray">—</Code>}
               />
               <MetaRow label="assigned_agent_version_id" value={<Code variant="ghost">{task.assigned_agent_version_id ?? '—'}</Code>} />
               <MetaRow label="created_by" value={<Code variant="ghost">{task.created_by ?? '—'}</Code>} />
-              <MetaRow label="title" value={task.title ?? <span className="muted">null</span>} />
+              <MetaRow label="title" value={task.title ?? <Text color="gray">null</Text>} />
               <MetaRow label="created_at" value={<Code variant="ghost">{absTime(task.created_at)}</Code>} />
               <MetaRow label="updated_at" value={<Code variant="ghost">{absTime(task.updated_at)} · {ago(task.updated_at)}</Code>} />
             </DataList.Root>

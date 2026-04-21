@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from 'react'
-import { Code, DataList } from '@radix-ui/themes'
+import { Code, DataList, Text } from '@radix-ui/themes'
 import { AppShell } from '../components/shell'
 import { PageHeader, Btn, Chip, MetaRow, Status, InfoHint } from '../components/common'
 import { TextAreaField, TextInput } from '../components/fields'
@@ -170,14 +170,14 @@ export default function TaskNewScreen() {
                       >
                         <div style={{ minWidth: 0, textAlign: 'left' }}>
                           <div style={{ color: 'var(--gray-12)', fontSize: 13 }}>{a.name}</div>
-                          <div className="mono truncate" style={{ fontSize: 10.5, color: 'var(--gray-10)', marginTop: 2 }}>
+                          <div className="truncate" style={{ fontSize: 10.5, color: 'var(--gray-10)', marginTop: 2 }}>
                             {a.id}
                           </div>
                         </div>
                         <div style={{ textAlign: 'right' }}>
                           <Status status={a.status} />
                           {a.active_version && (
-                            <div className="mono" style={{ fontSize: 10.5, color: 'var(--gray-10)', marginTop: 3 }}>
+                            <div style={{ fontSize: 10.5, color: 'var(--gray-10)', marginTop: 3 }}>
                               v{a.active_version.version}
                             </div>
                           )}
@@ -245,7 +245,7 @@ export default function TaskNewScreen() {
                 </div>
                 <div className="form-row">
                   <div>
-                    <div className="form-row__label">Input <span className="danger">*</span></div>
+                    <div className="form-row__label">Input <Text as="span" color="red">*</Text></div>
                     <div className="form-row__hint">Required. The message the agent will see.</div>
                   </div>
                   <div className="form-row__control">

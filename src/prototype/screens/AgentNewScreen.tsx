@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { Code } from '@radix-ui/themes'
+import { Code, Text } from '@radix-ui/themes'
 
 import { AppShell } from '../components/shell'
 import { PageHeader, Btn, Chip, InfoHint } from '../components/common'
@@ -110,7 +110,7 @@ export default function AgentNewScreen() {
           <div className="card__body">
             <div className="form-row">
               <div>
-                <div className="form-row__label">Name <span className="danger">*</span></div>
+                <div className="form-row__label">Name <Text as="span" color="red">*</Text></div>
                 <div className="form-row__hint">1–200 characters. Shown everywhere.</div>
               </div>
               <div className="form-row__control">

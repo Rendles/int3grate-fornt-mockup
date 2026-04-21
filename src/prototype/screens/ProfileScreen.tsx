@@ -1,7 +1,7 @@
 import { AppShell } from '../components/shell'
 import { Code, Text } from '@radix-ui/themes'
 
-import { PageHeader, Avatar, Btn, Chip, InfoHint } from '../components/common'
+import { Caption, PageHeader, Avatar, Btn, Chip, InfoHint } from '../components/common'
 import { useAuth } from '../auth'
 import { roleLabel, absTime } from '../lib/format'
 
@@ -38,15 +38,15 @@ export default function ProfileScreen() {
                 <div style={{ fontSize: 20, fontFamily: 'var(--heading-font-family)', letterSpacing: '-0.01em' }}>
                   {user.name}
                 </div>
-                <div className="mono muted" style={{ fontSize: 12, marginTop: 4 }}>{user.email}</div>
+                <Text as="div" color="gray" style={{ fontSize: 12, marginTop: 4 }}>{user.email}</Text>
                 <div className="row row--sm" style={{ marginTop: 10 }}>
                   <Chip tone="accent">{roleLabel(user.role)}</Chip>
                   <Chip tone="info">approval · L{user.approval_level}</Chip>
                 </div>
               </div>
               <div style={{ textAlign: 'right' }}>
-                <Text as="div" size="1" color="gray" className="uppercase" style={{ marginBottom: 4 }}>User ID</Text>
-                <div className="mono" style={{ fontSize: 12, color: 'var(--gray-12)' }}>{user.id}</div>
+                <Caption as="div" style={{ marginBottom: 4 }}>User ID</Caption>
+                <div style={{ fontSize: 12, color: 'var(--gray-12)' }}>{user.id}</div>
               </div>
             </div>
           </div>
@@ -59,19 +59,19 @@ export default function ProfileScreen() {
           <div className="card__body">
             <div className="grid grid--2">
               <div>
-                <Text as="div" size="1" color="gray" className="uppercase" style={{ marginBottom: 4 }}>Tenant ID</Text>
-                <div className="mono">{user.tenant_id}</div>
+                <Caption as="div" style={{ marginBottom: 4 }}>Tenant ID</Caption>
+                <div>{user.tenant_id}</div>
               </div>
               <div>
-                <Text as="div" size="1" color="gray" className="uppercase" style={{ marginBottom: 4 }}>Domain ID</Text>
-                <div className="mono">{user.domain_id ?? '—'}</div>
+                <Caption as="div" style={{ marginBottom: 4 }}>Domain ID</Caption>
+                <div>{user.domain_id ?? '—'}</div>
               </div>
               <div>
-                <Text as="div" size="1" color="gray" className="uppercase" style={{ marginBottom: 4 }}>Created</Text>
-                <div className="mono">{absTime(user.created_at)}</div>
+                <Caption as="div" style={{ marginBottom: 4 }}>Created</Caption>
+                <div>{absTime(user.created_at)}</div>
               </div>
               <div>
-                <Text as="div" size="1" color="gray" className="uppercase" style={{ marginBottom: 4 }}>Role</Text>
+                <Caption as="div" style={{ marginBottom: 4 }}>Role</Caption>
                 <div>{roleLabel(user.role)}</div>
               </div>
             </div>
@@ -99,7 +99,7 @@ export default function ProfileScreen() {
                     textAlign: 'center',
                   }}>
                     <div style={{ fontFamily: 'var(--heading-font-family)', fontSize: 24, color: on ? 'var(--accent-9)' : 'var(--gray-10)' }}>L{lvl}</div>
-                    <div className="mono" style={{ fontSize: 10, color: 'var(--gray-10)', letterSpacing: '0.1em', textTransform: 'uppercase', marginTop: 4 }}>
+                    <div style={{ fontSize: 10, color: 'var(--gray-10)', letterSpacing: '0.1em', textTransform: 'uppercase', marginTop: 4 }}>
                       {on ? 'can decide' : 'above you'}
                     </div>
                   </div>
