@@ -1,6 +1,6 @@
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import { api } from '../lib/api'
-import type { Agent, ToolGrant, ToolGrantMode, ToolGrantScopeType } from '../lib/types'
+import type { Agent, ToolDefinition, ToolGrant, ToolGrantMode, ToolGrantScopeType } from '../lib/types'
 import { Banner, LoadingList, NoAccessState } from './states'
 import { Btn, Chip, Toggle } from './common'
 import { IconAlert, IconCheck, IconPlus, IconX } from './icons'
@@ -21,6 +21,13 @@ export function GrantsEditor({
   const [saving, setSaving] = useState(false)
   const [saveError, setSaveError] = useState<string | null>(null)
   const [newTool, setNewTool] = useState('')
+  const [catalog, setCatalog] = useState<ToolDefinition[]>([])
+
+  useEffect(() => {
+    let cancelled = false
+    api.listTools().then(list => { if (!cancelled) setCatalog(list) }).catch(() => {})
+    return () => { cancelled = true }
+  }, [])
 
   // React-recommended pattern for syncing external state into internal state:
   // compare during render and call setState inside the branch. React bails out
@@ -85,7 +92,16 @@ export function GrantsEditor({
     setSaving(true)
     setSaveError(null)
     try {
-      const next = await api.setGrants(agent.id, local)
+      // Strip server-assigned fields: spec body is ReplaceToolGrantsRequest.
+      const body = {
+        grants: local.map(g => ({
+          tool_name: g.tool_name,
+          mode: g.mode,
+          approval_required: g.approval_required,
+          config: g.config,
+        })),
+      }
+      const next = await api.setGrants(agent.id, body)
       setBaseline(next)
       setLocal(next)
       onChange(next)
@@ -211,8 +227,14 @@ export function GrantsEditor({
             value={newTool}
             onChange={e => setNewTool(e.target.value)}
             onKeyDown={e => { if (e.key === 'Enter') addGrant() }}
+            list={`tool-catalog-${agent.id}`}
             style={{ fontSize: 12, padding: '6px 10px' }}
           />
+          <datalist id={`tool-catalog-${agent.id}`}>
+            {catalog.map(t => (
+              <option key={t.name} value={t.name}>{t.description ?? ''}</option>
+            ))}
+          </datalist>
           <Btn size="sm" icon={<IconPlus />} onClick={addGrant} disabled={!newTool.trim()}>Add</Btn>
         </div>
       </div>

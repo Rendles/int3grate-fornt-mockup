@@ -5,7 +5,7 @@ import { LoadingList, NoAccessState, Banner } from '../components/states'
 import { IconAlert, IconArrowRight } from '../components/icons'
 import { Link } from '../router'
 import { api } from '../lib/api'
-import type { Run, RunStep, RunStepType } from '../lib/types'
+import type { Run, RunStep, RunStepType, RunToolError } from '../lib/types'
 import { absTime, durationMs, money, num } from '../lib/format'
 
 const STEP_KIND_LABEL: Record<RunStepType, string> = {
@@ -62,7 +62,9 @@ export default function RunDetailScreen({ runId }: { runId: string }) {
     <AppShell
       crumbs={[
         { label: 'home', to: '/' },
-        { label: 'run', to: `/tasks/${run.task_id}` },
+        run.task_id
+          ? { label: 'task', to: `/tasks/${run.task_id}` }
+          : { label: 'standalone run' },
         { label: run.id.toUpperCase() },
       ]}
     >
@@ -81,7 +83,9 @@ export default function RunDetailScreen({ runId }: { runId: string }) {
           actions={
             <>
               <Status status={run.status} />
-              <Btn variant="ghost" href={`/tasks/${run.task_id}`}>Task</Btn>
+              {run.task_id && (
+                <Btn variant="ghost" href={`/tasks/${run.task_id}`}>Task</Btn>
+              )}
             </>
           }
         />
@@ -89,9 +93,12 @@ export default function RunDetailScreen({ runId }: { runId: string }) {
         <CommandBar
           parts={[
             { label: 'ID', value: run.id },
-            { label: 'TASK', value: run.task_id },
+            { label: 'TASK', value: run.task_id ?? 'standalone · no task' },
             { label: 'AGT VER', value: run.agent_version_id ?? '—', tone: 'accent' },
-            { label: 'STATUS', value: run.status, tone: run.status === 'failed' || run.status === 'suspended' ? 'warn' : undefined },
+            { label: 'STATUS', value: run.status, tone: run.status === 'failed' || run.status === 'suspended' || run.status === 'completed_with_errors' ? 'warn' : undefined },
+            ...(run.error_kind && run.error_kind !== 'none'
+              ? [{ label: 'ERROR_KIND', value: run.error_kind, tone: 'warn' as const }]
+              : []),
             { label: 'STEPS', value: num(run.steps.length) },
             { label: 'TOKENS', value: `${num(run.total_tokens_in)} in · ${num(run.total_tokens_out)} out` },
             { label: 'SPEND', value: money(run.total_cost_usd, { cents: true }) },
@@ -118,10 +125,54 @@ export default function RunDetailScreen({ runId }: { runId: string }) {
                 <div className="row row--sm" style={{ marginBottom: 6 }}>
                   <IconAlert className="ic" style={{ color: 'var(--danger)' }} />
                   <span style={{ fontFamily: 'var(--font-serif)', fontSize: 18, color: 'var(--danger)' }}>Run failed</span>
+                  {run.error_kind && run.error_kind !== 'none' && (
+                    <Chip tone="danger" square>{run.error_kind}</Chip>
+                  )}
                 </div>
                 <div style={{ fontSize: 13, color: 'var(--text)', lineHeight: 1.55 }}>{run.error_message}</div>
               </div>
             </div>
+          </>
+        )}
+
+        {run.status === 'completed_with_errors' && (
+          <>
+            <div style={{ height: 16 }} />
+            <div
+              className="card"
+              style={{
+                borderColor: 'var(--warn-border)',
+                background: 'var(--warn-soft)',
+                borderStyle: 'dashed',
+              }}
+            >
+              <div style={{ padding: '14px 18px' }}>
+                <div className="row row--sm" style={{ marginBottom: 6, gap: 8 }}>
+                  <IconAlert className="ic" style={{ color: 'var(--warn)' }} />
+                  <span style={{ fontFamily: 'var(--font-serif)', fontSize: 18, color: 'var(--warn)' }}>
+                    Completed with errors
+                  </span>
+                  {run.error_kind && run.error_kind !== 'none' && (
+                    <Chip tone="warn" square>{run.error_kind}</Chip>
+                  )}
+                </div>
+                <div style={{ fontSize: 13, color: 'var(--text)', lineHeight: 1.55 }}>
+                  {run.error_message ?? 'The run produced assistant output, but one or more tool calls failed.'}
+                </div>
+                {run.tool_errors && run.tool_errors.length > 0 && (
+                  <div className="mono" style={{ fontSize: 11, color: 'var(--text-dim)', marginTop: 8 }}>
+                    {run.tool_errors.length} tool error{run.tool_errors.length === 1 ? '' : 's'} · see below
+                  </div>
+                )}
+              </div>
+            </div>
+          </>
+        )}
+
+        {run.tool_errors && run.tool_errors.length > 0 && (
+          <>
+            <div style={{ height: 20 }} />
+            <ToolErrorsCard errors={run.tool_errors} />
           </>
         )}
 
@@ -167,9 +218,15 @@ export default function RunDetailScreen({ runId }: { runId: string }) {
             <MetaRow label="id" value={<span className="mono">{run.id}</span>} />
             <MetaRow label="tenant_id" value={<span className="mono">{run.tenant_id}</span>} />
             <MetaRow label="domain_id" value={<span className="mono">{run.domain_id ?? '—'}</span>} />
-            <MetaRow label="task_id" value={<Link to={`/tasks/${run.task_id}`} className="mono">{run.task_id}</Link>} />
+            <MetaRow
+              label="task_id"
+              value={run.task_id
+                ? <Link to={`/tasks/${run.task_id}`} className="mono">{run.task_id}</Link>
+                : <span className="muted">null · standalone run (ADR-0003)</span>}
+            />
             <MetaRow label="agent_version_id" value={<span className="mono">{run.agent_version_id ?? '—'}</span>} />
             <MetaRow label="status" value={<Status status={run.status} />} />
+            <MetaRow label="error_kind" value={<span className="mono">{run.error_kind ?? '—'}</span>} />
             <MetaRow label="suspended_stage" value={<span className="mono">{run.suspended_stage ?? '—'}</span>} />
             <MetaRow label="started_at" value={<span className="mono">{run.started_at ? absTime(run.started_at) : '—'}</span>} />
             <MetaRow label="ended_at" value={<span className="mono">{run.ended_at ? absTime(run.ended_at) : '—'}</span>} />
@@ -268,6 +325,69 @@ function MetaRow({ label, value }: { label: string; value: React.ReactNode }) {
     <div className="row row--between" style={{ padding: '6px 0', borderBottom: '1px dashed var(--border)' }}>
       <span className="mono uppercase muted" style={{ fontSize: 10.5 }}>{label}</span>
       <span style={{ fontSize: 12 }}>{value}</span>
+    </div>
+  )
+}
+
+function ToolErrorsCard({ errors }: { errors: RunToolError[] }) {
+  return (
+    <div className="card">
+      <div className="card__head">
+        <div className="card__title">Tool errors · {errors.length}</div>
+        <InfoHint>
+          Populated when <span className="mono">status = completed_with_errors</span>, or when a failed run's <span className="mono">error_kind</span> is <span className="mono">tool_error</span>.
+        </InfoHint>
+      </div>
+      <div className="card__body" style={{ padding: 0 }}>
+        <div
+          style={{
+            display: 'grid',
+            gridTemplateColumns: '220px 120px minmax(0, 1fr) 160px',
+            gap: 12,
+            padding: '8px 16px',
+            background: 'var(--surface-2)',
+            borderBottom: '1px solid var(--border)',
+            fontFamily: 'var(--font-mono)',
+            fontSize: 9.5,
+            color: 'var(--text-dim)',
+            textTransform: 'uppercase',
+            letterSpacing: '0.14em',
+          }}
+        >
+          <span>tool</span>
+          <span>status</span>
+          <span>message</span>
+          <span>at · tool_call_id</span>
+        </div>
+        {errors.map((e, i) => {
+          const tone = e.status === 'timeout' ? 'warn' : e.status === 'denied' ? 'ghost' : 'danger'
+          return (
+            <div
+              key={`${e.tool}-${i}`}
+              style={{
+                display: 'grid',
+                gridTemplateColumns: '220px 120px minmax(0, 1fr) 160px',
+                gap: 12,
+                padding: '10px 16px',
+                borderBottom: '1px solid var(--border)',
+                alignItems: 'start',
+              }}
+            >
+              <span className="mono" style={{ fontSize: 11.5, color: 'var(--text)' }}>{e.tool}</span>
+              <Chip tone={tone}>{e.status}</Chip>
+              <span style={{ fontSize: 12, color: 'var(--text-muted)', lineHeight: 1.55 }}>
+                {e.message ?? <span className="muted">—</span>}
+              </span>
+              <div style={{ fontSize: 10.5 }}>
+                <div className="mono" style={{ color: 'var(--text-dim)' }}>{e.at ? absTime(e.at) : '—'}</div>
+                {e.tool_call_id && (
+                  <div className="mono" style={{ color: 'var(--text-dim)', marginTop: 2 }}>{e.tool_call_id}</div>
+                )}
+              </div>
+            </div>
+          )
+        })}
+      </div>
     </div>
   )
 }

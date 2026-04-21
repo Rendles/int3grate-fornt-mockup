@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useState } from 'react'
 import { AppShell } from '../components/shell'
 import { PageHeader, Btn, Chip, Status, InfoHint, Pagination } from '../components/common'
-import { EmptyState, ErrorState, LoadingList } from '../components/states'
+import { Banner, EmptyState, ErrorState, LoadingList } from '../components/states'
 import { IconArrowRight, IconPlus, IconTask } from '../components/icons'
 import { Link } from '../router'
 import { api } from '../lib/api'
@@ -60,6 +60,11 @@ export default function TasksScreen() {
             <Btn variant="primary" href="/tasks/new" icon={<IconPlus />}>Create task</Btn>
           }
         />
+
+        <Banner tone="warn" title="Task concept is MVP-deferred (ADR-0003)">
+          Gateway v0.2.0 marks <span className="mono">/tasks/*</span> as <span className="mono">x-mvp-deferred</span>. Runs can exist without a task; these screens remain in the prototype for design continuity.
+        </Banner>
+        <div style={{ height: 16 }} />
 
         <div className="row" style={{ gap: 6, marginBottom: 16, flexWrap: 'wrap' }}>
           <span className="mono uppercase muted" style={{ marginRight: 4 }}>status</span>

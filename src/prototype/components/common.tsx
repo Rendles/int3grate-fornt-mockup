@@ -2,6 +2,7 @@ import { useLayoutEffect, useRef, useState, type ReactNode } from 'react'
 import { createPortal } from 'react-dom'
 import { Link } from '../router'
 import { IconHelp } from './icons'
+import type { ToolPolicyMode } from '../lib/types'
 
 export function Avatar({
   initials,
@@ -88,6 +89,13 @@ export function Chip({
   if (tone) cls.push(`chip--${tone}`)
   if (square) cls.push('chip--sq')
   return <span className={cls.join(' ')}>{children}</span>
+}
+
+// Policy-axis chip for gateway v0.2.0 (read_only / requires_approval / denied).
+// Distinct from the legacy CRUD-axis ToolGrant.mode, which uses plain Chip.
+export function PolicyModeChip({ mode }: { mode: ToolPolicyMode }) {
+  const tone = mode === 'read_only' ? 'info' : mode === 'requires_approval' ? 'warn' : 'danger'
+  return <Chip tone={tone} square>{mode}</Chip>
 }
 
 export function Tabs({
@@ -182,13 +190,14 @@ export function Status({
     | 'running'
     | 'suspended'
     | 'completed'
+    | 'completed_with_errors'
     | 'failed'
     | 'cancelled'
     | 'approved'
     | 'rejected'
     | 'expired'
 }) {
-  const map: Record<string, { tone: 'accent' | 'warn' | 'success' | 'danger' | 'info' | 'ghost'; label: string; pulse?: boolean }> = {
+  const map: Record<string, { tone: 'accent' | 'warn' | 'success' | 'danger' | 'info' | 'ghost'; label: string; pulse?: boolean; dotted?: boolean }> = {
     active: { tone: 'accent', label: 'Active' },
     draft: { tone: 'ghost', label: 'Draft' },
     archived: { tone: 'ghost', label: 'Archived' },
@@ -197,6 +206,7 @@ export function Status({
     running: { tone: 'info', label: 'Running', pulse: true },
     suspended: { tone: 'warn', label: 'Suspended', pulse: true },
     completed: { tone: 'success', label: 'Completed' },
+    completed_with_errors: { tone: 'warn', label: 'Completed · with errors', dotted: true },
     failed: { tone: 'danger', label: 'Failed' },
     cancelled: { tone: 'ghost', label: 'Cancelled' },
     approved: { tone: 'success', label: 'Approved' },
@@ -204,9 +214,18 @@ export function Status({
     expired: { tone: 'ghost', label: 'Expired' },
   }
   const s = map[status]
+  const dotStyle: React.CSSProperties = {}
+  if (s.tone === 'ghost') dotStyle.background = 'var(--text-dim)'
+  if (s.dotted) {
+    dotStyle.background = 'transparent'
+    dotStyle.border = `1.5px dashed var(--warn)`
+  }
   return (
     <span className="row row--sm">
-      <span className={`dot dot--${s.tone === 'ghost' ? 'accent' : s.tone}${s.pulse ? ' dot--pulse' : ''}`} style={s.tone === 'ghost' ? { background: 'var(--text-dim)' } : undefined} />
+      <span
+        className={`dot dot--${s.tone === 'ghost' ? 'accent' : s.tone}${s.pulse ? ' dot--pulse' : ''}`}
+        style={Object.keys(dotStyle).length ? dotStyle : undefined}
+      />
       <span className="nowrap" style={{ fontSize: 12, color: 'var(--text)' }}>
         {s.label}
       </span>

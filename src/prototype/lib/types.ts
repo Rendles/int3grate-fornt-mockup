@@ -4,6 +4,25 @@
 export type Role = 'member' | 'domain_admin' | 'admin'
 export type ApprovalLevel = 1 | 2 | 3 | 4
 
+// ─────────────────────────────────────────────── Auth
+
+export interface LoginRequest {
+  email: string
+  password: string
+}
+
+export interface LoginResponse {
+  token: string
+  expires_at: string
+}
+
+// ─────────────────────────────────────────────── Health
+
+export interface HealthResponse {
+  status: 'ok'
+  schema_version?: string
+}
+
 // ─────────────────────────────────────────────── User
 
 export interface User {
@@ -34,6 +53,12 @@ export interface Agent {
   updated_at: string
 }
 
+export interface CreateAgentRequest {
+  name: string
+  description?: string
+  domain_id?: string
+}
+
 // ─────────────────────────────────────────────── AgentVersion
 
 export interface AgentVersion {
@@ -50,7 +75,15 @@ export interface AgentVersion {
   created_at: string
 }
 
-// ─────────────────────────────────────────────── ToolGrant
+export interface CreateAgentVersionRequest {
+  instruction_spec: string
+  memory_scope_config?: Record<string, unknown>
+  tool_scope_config?: Record<string, unknown>
+  approval_rules?: Record<string, unknown>
+  model_chain_config?: Record<string, unknown>
+}
+
+// ─────────────────────────────────────────────── ToolGrant (legacy CRUD axis)
 
 export type ToolGrantScopeType = 'tenant' | 'domain' | 'agent'
 export type ToolGrantMode = 'read' | 'write' | 'read_write'
@@ -65,7 +98,50 @@ export interface ToolGrant {
   config: Record<string, unknown>
 }
 
-// ─────────────────────────────────────────────── Task
+// Body shape for PUT /agents/{id}/grants — no id/scope_*, gateway assigns them.
+export interface ReplaceToolGrantsRequest {
+  grants: Array<{
+    tool_name: string
+    mode: ToolGrantMode
+    approval_required?: boolean
+    config?: Record<string, unknown>
+  }>
+}
+
+// Response for GET /internal/tool-grants/check (x-internal).
+export interface ToolGrantCheck {
+  granted: boolean
+  mode: ToolGrantMode | null
+  approval_required: boolean
+}
+
+// ─────────────────────────────────────────────── Tool catalog + policy axis (gateway v0.2.0)
+
+// Distinct from ToolGrantMode — this is a policy axis, not CRUD.
+export type ToolPolicyMode = 'read_only' | 'requires_approval' | 'denied'
+
+export interface ToolDefinition {
+  name: string
+  description?: string
+  input_schema: Record<string, unknown>
+  default_mode: ToolPolicyMode
+}
+
+export interface GrantsSnapshotEntry {
+  tool: string
+  mode: ToolPolicyMode
+  scopes?: string[]
+}
+
+export interface GrantsSnapshot {
+  agent_id: string
+  tenant_id: string
+  version: string
+  grants: GrantsSnapshotEntry[]
+  issued_at: string
+}
+
+// ─────────────────────────────────────────────── Task (MVP-deferred per ADR-0003)
 
 export type TaskType = 'chat' | 'one_time' | 'schedule'
 export type TaskStatus = 'pending' | 'running' | 'completed' | 'failed' | 'cancelled'
@@ -84,15 +160,46 @@ export interface Task {
   updated_at: string
 }
 
+// MVP-deferred (ADR-0003) — body for POST /tasks.
+export interface CreateTaskRequest {
+  agent_id: string
+  user_input: string
+  type?: TaskType
+  title?: string
+  domain_id?: string
+}
+
 // ─────────────────────────────────────────────── Run
 
-export type RunStatus = 'pending' | 'running' | 'completed' | 'failed' | 'suspended' | 'cancelled'
+export type RunStatus =
+  | 'pending'
+  | 'running'
+  | 'suspended'
+  | 'completed'
+  | 'completed_with_errors'
+  | 'failed'
+  | 'cancelled'
+
+export type RunErrorKind =
+  | 'none'
+  | 'tool_error'
+  | 'orchestrator_error'
+  | 'timeout'
+  | 'cancelled'
+
+export interface RunToolError {
+  tool: string
+  status: 'error' | 'timeout' | 'denied'
+  message?: string
+  at?: string
+  tool_call_id?: string | null
+}
 
 export interface Run {
   id: string
   tenant_id: string
   domain_id: string | null
-  task_id: string
+  task_id: string | null
   agent_version_id: string | null
   status: RunStatus
   suspended_stage: string | null
@@ -102,6 +209,8 @@ export interface Run {
   total_tokens_in: number
   total_tokens_out: number
   error_message: string | null
+  error_kind?: RunErrorKind | null
+  tool_errors?: RunToolError[]
   steps: RunStep[]
   created_at: string
 }
@@ -139,7 +248,7 @@ export type ApprovalStatus = 'pending' | 'approved' | 'rejected' | 'expired' | '
 export interface ApprovalRequest {
   id: string
   run_id: string
-  task_id: string
+  task_id: string | null
   tenant_id: string
   requested_action: string
   requested_by: string | null
@@ -152,6 +261,19 @@ export interface ApprovalRequest {
   expires_at: string | null
   resolved_at: string | null
   created_at: string
+}
+
+// Body for POST /approvals/{id}/decision.
+// NB: request uses approved/rejected, but the 202-ack below uses approve/reject.
+export interface ApprovalDecisionRequest {
+  decision: 'approved' | 'rejected'
+  reason?: string
+}
+
+export interface ApprovalDecisionAccepted {
+  approval_id: string
+  decision: 'approve' | 'reject'
+  status: 'queued'
 }
 
 // ─────────────────────────────────────────────── SpendDashboard / SpendRow

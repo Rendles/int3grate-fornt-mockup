@@ -16,10 +16,13 @@ import {
 import { Link, useRouter } from '../router'
 import { useAuth } from '../auth'
 import { api } from '../lib/api'
-import type { ApprovalRequest } from '../lib/types'
+import type { ApprovalDecisionAccepted, ApprovalRequest, Run, RunStatus } from '../lib/types'
 import { absTime, ago } from '../lib/format'
 
 type Decision = 'approved' | 'rejected'
+
+const RUN_TERMINAL: RunStatus[] = ['completed', 'completed_with_errors', 'failed', 'cancelled']
+const isRunTerminal = (s: RunStatus): boolean => RUN_TERMINAL.includes(s)
 
 export default function ApprovalDetailScreen({ approvalId }: { approvalId: string }) {
   const { user } = useAuth()
@@ -31,6 +34,9 @@ export default function ApprovalDetailScreen({ approvalId }: { approvalId: strin
   const [busy, setBusy] = useState(false)
   const [saveError, setSaveError] = useState<string | null>(null)
   const [conflict, setConflict] = useState<ApprovalRequest | null>(null)
+  // Async resume (gateway v0.2.0): decision is queued, we poll approval + run.
+  const [resume, setResume] = useState<ApprovalDecisionAccepted | null>(null)
+  const [runAfter, setRunAfter] = useState<Run | null>(null)
 
   useEffect(() => {
     let cancelled = false
@@ -48,6 +54,40 @@ export default function ApprovalDetailScreen({ approvalId }: { approvalId: strin
     })
     return () => { cancelled = true }
   }, [approvalId, search])
+
+  // Polling: after 202-ack, wait for approval to flip, then for run to reach terminal.
+  useEffect(() => {
+    if (!resume) return
+    let cancelled = false
+    let timer: ReturnType<typeof setTimeout> | null = null
+
+    const tickRun = async (runId: string) => {
+      if (cancelled) return
+      const r = await api.getRun(runId)
+      if (cancelled) return
+      if (r) setRunAfter(r)
+      if (r && isRunTerminal(r.status)) return
+      timer = setTimeout(() => tickRun(runId), 1000)
+    }
+
+    const tickApproval = async () => {
+      if (cancelled) return
+      const fresh = await api.getApproval(approvalId)
+      if (cancelled) return
+      if (fresh) setApproval(fresh)
+      if (fresh && fresh.status !== 'pending') {
+        timer = setTimeout(() => tickRun(fresh.run_id), 600)
+        return
+      }
+      timer = setTimeout(tickApproval, 800)
+    }
+
+    timer = setTimeout(tickApproval, 600)
+    return () => {
+      cancelled = true
+      if (timer) clearTimeout(timer)
+    }
+  }, [resume, approvalId])
 
   if (approval === null) {
     return (
@@ -84,8 +124,9 @@ export default function ApprovalDetailScreen({ approvalId }: { approvalId: strin
         setBusy(false)
         return
       }
-      const updated = await api.decideApproval(approval.id, decision, reason.trim() || null, user.id)
-      setApproval(updated)
+      const ack = await api.decideApproval(approval.id, decision, reason.trim() || null, user.id)
+      // v0.2.0: 202 queued — enter polling mode instead of assuming sync result.
+      setResume(ack)
       setDecision(null)
       setReason('')
       setReasonTouched(false)
@@ -135,9 +176,11 @@ export default function ApprovalDetailScreen({ approvalId }: { approvalId: strin
               <Btn variant="ghost" size="sm" href={`/runs/${approval.run_id}`}>
                 Open run <IconArrowRight className="ic ic--sm" />
               </Btn>
-              <Btn variant="ghost" size="sm" href={`/tasks/${approval.task_id}`}>
-                Open task <IconArrowRight className="ic ic--sm" />
-              </Btn>
+              {approval.task_id && (
+                <Btn variant="ghost" size="sm" href={`/tasks/${approval.task_id}`}>
+                  Open task <IconArrowRight className="ic ic--sm" />
+                </Btn>
+              )}
               <Btn variant="ghost" size="sm" href="/approvals">Back to inbox</Btn>
             </>
           }
@@ -147,7 +190,7 @@ export default function ApprovalDetailScreen({ approvalId }: { approvalId: strin
           parts={[
             { label: 'ID', value: approval.id },
             { label: 'RUN', value: approval.run_id, tone: 'accent' },
-            { label: 'TASK', value: approval.task_id },
+            { label: 'TASK', value: approval.task_id ?? 'standalone · no task' },
             { label: 'NEEDS', value: approval.approver_role ?? '—' },
             ...(approval.status === 'pending' && approval.expires_at
               ? [{ label: 'EXPIRES', value: ago(approval.expires_at), tone: 'warn' as const }]
@@ -179,8 +222,15 @@ export default function ApprovalDetailScreen({ approvalId }: { approvalId: strin
           </>
         )}
 
+        {resume && (
+          <>
+            <ResumeBanner ack={resume} approval={approval} run={runAfter} />
+            <div style={{ height: 16 }} />
+          </>
+        )}
+
         {/* Pending · decision panel */}
-        {approval.status === 'pending' && userCanDecide && !decision && (
+        {approval.status === 'pending' && userCanDecide && !decision && !resume && (
           <DecisionIntroCard
             onApprove={() => setDecision('approved')}
             onReject={() => setDecision('rejected')}
@@ -188,7 +238,7 @@ export default function ApprovalDetailScreen({ approvalId }: { approvalId: strin
         )}
 
         {/* Pending · confirm panel */}
-        {approval.status === 'pending' && userCanDecide && decision && (
+        {approval.status === 'pending' && userCanDecide && decision && !resume && (
           <DecisionConfirmCard
             approval={approval}
             decision={decision}
@@ -220,7 +270,12 @@ export default function ApprovalDetailScreen({ approvalId }: { approvalId: strin
           <div className="card__body">
             <MetaRow label="id" value={<span className="mono">{approval.id}</span>} />
             <MetaRow label="run_id" value={<Link to={`/runs/${approval.run_id}`} className="mono">{approval.run_id}</Link>} />
-            <MetaRow label="task_id" value={<Link to={`/tasks/${approval.task_id}`} className="mono">{approval.task_id}</Link>} />
+            <MetaRow
+              label="task_id"
+              value={approval.task_id
+                ? <Link to={`/tasks/${approval.task_id}`} className="mono">{approval.task_id}</Link>
+                : <span className="muted">null · standalone run (ADR-0003)</span>}
+            />
             <MetaRow label="tenant_id" value={<span className="mono">{approval.tenant_id}</span>} />
             <MetaRow label="requested_action" value={approval.requested_action} />
             <MetaRow label="requested_by" value={<span className="mono">{approval.requested_by ?? '—'}</span>} />
@@ -562,6 +617,109 @@ function MetaRow({ label, value }: { label: string; value: React.ReactNode }) {
     <div className="row row--between" style={{ padding: '6px 0', borderBottom: '1px dashed var(--border)' }}>
       <span className="mono uppercase muted" style={{ fontSize: 10.5 }}>{label}</span>
       <span style={{ fontSize: 12 }}>{value}</span>
+    </div>
+  )
+}
+
+function ResumeBanner({
+  ack, approval, run,
+}: {
+  ack: ApprovalDecisionAccepted
+  approval: ApprovalRequest
+  run: Run | null
+}) {
+  const stage: 'queued' | 'resolved' | 'terminal' =
+    run && isRunTerminal(run.status) ? 'terminal' :
+    approval.status !== 'pending' ? 'resolved' :
+    'queued'
+
+  const label = ack.decision === 'approve' ? 'Approve' : 'Reject'
+
+  if (stage === 'queued') {
+    return (
+      <div className="banner banner--info" role="status">
+        <span className="banner__icon"><IconApproval className="ic" /></span>
+        <div style={{ flex: 1 }}>
+          <div className="banner__title">
+            {label} queued · <span className="mono">status = queued</span>
+          </div>
+          <div className="banner__body">
+            Gateway accepted the decision (<span className="mono">202 Accepted</span>) and enqueued it for the orchestrator.
+            Resume typically takes 8–15 s. Polling <span className="mono">GET /approvals/{approval.id}</span> and{' '}
+            <span className="mono">GET /runs/{approval.run_id}</span>.
+          </div>
+        </div>
+        <Chip tone="info" square>polling</Chip>
+      </div>
+    )
+  }
+
+  if (stage === 'resolved') {
+    return (
+      <div
+        className="banner banner--info"
+        role="status"
+        style={{ borderColor: 'var(--accent)', background: 'color-mix(in oklab, var(--accent) 10%, var(--surface))' }}
+      >
+        <span className="banner__icon"><IconPlay className="ic" style={{ color: 'var(--accent)' }} /></span>
+        <div style={{ flex: 1 }}>
+          <div className="banner__title" style={{ color: 'var(--accent)' }}>
+            Approval {approval.status} · run resuming
+          </div>
+          <div className="banner__body">
+            Orchestrator picked up the decision. Waiting for <span className="mono">run {approval.run_id}</span> to reach a terminal state…
+          </div>
+        </div>
+        <Chip tone="accent" square>polling run</Chip>
+      </div>
+    )
+  }
+
+  // terminal
+  if (!run) return null
+  const tone: 'success' | 'warn' | 'danger' | 'ghost' =
+    run.status === 'completed' ? 'success' :
+    run.status === 'completed_with_errors' ? 'warn' :
+    run.status === 'cancelled' ? 'ghost' :
+    'danger'
+  const border =
+    tone === 'success' ? 'var(--success-border)' :
+    tone === 'warn' ? 'var(--warn-border)' :
+    tone === 'danger' ? 'var(--danger-border)' :
+    'var(--border)'
+  const bg =
+    tone === 'success' ? 'var(--success-soft)' :
+    tone === 'warn' ? 'var(--warn-soft)' :
+    tone === 'danger' ? 'var(--danger-soft)' :
+    'var(--surface-2)'
+  const color =
+    tone === 'success' ? 'var(--success)' :
+    tone === 'warn' ? 'var(--warn)' :
+    tone === 'danger' ? 'var(--danger)' :
+    'var(--text-dim)'
+
+  return (
+    <div className="banner" role="status" style={{ borderColor: border, background: bg }}>
+      <span className="banner__icon">
+        {tone === 'success' ? <IconCheck className="ic" style={{ color }} /> :
+         tone === 'danger' ? <IconStop className="ic" style={{ color }} /> :
+         <IconAlert className="ic" style={{ color }} />}
+      </span>
+      <div style={{ flex: 1 }}>
+        <div className="banner__title" style={{ color }}>
+          Run {run.status.replace(/_/g, ' ')}
+        </div>
+        <div className="banner__body">
+          {run.error_message ?? (
+            run.status === 'completed'
+              ? `Run ${run.id} finished after the decision was applied.`
+              : `Run ${run.id} reached terminal state ${run.status}.`
+          )}
+        </div>
+      </div>
+      <Link to={`/runs/${run.id}`} className="btn btn--ghost btn--sm">
+        Open run <IconArrowRight className="ic ic--sm" />
+      </Link>
     </div>
   )
 }

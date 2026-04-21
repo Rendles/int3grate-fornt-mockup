@@ -1,12 +1,12 @@
 import { useEffect, useState } from 'react'
 import { AppShell } from '../components/shell'
-import { PageHeader, Btn, Chip, Status, Tabs, CommandBar, InfoHint } from '../components/common'
+import { PageHeader, Btn, Chip, Status, Tabs, CommandBar, InfoHint, PolicyModeChip } from '../components/common'
 import { Banner, LoadingList, NoAccessState } from '../components/states'
 import { IconPlay, IconPlus } from '../components/icons'
 import { GrantsEditor } from '../components/grants-editor'
 import { api } from '../lib/api'
 import { useAuth } from '../auth'
-import type { Agent, AgentVersion, ToolGrant } from '../lib/types'
+import type { Agent, AgentVersion, GrantsSnapshot, ToolGrant } from '../lib/types'
 import { absTime, ago } from '../lib/format'
 
 export default function AgentDetailScreen({
@@ -107,7 +107,13 @@ export default function AgentDetailScreen({
         <Tabs items={tabs} active={tab} />
 
         {tab === 'overview' && <OverviewTab agent={agent} version={activeVersion} canEdit={canEdit} />}
-        {tab === 'grants' && <GrantsEditor agent={agent} grants={grants} canEdit={canEdit} onChange={setGrants} />}
+        {tab === 'grants' && (
+          <div className="stack">
+            <GrantsEditor agent={agent} grants={grants} canEdit={canEdit} onChange={setGrants} />
+            <div style={{ height: 12 }} />
+            <PolicySnapshotPanel agentId={agent.id} grantsVersion={grants?.length ?? 0} />
+          </div>
+        )}
         {tab === 'settings' && <SettingsTab agent={agent} />}
       </div>
     </AppShell>
@@ -236,6 +242,116 @@ function MetaRow({ label, value }: { label: string; value: React.ReactNode }) {
     <div className="row row--between" style={{ padding: '6px 0', borderBottom: '1px dashed var(--border)' }}>
       <span className="mono uppercase muted" style={{ fontSize: 10.5 }}>{label}</span>
       <span style={{ fontSize: 12 }}>{value}</span>
+    </div>
+  )
+}
+
+function PolicySnapshotPanel({ agentId, grantsVersion }: { agentId: string; grantsVersion: number }) {
+  const [snapshot, setSnapshot] = useState<GrantsSnapshot | null>(null)
+  const [tick, setTick] = useState(0)
+
+  useEffect(() => {
+    let cancelled = false
+    api.getGrantsSnapshot(agentId)
+      .then(s => { if (!cancelled) setSnapshot(s) })
+      .catch(() => {})
+    return () => { cancelled = true }
+  }, [agentId, grantsVersion, tick])
+
+  // Derived: covers initial load AND stale snapshot after agentId changes.
+  const loading = !snapshot || snapshot.agent_id !== agentId
+
+  return (
+    <div
+      className="card"
+      style={{
+        borderStyle: 'dashed',
+        borderColor: 'var(--border-2)',
+        background: 'color-mix(in oklab, var(--text-dim) 4%, var(--surface))',
+      }}
+    >
+      <div className="card__head">
+        <div className="card__title">
+          Policy snapshot{' '}
+          <Chip tone="ghost" square>internal</Chip>{' '}
+          <InfoHint>
+            Rendered from <span className="mono">GET /internal/agents/{'{id}'}/grants/snapshot</span>{' '}
+            (<span className="mono">x-internal: true</span>, service-to-service only).
+            The orchestrator calls this at run start to pin policy for the lifetime of a run.
+            <br /><br />
+            Shown here only so operators can preview what the orchestrator sees.
+            Not reachable from end-user clients.
+          </InfoHint>
+        </div>
+        <div className="row row--sm">
+          {snapshot && <Chip tone="ghost" square>version {snapshot.version}</Chip>}
+          <Btn variant="ghost" size="sm" onClick={() => setTick(t => t + 1)}>Refresh</Btn>
+        </div>
+      </div>
+      <div className="card__body" style={{ padding: 0 }}>
+        {loading || !snapshot ? (
+          <div style={{ padding: 20 }}><LoadingList rows={3} /></div>
+        ) : snapshot.grants.length === 0 ? (
+          <div style={{ padding: 20, fontSize: 12.5, color: 'var(--text-muted)', textAlign: 'center' }}>
+            No effective policy entries — this agent has no grants.
+          </div>
+        ) : (
+          <>
+            <div
+              style={{
+                display: 'grid',
+                gridTemplateColumns: 'minmax(0, 1fr) 180px minmax(0, 1fr)',
+                gap: 14,
+                padding: '10px 16px',
+                background: 'var(--surface-2)',
+                borderBottom: '1px solid var(--border)',
+                fontFamily: 'var(--font-mono)',
+                fontSize: 10,
+                color: 'var(--text-dim)',
+                textTransform: 'uppercase',
+                letterSpacing: '0.14em',
+              }}
+            >
+              <span>tool</span>
+              <span>policy_mode</span>
+              <span>scopes</span>
+            </div>
+            {snapshot.grants.map((g, i) => (
+              <div
+                key={`${g.tool}-${i}`}
+                style={{
+                  display: 'grid',
+                  gridTemplateColumns: 'minmax(0, 1fr) 180px minmax(0, 1fr)',
+                  gap: 14,
+                  padding: '10px 16px',
+                  alignItems: 'center',
+                  borderBottom: '1px solid var(--border)',
+                }}
+              >
+                <span className="mono" style={{ fontSize: 12 }}>{g.tool}</span>
+                <span><PolicyModeChip mode={g.mode} /></span>
+                <span style={{ fontSize: 11.5, color: 'var(--text-muted)' }}>
+                  {g.scopes && g.scopes.length > 0
+                    ? g.scopes.join(', ')
+                    : <span className="muted">—</span>}
+                </span>
+              </div>
+            ))}
+            <div
+              className="mono"
+              style={{
+                padding: '8px 16px',
+                fontSize: 10.5,
+                color: 'var(--text-dim)',
+                background: 'var(--surface-2)',
+                borderTop: '1px solid var(--border)',
+              }}
+            >
+              issued_at {absTime(snapshot.issued_at)} · tenant {snapshot.tenant_id}
+            </div>
+          </>
+        )}
+      </div>
     </div>
   )
 }

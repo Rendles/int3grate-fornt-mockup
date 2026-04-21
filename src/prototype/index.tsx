@@ -15,9 +15,11 @@ import TaskDetailScreen from './screens/TaskDetailScreen'
 import RunDetailScreen from './screens/RunDetailScreen'
 import ApprovalsScreen from './screens/ApprovalsScreen'
 import ApprovalDetailScreen from './screens/ApprovalDetailScreen'
+import ToolsScreen from './screens/ToolsScreen'
 import SpendScreen from './screens/SpendScreen'
 import ProfileScreen from './screens/ProfileScreen'
 import NotFoundScreen from './screens/NotFoundScreen'
+import StyleGuideScreen from './screens/StyleGuideScreen'
 
 function Router() {
   const { user, loading } = useAuth()
@@ -55,9 +57,10 @@ function Router() {
     { pattern: '/runs/:runId', render: p => <RunDetailScreen runId={p.runId} /> },
     { pattern: '/approvals', render: () => <ApprovalsScreen /> },
     { pattern: '/approvals/:approvalId', render: p => <ApprovalDetailScreen approvalId={p.approvalId} /> },
+    { pattern: '/tools', render: () => <ToolsScreen /> },
     { pattern: '/spend', render: () => <SpendScreen /> },
     { pattern: '/profile', render: () => <ProfileScreen /> },
-    // { pattern: '/components', render: () => <StyleGuideScreen /> },
+    { pattern: '/components', render: () => <StyleGuideScreen /> },
   ]
 
   for (const r of routes) {

@@ -114,6 +114,11 @@ export default function TaskNewScreen() {
           }
         />
 
+        <Banner tone="warn" title="Task concept is MVP-deferred (ADR-0003)">
+          Gateway v0.2.0 marks <span className="mono">POST /tasks</span> as <span className="mono">x-mvp-deferred</span>. The production path will dispatch runs directly; this form remains for design continuity.
+        </Banner>
+        <div style={{ height: 16 }} />
+
         {!agents ? (
           <LoadingList rows={4} />
         ) : created ? (

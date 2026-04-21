@@ -2,6 +2,7 @@ import {
   agents as fxAgents,
   agentVersions as fxVersions,
   approvals as fxApprovals,
+  fxTools,
   grantsByAgent,
   runs as fxRuns,
   getSpendDashboard,
@@ -11,13 +12,19 @@ import {
 import type {
   Agent,
   AgentVersion,
+  ApprovalDecisionAccepted,
   ApprovalRequest,
+  GrantsSnapshot,
+  GrantsSnapshotEntry,
+  ReplaceToolGrantsRequest,
   Run,
   SpendDashboard,
   SpendGroupBy,
   SpendRange,
   Task,
+  ToolDefinition,
   ToolGrant,
+  ToolPolicyMode,
   User,
 } from './types'
 
@@ -174,8 +181,19 @@ export const api = {
   },
 
   // ── PUT /agents/{id}/grants ───────────────────────────────────────
-  async setGrants(agentId: string, next: ToolGrant[]): Promise<ToolGrant[]> {
+  // Spec body is ReplaceToolGrantsRequest (no id/scope_*) — gateway assigns
+  // id/scope_type/scope_id itself. Response is the full ToolGrant[].
+  async setGrants(agentId: string, body: ReplaceToolGrantsRequest): Promise<ToolGrant[]> {
     await delay()
+    const next: ToolGrant[] = body.grants.map((g, i) => ({
+      id: `grt_${agentId.slice(0, 8)}_${Date.now().toString(36)}_${i}`,
+      scope_type: 'agent',
+      scope_id: agentId,
+      tool_name: g.tool_name,
+      mode: g.mode,
+      approval_required: g.approval_required ?? false,
+      config: g.config ?? {},
+    }))
     grantsByAgent[agentId] = next
     const a = fxAgents.find(a => a.id === agentId)
     if (a) a.updated_at = new Date().toISOString()
@@ -246,23 +264,36 @@ export const api = {
   },
 
   // ── POST /approvals/{id}/decision ─────────────────────────────────
-  async decideApproval(id: string, decision: 'approved' | 'rejected', reason: string | null, byUserId: string): Promise<ApprovalRequest> {
+  // Per gateway v0.2.0: decision is enqueued, orchestrator resumes async.
+  // Mock mimics that with a 1.5-3s delay before mutating approval, then
+  // another 2-3s before the run reaches a terminal state (approved path).
+  async decideApproval(
+    id: string,
+    decision: 'approved' | 'rejected',
+    reason: string | null,
+    byUserId: string,
+  ): Promise<ApprovalDecisionAccepted> {
     await delay()
     const a = fxApprovals.find(a => a.id === id)
     if (!a) throw new Error('no approval')
     if (a.status !== 'pending') {
       throw Object.assign(new Error('Approval already resolved'), { code: 'already_resolved', current: a })
     }
-    const now = new Date().toISOString()
-    a.status = decision
-    a.approver_user_id = byUserId
-    a.resolved_at = now
-    a.reason = reason
 
-    // Cascade into related run (and task on reject) so the mock behaves
-    // like the backend would once the orchestrator receives the decision.
-    const run = fxRuns[a.run_id]
-    if (run) {
+    const resumeAt = 1500 + Math.random() * 1500
+    const completeAt = resumeAt + 2000 + Math.random() * 1500
+
+    // Stage 1 — orchestrator picks up the decision, approval flips.
+    setTimeout(() => {
+      if (a.status !== 'pending') return
+      const now = new Date().toISOString()
+      a.status = decision
+      a.approver_user_id = byUserId
+      a.resolved_at = now
+      a.reason = reason
+
+      const run = fxRuns[a.run_id]
+      if (!run) return
       const gate = run.steps.find(
         s => s.step_type === 'approval_gate' &&
         (s.input_ref as { approval_id?: string } | null)?.approval_id === a.id,
@@ -287,14 +318,75 @@ export const api = {
           gate.status = 'blocked'
           gate.completed_at = now
         }
-        const task = fxTasks.find(t => t.id === a.task_id)
-        if (task && (task.status === 'pending' || task.status === 'running')) {
-          task.status = 'cancelled'
-          task.updated_at = now
+        if (a.task_id) {
+          const task = fxTasks.find(t => t.id === a.task_id)
+          if (task && (task.status === 'pending' || task.status === 'running')) {
+            task.status = 'cancelled'
+            task.updated_at = now
+          }
         }
       }
+    }, resumeAt)
+
+    // Stage 2 — run reaches terminal state (approved path only).
+    if (decision === 'approved') {
+      setTimeout(() => {
+        const run = fxRuns[a.run_id]
+        if (!run || run.status !== 'running') return
+        const now = new Date().toISOString()
+        run.status = 'completed'
+        run.ended_at = now
+        if (a.task_id) {
+          const task = fxTasks.find(t => t.id === a.task_id)
+          if (task && task.status === 'running') {
+            task.status = 'completed'
+            task.updated_at = now
+          }
+        }
+      }, completeAt)
     }
-    return a
+
+    return {
+      approval_id: a.id,
+      decision: decision === 'approved' ? 'approve' : 'reject',
+      status: 'queued',
+    }
+  },
+
+  // ── GET /tools (gateway v0.2.0) ───────────────────────────────────
+  async listTools(): Promise<ToolDefinition[]> {
+    await delay()
+    return fxTools
+  },
+
+  // ── GET /internal/agents/{id}/grants/snapshot (gateway v0.2.0) ────
+  async getGrantsSnapshot(agentId: string): Promise<GrantsSnapshot> {
+    await delay()
+    const agent = fxAgents.find(a => a.id === agentId)
+    if (!agent) throw new Error('agent not found')
+    const grants = grantsByAgent[agentId] ?? []
+    const catalogByName = new Map(fxTools.map(t => [t.name, t] as const))
+
+    const entries: GrantsSnapshotEntry[] = grants.map(g => ({
+      tool: g.tool_name,
+      mode: policyModeForGrant(g, catalogByName.get(g.tool_name)),
+      scopes: scopesForGrant(g),
+    }))
+
+    // Stable version hash based on grant ids + modes (changes when grants edit).
+    const versionSeed = grants
+      .map(g => `${g.id}:${g.mode}:${g.approval_required ? '1' : '0'}`)
+      .sort()
+      .join('|')
+    const version = `snap_${simpleHash(versionSeed)}`
+
+    return {
+      agent_id: agent.id,
+      tenant_id: agent.tenant_id,
+      version,
+      grants: entries,
+      issued_at: new Date().toISOString(),
+    }
   },
 
   // ── GET /dashboard/spend ──────────────────────────────────────────
@@ -302,4 +394,26 @@ export const api = {
     await delay()
     return getSpendDashboard(range, group_by)
   },
+}
+
+function policyModeForGrant(grant: ToolGrant, def: ToolDefinition | undefined): ToolPolicyMode {
+  if (def?.default_mode === 'denied') return 'denied'
+  if (grant.approval_required) return 'requires_approval'
+  if (grant.mode === 'read') return 'read_only'
+  return def?.default_mode ?? 'requires_approval'
+}
+
+function scopesForGrant(grant: ToolGrant): string[] | undefined {
+  const raw = (grant.config as { scopes?: unknown })?.scopes
+  if (Array.isArray(raw) && raw.every(s => typeof s === 'string')) return raw as string[]
+  return undefined
+}
+
+function simpleHash(s: string): string {
+  let h = 2166136261
+  for (let i = 0; i < s.length; i += 1) {
+    h ^= s.charCodeAt(i)
+    h = Math.imul(h, 16777619)
+  }
+  return (h >>> 0).toString(16).padStart(8, '0')
 }

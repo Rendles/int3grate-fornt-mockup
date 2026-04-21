@@ -135,7 +135,7 @@ export default function ApprovalsScreen() {
                   <div style={{ minWidth: 0 }}>
                     <div className="truncate" style={{ fontSize: 13, color: 'var(--text)' }}>{a.requested_action}</div>
                     <div className="mono" style={{ fontSize: 10.5, color: 'var(--text-dim)', marginTop: 2 }}>
-                      run {a.run_id} · task {a.task_id}
+                      run {a.run_id} · {a.task_id ? `task ${a.task_id}` : 'standalone'}
                     </div>
                   </div>
                   <div>

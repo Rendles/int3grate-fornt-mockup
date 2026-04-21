@@ -9,11 +9,13 @@ import {
   IconAgent,
   IconApproval,
   IconHome,
+  IconIntegration,
   IconLogout,
   IconMoon,
   IconSpend,
   IconSun,
   IconTask,
+  IconTool,
 } from './icons'
 import { Avatar } from './common'
 import { roleLabel } from '../lib/format'
@@ -24,6 +26,7 @@ interface NavItem {
   to: string
   icon: ReactNode
   badge?: { count: number | string; tone?: 'accent' | 'warn' | 'muted' }
+  note?: string
 }
 
 export function Sidebar() {
@@ -48,6 +51,7 @@ export function Sidebar() {
       to: '/tasks',
       icon: <IconTask />,
       badge: activeTasks > 0 ? { count: activeTasks, tone: 'muted' } : undefined,
+      note: 'deferred',
     },
     {
       key: 'approvals',
@@ -56,8 +60,9 @@ export function Sidebar() {
       icon: <IconApproval />,
       badge: pendingApprovals > 0 ? { count: pendingApprovals, tone: 'warn' } : undefined,
     },
+    { key: 'tools', label: 'Tools', to: '/tools', icon: <IconTool /> },
     { key: 'spend', label: 'Spend', to: '/spend', icon: <IconSpend /> },
-    // { key: 'components', label: 'Components', to: '/components', icon: <IconIntegration /> },
+    { key: 'components', label: 'Components', to: '/components', icon: <IconIntegration /> },
   ]
 
   const isActive = (to: string) => {
@@ -101,6 +106,24 @@ export function Sidebar() {
           >
             <span className="sb__item-icon">{item.icon}</span>
             <span>{item.label}</span>
+            {item.note && (
+              <span
+                className="mono"
+                title="MVP-deferred per ADR-0003"
+                style={{
+                  fontSize: 9,
+                  letterSpacing: '0.14em',
+                  textTransform: 'uppercase',
+                  color: 'var(--text-dim)',
+                  border: '1px dashed var(--border-2)',
+                  borderRadius: 3,
+                  padding: '1px 5px',
+                  marginLeft: 6,
+                }}
+              >
+                {item.note}
+              </span>
+            )}
             {item.badge && (
               <span
                 className={`sb__item-badge${

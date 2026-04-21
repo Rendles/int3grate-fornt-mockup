@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react'
 import { AppShell } from '../components/shell'
 import { PageHeader, Btn, Chip, Status, CommandBar, InfoHint } from '../components/common'
-import { LoadingList, NoAccessState } from '../components/states'
+import { Banner, LoadingList, NoAccessState } from '../components/states'
 import { IconPlay } from '../components/icons'
 import { Link } from '../router'
 import { api } from '../lib/api'
@@ -73,6 +73,11 @@ export default function TaskDetailScreen({ taskId }: { taskId: string }) {
             { label: 'CREATED BY', value: task.created_by ?? '—' },
           ]}
         />
+
+        <div style={{ height: 16 }} />
+        <Banner tone="warn" title="Task concept is MVP-deferred (ADR-0003)">
+          Gateway v0.2.0 marks <span className="mono">/tasks/{'{id}'}</span> as <span className="mono">x-mvp-deferred</span>. This screen is kept for design continuity; runs can exist without a task.
+        </Banner>
 
         <div style={{ height: 20 }} />
 
