@@ -129,6 +129,22 @@ export const IconClock = wrap(<><circle cx="12" cy="12" r="9"/><path d="M12 7v5l
 
 export const IconLock = wrap(<><rect x="4" y="11" width="16" height="10" rx="2"/><path d="M8 11V7a4 4 0 0 1 8 0v4"/></>)
 
+export const IconEye = wrap(
+  <>
+    <path d="M2.5 12s3.5-6 9.5-6 9.5 6 9.5 6-3.5 6-9.5 6-9.5-6-9.5-6z" />
+    <circle cx="12" cy="12" r="3" />
+  </>
+)
+
+export const IconEyeOff = wrap(
+  <>
+    <path d="M3 3l18 18" />
+    <path d="M10.6 5.2A10.6 10.6 0 0 1 12 5c6 0 9.5 7 9.5 7a16.5 16.5 0 0 1-3.1 3.8" />
+    <path d="M6.6 6.6C3.9 8.4 2.5 12 2.5 12s3.5 7 9.5 7a10.3 10.3 0 0 0 4.4-1" />
+    <path d="M9.9 9.9A3 3 0 0 0 14.1 14.1" />
+  </>
+)
+
 export const IconFilter = wrap(<><path d="M3 4h18M6 10h12M9 16h6M11 22h2"/></>)
 
 export const IconLogout = wrap(<><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4M16 17l5-5-5-5M21 12H9"/></>)

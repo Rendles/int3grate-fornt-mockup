@@ -57,6 +57,7 @@ function Router() {
     { pattern: '/approvals/:approvalId', render: p => <ApprovalDetailScreen approvalId={p.approvalId} /> },
     { pattern: '/spend', render: () => <SpendScreen /> },
     { pattern: '/profile', render: () => <ProfileScreen /> },
+    // { pattern: '/components', render: () => <StyleGuideScreen /> },
   ]
 
   for (const r of routes) {

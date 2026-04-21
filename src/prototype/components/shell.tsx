@@ -57,6 +57,7 @@ export function Sidebar() {
       badge: pendingApprovals > 0 ? { count: pendingApprovals, tone: 'warn' } : undefined,
     },
     { key: 'spend', label: 'Spend', to: '/spend', icon: <IconSpend /> },
+    // { key: 'components', label: 'Components', to: '/components', icon: <IconIntegration /> },
   ]
 
   const isActive = (to: string) => {

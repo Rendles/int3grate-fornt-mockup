@@ -436,7 +436,7 @@
 /* ============================================================= PAGE */
 
 .page {
-  padding: 28px 32px 96px;
+  padding: 28px 32px 32px;
 }
 .page--wide { max-width: none; }
 .page--narrow { max-width: 920px; margin-inline: auto; }
@@ -778,6 +778,34 @@
 }
 .input::placeholder { color: var(--text-dim); }
 .input--mono { font-family: var(--font-mono); font-size: 12px; }
+.password-field {
+  position: relative;
+}
+.password-field .input {
+  padding-right: 40px;
+}
+.password-field__toggle {
+  position: absolute;
+  top: 50%;
+  right: 8px;
+  transform: translateY(-50%);
+  width: 28px;
+  height: 28px;
+  display: grid;
+  place-items: center;
+  border-radius: 4px;
+  color: var(--text-dim);
+  transition: background 120ms, color 120ms;
+}
+.password-field__toggle:hover {
+  background: var(--surface-3);
+  color: var(--text);
+}
+.password-field__toggle:focus-visible {
+  outline: none;
+  box-shadow: 0 0 0 3px var(--accent-soft);
+  color: var(--accent);
+}
 .textarea {
   min-height: 100px;
   resize: vertical;

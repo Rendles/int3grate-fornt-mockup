@@ -2,7 +2,7 @@ import { useState } from 'react'
 import { useAuth } from '../auth'
 import { useRouter } from '../router'
 import { Btn } from '../components/common'
-import { IconAlert, IconArrowRight } from '../components/icons'
+import { IconAlert, IconArrowRight, IconEye, IconEyeOff } from '../components/icons'
 import logo from '../../assets/logo.svg'
 
 interface FieldErrors {
@@ -48,6 +48,8 @@ export default function RegisterScreen() {
   const [createError, setCreateError] = useState<string | null>(null)
   const [fieldErrors, setFieldErrors] = useState<FieldErrors>({})
   const [touched, setTouched] = useState<Partial<Record<keyof FieldErrors, boolean>>>({})
+  const [passwordVisible, setPasswordVisible] = useState(false)
+  const [confirmPasswordVisible, setConfirmPasswordVisible] = useState(false)
 
   const form: RegisterForm = { name, workspaceName, email, password, confirmPassword }
   const showNameErr = (touched.name && fieldErrors.name) || undefined
@@ -233,9 +235,10 @@ export default function RegisterScreen() {
 
           <label>
             <div className="mono uppercase" style={{ color: 'var(--text-dim)', marginBottom: 6 }}>Password</div>
+            <div className="password-field">
             <input
               className="input"
-              type="password"
+              type={passwordVisible ? 'text' : 'password'}
               value={password}
               onChange={e => updatePassword(e.target.value)}
               onBlur={() => markTouched('password')}
@@ -245,6 +248,16 @@ export default function RegisterScreen() {
               aria-describedby={showPasswordErr ? 'register-password-err' : undefined}
               style={showPasswordErr ? { borderColor: 'var(--danger-border)' } : undefined}
             />
+              <button
+                className="password-field__toggle"
+                type="button"
+                onClick={() => setPasswordVisible(v => !v)}
+                aria-label={passwordVisible ? 'Hide password' : 'Show password'}
+                aria-pressed={passwordVisible}
+              >
+                {passwordVisible ? <IconEyeOff className="ic" /> : <IconEye className="ic" />}
+              </button>
+            </div>
             {showPasswordErr && (
               <div id="register-password-err" className="row row--sm" style={{ marginTop: 6, color: 'var(--danger)', fontSize: 11.5 }}>
                 <IconAlert className="ic ic--sm" />
@@ -255,9 +268,10 @@ export default function RegisterScreen() {
 
           <label>
             <div className="mono uppercase" style={{ color: 'var(--text-dim)', marginBottom: 6 }}>Confirm password</div>
+            <div className="password-field">
             <input
               className="input"
-              type="password"
+              type={confirmPasswordVisible ? 'text' : 'password'}
               value={confirmPassword}
               onChange={e => updateConfirmPassword(e.target.value)}
               onBlur={() => markTouched('confirmPassword')}
@@ -267,6 +281,16 @@ export default function RegisterScreen() {
               aria-describedby={showConfirmErr ? 'register-confirm-err' : undefined}
               style={showConfirmErr ? { borderColor: 'var(--danger-border)' } : undefined}
             />
+              <button
+                className="password-field__toggle"
+                type="button"
+                onClick={() => setConfirmPasswordVisible(v => !v)}
+                aria-label={confirmPasswordVisible ? 'Hide password' : 'Show password'}
+                aria-pressed={confirmPasswordVisible}
+              >
+                {confirmPasswordVisible ? <IconEyeOff className="ic" /> : <IconEye className="ic" />}
+              </button>
+            </div>
             {showConfirmErr && (
               <div id="register-confirm-err" className="row row--sm" style={{ marginTop: 6, color: 'var(--danger)', fontSize: 11.5 }}>
                 <IconAlert className="ic ic--sm" />

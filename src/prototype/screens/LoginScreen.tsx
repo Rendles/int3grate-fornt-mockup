@@ -2,7 +2,7 @@ import { useState } from 'react'
 import { useAuth } from '../auth'
 import { useRouter } from '../router'
 import { Btn } from '../components/common'
-import { IconAlert, IconArrowRight } from '../components/icons'
+import { IconAlert, IconArrowRight, IconEye, IconEyeOff } from '../components/icons'
 import logo from '../../assets/logo.svg'
 
 interface FieldErrors {
@@ -28,6 +28,7 @@ export default function LoginScreen() {
   const [invalidCreds, setInvalidCreds] = useState(false)
   const [fieldErrors, setFieldErrors] = useState<FieldErrors>({})
   const [touched, setTouched] = useState<{ email?: boolean; password?: boolean }>({})
+  const [passwordVisible, setPasswordVisible] = useState(false)
 
   const showEmailErr = (touched.email && fieldErrors.email) || undefined
   const showPasswordErr = (touched.password && fieldErrors.password) || undefined
@@ -131,9 +132,10 @@ export default function LoginScreen() {
 
           <label>
             <div className="mono uppercase" style={{ color: 'var(--text-dim)', marginBottom: 6 }}>Password</div>
+            <div className="password-field">
             <input
               className="input"
-              type="password"
+              type={passwordVisible ? 'text' : 'password'}
               value={password}
               onChange={e => updatePassword(e.target.value)}
               onBlur={() => {
@@ -146,6 +148,16 @@ export default function LoginScreen() {
               aria-describedby={showPasswordErr ? 'login-password-err' : undefined}
               style={showPasswordErr ? { borderColor: 'var(--danger-border)' } : undefined}
             />
+              <button
+                className="password-field__toggle"
+                type="button"
+                onClick={() => setPasswordVisible(v => !v)}
+                aria-label={passwordVisible ? 'Hide password' : 'Show password'}
+                aria-pressed={passwordVisible}
+              >
+                {passwordVisible ? <IconEyeOff className="ic" /> : <IconEye className="ic" />}
+              </button>
+            </div>
             {showPasswordErr && (
               <div id="login-password-err" className="row row--sm" style={{ marginTop: 6, color: 'var(--danger)', fontSize: 11.5 }}>
                 <IconAlert className="ic ic--sm" />
