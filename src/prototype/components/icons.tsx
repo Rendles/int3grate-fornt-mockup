@@ -1,5 +1,11 @@
 import type { SVGProps } from 'react'
 
+/* =============================================================
+   Legacy hand-rolled icons — kept during migration to Hugeicons.
+   New code should use <Icon icon={...} /> from './icon' with icons
+   from @hugeicons/core-free-icons.
+   ============================================================= */
+
 const base: SVGProps<SVGSVGElement> = {
   viewBox: '0 0 24 24',
   fill: 'none',

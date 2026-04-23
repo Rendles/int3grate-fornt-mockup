@@ -51,7 +51,10 @@
       "PowerShell(npx eslint src/prototype/components/common/chip.tsx)",
       "Bash(node -e ' *)",
       "PowerShell($bytes = [System.IO.File]::ReadAllBytes\\(\"src/prototype/screens/AgentDetailScreen.tsx\"\\); $str = [System.Text.Encoding]::UTF8.GetString\\($bytes\\); [regex]::Matches\\($str, \"[^\\\\x00-\\\\x7F]+\"\\) | ForEach-Object { $_.Value } | Sort-Object -Unique)",
-      "PowerShell(npx tsc -b 2>&1)"
+      "PowerShell(npx tsc -b 2>&1)",
+      "Bash(npm view *)",
+      "Bash(npm install *)",
+      "Bash(git stash *)"
     ]
   }
 }

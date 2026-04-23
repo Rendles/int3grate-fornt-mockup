@@ -1,8 +1,8 @@
 import { useEffect, useState } from 'react'
-import { Code, Text } from '@radix-ui/themes'
+import { Badge, Button, Code, Flex, Grid, Text } from '@radix-ui/themes'
 
 import { AppShell } from '../components/shell'
-import { Caption, PageHeader, Btn, Chip, Status, CommandBar, InfoHint } from '../components/common'
+import { Caption, PageHeader, Status, CommandBar, InfoHint } from '../components/common'
 import { LoadingList, NoAccessState, Banner } from '../components/states'
 import { IconAlert, IconArrowRight } from '../components/icons'
 import { Link } from '../router'
@@ -19,12 +19,13 @@ const STEP_KIND_LABEL: Record<RunStepType, string> = {
   validation: 'VALIDATION',
 }
 
-function statusTone(status: string): 'success' | 'warn' | 'danger' | 'info' | 'ghost' {
-  if (status === 'ok') return 'success'
-  if (status === 'failed') return 'danger'
-  if (status === 'blocked' || status === 'pending') return 'warn'
-  if (status === 'running') return 'info'
-  return 'ghost'
+type ToneColor = { color: 'green' | 'amber' | 'red' | 'cyan' | 'gray'; variant: 'soft' | 'outline' }
+function statusTone(status: string): ToneColor {
+  if (status === 'ok') return { color: 'green', variant: 'soft' }
+  if (status === 'failed') return { color: 'red', variant: 'soft' }
+  if (status === 'blocked' || status === 'pending') return { color: 'amber', variant: 'soft' }
+  if (status === 'running') return { color: 'cyan', variant: 'soft' }
+  return { color: 'gray', variant: 'outline' }
 }
 
 export default function RunDetailScreen({ runId }: { runId: string }) {
@@ -86,7 +87,7 @@ export default function RunDetailScreen({ runId }: { runId: string }) {
             <>
               <Status status={run.status} />
               {run.task_id && (
-                <Btn variant="ghost" href={`/tasks/${run.task_id}`}>Task</Btn>
+                <Button asChild variant="ghost"><a href={`#/tasks/${run.task_id}`}>Task</a></Button>
               )}
             </>
           }
@@ -124,14 +125,14 @@ export default function RunDetailScreen({ runId }: { runId: string }) {
             <div style={{ height: 16 }} />
             <div className="card" style={{ borderColor: 'var(--red-a6)', background: 'var(--red-a3)' }}>
               <div style={{ padding: '14px 18px' }}>
-                <div className="row row--sm" style={{ marginBottom: 6 }}>
+                <Flex align="center" gap="2" mb="2">
                   <IconAlert className="ic" style={{ color: 'var(--red-11)' }} />
-                  <span style={{ fontFamily: 'var(--heading-font-family)', fontSize: 18, color: 'var(--red-11)' }}>Run failed</span>
+                  <Text as="span" size="5" style={{ color: 'var(--red-11)' }}>Run failed</Text>
                   {run.error_kind && run.error_kind !== 'none' && (
-                    <Chip tone="danger" square>{run.error_kind}</Chip>
+                    <Badge color="red" variant="soft" radius="small" size="1">{run.error_kind}</Badge>
                   )}
-                </div>
-                <div style={{ fontSize: 13, color: 'var(--gray-12)', lineHeight: 1.55 }}>{run.error_message}</div>
+                </Flex>
+                <Text as="div" size="2" style={{ lineHeight: 1.55 }}>{run.error_message}</Text>
               </div>
             </div>
           </>
@@ -149,22 +150,22 @@ export default function RunDetailScreen({ runId }: { runId: string }) {
               }}
             >
               <div style={{ padding: '14px 18px' }}>
-                <div className="row row--sm" style={{ marginBottom: 6, gap: 8 }}>
+                <Flex align="center" gap="2" mb="2">
                   <IconAlert className="ic" style={{ color: 'var(--amber-11)' }} />
-                  <span style={{ fontFamily: 'var(--heading-font-family)', fontSize: 18, color: 'var(--amber-11)' }}>
+                  <Text as="span" size="5" style={{ color: 'var(--amber-11)' }}>
                     Completed with errors
-                  </span>
+                  </Text>
                   {run.error_kind && run.error_kind !== 'none' && (
-                    <Chip tone="warn" square>{run.error_kind}</Chip>
+                    <Badge color="amber" variant="soft" radius="small" size="1">{run.error_kind}</Badge>
                   )}
-                </div>
-                <div style={{ fontSize: 13, color: 'var(--gray-12)', lineHeight: 1.55 }}>
+                </Flex>
+                <Text as="div" size="2" style={{ lineHeight: 1.55 }}>
                   {run.error_message ?? 'The run produced assistant output, but one or more tool calls failed.'}
-                </div>
+                </Text>
                 {run.tool_errors && run.tool_errors.length > 0 && (
-                  <div style={{ fontSize: 11, color: 'var(--gray-10)', marginTop: 8 }}>
+                  <Text as="div" size="1" color="gray" mt="2">
                     {run.tool_errors.length} tool error{run.tool_errors.length === 1 ? '' : 's'} · see below
-                  </div>
+                  </Text>
                 )}
               </div>
             </div>
@@ -182,7 +183,7 @@ export default function RunDetailScreen({ runId }: { runId: string }) {
 
         <div className="card">
           <div className="card__head">
-            <div className="card__title">Steps · {run.steps.length}</div>
+            <Text as="div" size="2" weight="medium" className="card__title">Steps · {run.steps.length}</Text>
           </div>
           <div className="card__body" style={{ padding: 0 }}>
             <div style={{
@@ -192,18 +193,15 @@ export default function RunDetailScreen({ runId }: { runId: string }) {
               padding: '8px 16px',
               background: 'var(--gray-3)',
               borderBottom: '1px solid var(--gray-6)',
-              fontFamily: 'var(--code-font-family)',
-              fontSize: 9.5,
-              color: 'var(--gray-10)',
               textTransform: 'uppercase',
               letterSpacing: '0.14em',
             }}>
-              <span>step_type</span>
-              <span>status</span>
-              <span>model / tool</span>
-              <span style={{ textAlign: 'right' }}>duration</span>
-              <span style={{ textAlign: 'right' }}>tokens</span>
-              <span style={{ textAlign: 'right' }}>cost</span>
+              <Text as="span" size="1" color="gray">step_type</Text>
+              <Text as="span" size="1" color="gray">status</Text>
+              <Text as="span" size="1" color="gray">model / tool</Text>
+              <Text as="span" size="1" color="gray" style={{ textAlign: 'right' }}>duration</Text>
+              <Text as="span" size="1" color="gray" style={{ textAlign: 'right' }}>tokens</Text>
+              <Text as="span" size="1" color="gray" style={{ textAlign: 'right' }}>cost</Text>
               <span />
             </div>
             {run.steps.map(step => (
@@ -215,7 +213,7 @@ export default function RunDetailScreen({ runId }: { runId: string }) {
         <div style={{ height: 20 }} />
 
         <div className="card">
-          <div className="card__head"><div className="card__title">Run metadata</div></div>
+          <div className="card__head"><Text as="div" size="2" weight="medium" className="card__title">Run metadata</Text></div>
           <div className="card__body">
             <MetaRow label="id" value={<Code variant="ghost">{run.id}</Code>} />
             <MetaRow label="tenant_id" value={<Code variant="ghost">{run.tenant_id}</Code>} />
@@ -261,36 +259,36 @@ function StepRow({ step, expanded, onToggle }: { step: RunStep; expanded: boolea
           color: 'var(--gray-12)',
         }}
       >
-        <Code variant="ghost" style={{ fontSize: 11, color: 'var(--gray-11)' }}>
+        <Code variant="ghost" size="1" color="gray">
           {STEP_KIND_LABEL[step.step_type]}
         </Code>
-        <Chip tone={tone}>{step.status}</Chip>
-        <div className="truncate" style={{ fontSize: 11.5, color: 'var(--gray-12)' }}>
+        <Badge color={tone.color} variant={tone.variant} radius="full" size="1">{step.status}</Badge>
+        <Text as="div" size="1" className="truncate">
           {step.model_name ?? step.tool_name ?? <Text color="gray">—</Text>}
-        </div>
-        <Code variant="ghost" style={{ fontSize: 11, color: 'var(--gray-10)', textAlign: 'right' }}>
+        </Text>
+        <Code variant="ghost" size="1" color="gray" style={{ textAlign: 'right' }}>
           {durationMs(step.duration_ms)}
         </Code>
-        <Code variant="ghost" style={{ fontSize: 11, color: 'var(--gray-10)', textAlign: 'right' }}>
+        <Code variant="ghost" size="1" color="gray" style={{ textAlign: 'right' }}>
           {step.tokens_in != null || step.tokens_out != null
             ? `${num(step.tokens_in ?? 0)}/${num(step.tokens_out ?? 0)}`
             : '—'}
         </Code>
-        <Code variant="ghost" style={{ fontSize: 11, color: 'var(--gray-10)', textAlign: 'right' }}>
+        <Code variant="ghost" size="1" color="gray" style={{ textAlign: 'right' }}>
           {step.cost_usd != null ? money(step.cost_usd, { cents: true }) : '—'}
         </Code>
         <IconArrowRight className="ic" style={{ transform: expanded ? 'rotate(90deg)' : undefined, transition: 'transform 120ms' }} />
       </button>
       {expanded && (
         <div style={{ padding: '0 16px 16px' }}>
-          <div className="grid grid--2" style={{ gap: 12 }}>
+          <Grid columns="2" gap="3">
             <JsonPanel title="input_ref" value={step.input_ref} />
             <JsonPanel title="output_ref" value={step.output_ref} />
-          </div>
-          <div style={{ fontSize: 10.5, color: 'var(--gray-10)', marginTop: 10 }}>
+          </Grid>
+          <Text as="div" size="1" color="gray" mt="3">
             step_id · {step.id} · created {absTime(step.created_at)}
             {step.completed_at ? ` · completed ${absTime(step.completed_at)}` : ''}
-          </div>
+          </Text>
         </div>
       )}
     </div>
@@ -300,34 +298,30 @@ function StepRow({ step, expanded, onToggle }: { step: RunStep; expanded: boolea
 function JsonPanel({ title, value }: { title: string; value: Record<string, unknown> | null }) {
   return (
     <div>
-      <Caption as="div" style={{ fontSize: 9.5, marginBottom: 6 }}>{title}</Caption>
-      <pre
-        style={{
-          fontFamily: 'var(--code-font-family)',
-          fontSize: 11,
-          color: value ? 'var(--gray-12)' : 'var(--gray-10)',
-          background: 'var(--gray-3)',
-          border: '1px solid var(--gray-6)',
-          padding: 10,
-          borderRadius: 4,
-          margin: 0,
-          whiteSpace: 'pre-wrap',
-          overflow: 'auto',
-          maxHeight: 200,
-        }}
-      >
-        {value ? JSON.stringify(value, null, 2) : 'null'}
-      </pre>
+      <Caption as="div" mb="2">{title}</Caption>
+      <Code asChild size="1" variant="soft" color={value ? undefined : 'gray'}>
+        <pre
+          style={{
+            padding: 10,
+            margin: 0,
+            whiteSpace: 'pre-wrap',
+            overflow: 'auto',
+            maxHeight: 200,
+          }}
+        >
+          {value ? JSON.stringify(value, null, 2) : 'null'}
+        </pre>
+      </Code>
     </div>
   )
 }
 
 function MetaRow({ label, value }: { label: string; value: React.ReactNode }) {
   return (
-    <div className="row row--between" style={{ padding: '6px 0', borderBottom: '1px dashed var(--gray-6)' }}>
-      <Caption style={{ fontSize: 10.5 }}>{label}</Caption>
-      <span style={{ fontSize: 12 }}>{value}</span>
-    </div>
+    <Flex align="center" justify="between" gap="3" py="1" style={{ borderBottom: '1px dashed var(--gray-6)' }}>
+      <Caption>{label}</Caption>
+      <Text as="span" size="1">{value}</Text>
+    </Flex>
   )
 }
 
@@ -335,7 +329,7 @@ function ToolErrorsCard({ errors }: { errors: RunToolError[] }) {
   return (
     <div className="card">
       <div className="card__head">
-        <div className="card__title">Tool errors · {errors.length}</div>
+        <Text as="div" size="2" weight="medium" className="card__title">Tool errors · {errors.length}</Text>
         <InfoHint>
           Populated when <Code variant="ghost">status = completed_with_errors</Code>, or when a failed run's <Code variant="ghost">error_kind</Code> is <Code variant="ghost">tool_error</Code>.
         </InfoHint>
@@ -349,20 +343,18 @@ function ToolErrorsCard({ errors }: { errors: RunToolError[] }) {
             padding: '8px 16px',
             background: 'var(--gray-3)',
             borderBottom: '1px solid var(--gray-6)',
-            fontFamily: 'var(--code-font-family)',
-            fontSize: 9.5,
-            color: 'var(--gray-10)',
             textTransform: 'uppercase',
             letterSpacing: '0.14em',
           }}
         >
-          <span>tool</span>
-          <span>status</span>
-          <span>message</span>
-          <span>at · tool_call_id</span>
+          <Text as="span" size="1" color="gray">tool</Text>
+          <Text as="span" size="1" color="gray">status</Text>
+          <Text as="span" size="1" color="gray">message</Text>
+          <Text as="span" size="1" color="gray">at · tool_call_id</Text>
         </div>
         {errors.map((e, i) => {
-          const tone = e.status === 'timeout' ? 'warn' : e.status === 'denied' ? 'ghost' : 'danger'
+          const color = e.status === 'timeout' ? 'amber' : e.status === 'denied' ? 'gray' : 'red'
+          const variant = e.status === 'denied' ? 'outline' : 'soft'
           return (
             <div
               key={`${e.tool}-${i}`}
@@ -375,15 +367,15 @@ function ToolErrorsCard({ errors }: { errors: RunToolError[] }) {
                 alignItems: 'start',
               }}
             >
-              <Code variant="ghost" style={{ fontSize: 11.5, color: 'var(--gray-12)' }}>{e.tool}</Code>
-              <Chip tone={tone}>{e.status}</Chip>
-              <span style={{ fontSize: 12, color: 'var(--gray-11)', lineHeight: 1.55 }}>
-                {e.message ?? <Text color="gray">—</Text>}
-              </span>
-              <div style={{ fontSize: 10.5 }}>
-                <div style={{ color: 'var(--gray-10)' }}>{e.at ? absTime(e.at) : '—'}</div>
+              <Code variant="ghost" size="1">{e.tool}</Code>
+              <Badge color={color} variant={variant} radius="full" size="1">{e.status}</Badge>
+              <Text as="span" size="1" color="gray" style={{ lineHeight: 1.55 }}>
+                {e.message ?? '—'}
+              </Text>
+              <div>
+                <Text as="div" size="1" color="gray">{e.at ? absTime(e.at) : '—'}</Text>
                 {e.tool_call_id && (
-                  <div style={{ color: 'var(--gray-10)', marginTop: 2 }}>{e.tool_call_id}</div>
+                  <Text as="div" size="1" color="gray" mt="1">{e.tool_call_id}</Text>
                 )}
               </div>
             </div>

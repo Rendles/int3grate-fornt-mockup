@@ -1,8 +1,8 @@
 import { useEffect, useState } from 'react'
-import { Code, Text } from '@radix-ui/themes'
+import { Badge, Box, Button, Code, Flex, Grid, Text } from '@radix-ui/themes'
 
 import { AppShell } from '../components/shell'
-import { Caption, PageHeader, Btn, Chip, Status, CommandBar, InfoHint } from '../components/common'
+import { Caption, PageHeader, Status, CommandBar, InfoHint } from '../components/common'
 import { TextAreaField } from '../components/fields'
 import { Banner, LoadingList, NoAccessState } from '../components/states'
 import {
@@ -176,15 +176,19 @@ export default function ApprovalDetailScreen({ approvalId }: { approvalId: strin
           actions={
             <>
               <Status status={approval.status} />
-              <Btn variant="ghost" size="sm" href={`/runs/${approval.run_id}`}>
-                Open run <IconArrowRight className="ic ic--sm" />
-              </Btn>
+              <Button asChild variant="ghost" size="1">
+                <a href={`#/runs/${approval.run_id}`}>
+                  Open run <IconArrowRight className="ic ic--sm" />
+                </a>
+              </Button>
               {approval.task_id && (
-                <Btn variant="ghost" size="sm" href={`/tasks/${approval.task_id}`}>
-                  Open task <IconArrowRight className="ic ic--sm" />
-                </Btn>
+                <Button asChild variant="ghost" size="1">
+                  <a href={`#/tasks/${approval.task_id}`}>
+                    Open task <IconArrowRight className="ic ic--sm" />
+                  </a>
+                </Button>
               )}
-              <Btn variant="ghost" size="sm" href="/approvals">Back to inbox</Btn>
+              <Button asChild variant="ghost" size="1"><a href="#/approvals">Back to inbox</a></Button>
             </>
           }
         />
@@ -209,7 +213,7 @@ export default function ApprovalDetailScreen({ approvalId }: { approvalId: strin
             <Banner
               tone="danger"
               title={`Already resolved · ${conflict.status}`}
-              action={<Btn variant="ghost" onClick={() => setConflict(null)}>Dismiss</Btn>}
+              action={<Button variant="ghost" onClick={() => setConflict(null)}>Dismiss</Button>}
             >
               Another approver decided this while you were reviewing.
               {conflict.approver_user_id && (
@@ -264,7 +268,7 @@ export default function ApprovalDetailScreen({ approvalId }: { approvalId: strin
 
         {/* Metadata */}
         <div className="card">
-          <div className="card__head"><div className="card__title">Approval fields</div></div>
+          <div className="card__head"><Text as="div" size="2" weight="medium" className="card__title">Approval fields</Text></div>
           <div className="card__body">
             <MetaRow label="id" value={<Code variant="ghost">{approval.id}</Code>} />
             <MetaRow label="run_id" value={<Link to={`/runs/${approval.run_id}`}><Code variant="ghost">{approval.run_id}</Code></Link>} />
@@ -278,7 +282,7 @@ export default function ApprovalDetailScreen({ approvalId }: { approvalId: strin
             <MetaRow label="requested_action" value={approval.requested_action} />
             <MetaRow label="requested_by" value={<Code variant="ghost">{approval.requested_by ?? '—'}</Code>} />
             <MetaRow label="requested_by_name" value={approval.requested_by_name ?? <Text color="gray">null</Text>} />
-            <MetaRow label="approver_role" value={<Chip>{approval.approver_role ?? '—'}</Chip>} />
+            <MetaRow label="approver_role" value={<Badge color="gray" variant="soft" radius="full" size="1">{approval.approver_role ?? '—'}</Badge>} />
             <MetaRow label="approver_user_id" value={<Code variant="ghost">{approval.approver_user_id ?? '—'}</Code>} />
             <MetaRow label="status" value={<Status status={approval.status} />} />
             <MetaRow label="reason" value={approval.reason ?? <Text color="gray">null</Text>} />
@@ -293,25 +297,21 @@ export default function ApprovalDetailScreen({ approvalId }: { approvalId: strin
             <div style={{ height: 16 }} />
             <div className="card">
               <div className="card__head">
-                <div className="card__title">evidence_ref</div>
-                <Chip square>object</Chip>
+                <Text as="div" size="2" weight="medium" className="card__title">evidence_ref</Text>
+                <Badge color="gray" variant="soft" radius="small" size="1">object</Badge>
               </div>
               <div className="card__body">
-                <pre
-                  style={{
-                    fontFamily: 'var(--code-font-family)',
-                    fontSize: 12,
-                    color: 'var(--gray-12)',
-                    background: 'var(--gray-3)',
-                    border: '1px solid var(--gray-6)',
-                    padding: 12,
-                    borderRadius: 4,
-                    margin: 0,
-                    whiteSpace: 'pre-wrap',
-                  }}
-                >
-                  {JSON.stringify(approval.evidence_ref, null, 2)}
-                </pre>
+                <Code asChild size="1" variant="soft">
+                  <pre
+                    style={{
+                      padding: 12,
+                      margin: 0,
+                      whiteSpace: 'pre-wrap',
+                    }}
+                  >
+                    {JSON.stringify(approval.evidence_ref, null, 2)}
+                  </pre>
+                </Code>
               </div>
             </div>
           </>
@@ -332,16 +332,16 @@ function DecisionIntroCard({ onApprove, onReject }: { onApprove: () => void; onR
       }}
     >
       <div className="card__head">
-        <div className="card__title" style={{ color: 'var(--amber-11)' }}>
+        <Text as="div" size="2" weight="medium" className="card__title" style={{ color: 'var(--amber-11)' }}>
           <IconApproval className="ic" />
           Your decision is required
-        </div>
+        </Text>
       </div>
       <div className="card__body">
-        <p style={{ fontSize: 13.5, color: 'var(--gray-11)', marginBottom: 14, lineHeight: 1.55 }}>
+        <Text as="p" size="2" color="gray" mb="4" style={{ lineHeight: 1.55 }}>
           Your decision is written to the audit trail. Approving resumes the suspended run; rejecting stops the pending action.
-        </p>
-        <div className="grid grid--2" style={{ gap: 14 }}>
+        </Text>
+        <Grid columns="2" gap="4">
           <DecisionCTA
             tone="success"
             icon={<IconCheck />}
@@ -358,7 +358,7 @@ function DecisionIntroCard({ onApprove, onReject }: { onApprove: () => void; onR
             reasonHint="Reason required"
             onClick={onReject}
           />
-        </div>
+        </Grid>
       </div>
     </div>
   )
@@ -389,18 +389,18 @@ function DecisionCTA({
         color: 'var(--gray-12)',
       }}
     >
-      <div className="row" style={{ gap: 10, marginBottom: 10 }}>
+      <Flex align="center" gap="3" mb="3">
         <span style={{ width: 32, height: 32, borderRadius: 4, border: `1px solid ${border}`, background: 'var(--gray-3)', color, display: 'grid', placeItems: 'center' }}>
           {icon}
         </span>
-        <div style={{ fontFamily: 'var(--heading-font-family)', fontSize: 24, color }}>{title}</div>
-      </div>
-      <div style={{ fontSize: 12.5, color: 'var(--gray-11)', lineHeight: 1.55, marginBottom: 10 }}>
+        <Text as="div" size="6" style={{ color }}>{title}</Text>
+      </Flex>
+      <Text as="div" size="1" color="gray" mb="3" style={{ lineHeight: 1.55 }}>
         {sub}
-      </div>
-      <div style={{ fontSize: 10.5, color, letterSpacing: '0.12em', textTransform: 'uppercase' }}>
+      </Text>
+      <Text as="div" size="1" style={{ color, letterSpacing: '0.12em', textTransform: 'uppercase' }}>
         {reasonHint}
-      </div>
+      </Text>
     </button>
   )
 }
@@ -432,43 +432,41 @@ function DecisionConfirmCard({
   return (
     <div className="card" style={{ borderColor: border }}>
       <div className="card__head" style={{ background: bg }}>
-        <div className="row" style={{ gap: 10 }}>
+        <Flex align="center" gap="3">
           <span style={{ width: 30, height: 30, borderRadius: 4, border: `1px solid ${border}`, color, background: 'var(--gray-2)', display: 'grid', placeItems: 'center' }}>
             {isApprove ? <IconCheck /> : <IconX />}
           </span>
-          <div>
-            <div style={{ fontFamily: 'var(--heading-font-family)', fontSize: 22, color }}>
+          <Box>
+            <Text as="div" size="6" style={{ color }}>
               {isApprove ? 'Approve' : 'Reject'} {approval.id}
-            </div>
-            <div style={{ fontSize: 11, color: 'var(--gray-10)', marginTop: 2 }}>
+            </Text>
+            <Text as="div" size="1" color="gray" mt="1">
               {isApprove ? 'approving resumes the suspended run' : 'rejecting stops the requested action'}
-            </div>
-          </div>
-        </div>
+            </Text>
+          </Box>
+        </Flex>
         <button
           onClick={() => onSwitch(isApprove ? 'rejected' : 'approved')}
           style={{
-            fontSize: 10.5,
-            color: 'var(--gray-10)',
-            letterSpacing: '0.12em',
-            textTransform: 'uppercase',
             padding: '6px 10px',
             border: '1px solid var(--gray-7)',
             borderRadius: 4,
             background: 'var(--gray-3)',
           }}
         >
-          в†” switch to {isApprove ? 'reject' : 'approve'}
+          <Text size="1" color="gray" style={{ letterSpacing: '0.12em', textTransform: 'uppercase' }}>
+            в†” switch to {isApprove ? 'reject' : 'approve'}
+          </Text>
         </button>
       </div>
 
       <div className="card__body">
         <div className="card" style={{ background: 'var(--gray-3)', marginBottom: 14 }}>
           <div style={{ padding: 12 }}>
-            <Caption as="div" style={{ fontSize: 9.5, marginBottom: 6 }}>
+            <Caption as="div" mb="2">
               What happens next
             </Caption>
-            <div style={{ fontSize: 13, lineHeight: 1.55 }}>
+            <Text as="div" size="2" style={{ lineHeight: 1.55 }}>
               {isApprove ? (
                 <>
                   <IconPlay className="ic ic--sm" style={{ display: 'inline-block', verticalAlign: 'middle', color: 'var(--green-11)', marginRight: 4 }} />
@@ -480,19 +478,19 @@ function DecisionConfirmCard({
                   Run <Code variant="ghost">{approval.run_id}</Code> does NOT execute the pending action. The run terminates in the rejected state.
                 </>
               )}
-            </div>
+            </Text>
           </div>
         </div>
 
         <label>
-          <div className="row row--between" style={{ marginBottom: 6 }}>
+          <Flex align="center" justify="between" gap="3" mb="2">
             <Caption>
               reason {reasonRequired && <Text as="span" color="red">*</Text>}
             </Caption>
-            <Code variant="ghost" style={{ fontSize: 10, color: 'var(--gray-10)' }}>
+            <Code variant="ghost" size="1" color="gray">
               {reasonRequired ? 'required for rejects' : 'optional'}
             </Code>
-          </div>
+          </Flex>
           <TextAreaField
             style={{ minHeight: 90 }}
             placeholder={isApprove
@@ -505,34 +503,34 @@ function DecisionConfirmCard({
           />
         </label>
 
-        <div style={{ fontSize: 11, color: 'var(--gray-10)', marginTop: 14, lineHeight: 1.6 }}>
-          <span style={{ color: 'var(--gray-11)' }}>Signing as:</span> {userLabel}<br />
-          <span style={{ color: 'var(--gray-11)' }}>Decision:</span> {decision}
-        </div>
+        <Text as="div" size="1" color="gray" mt="4" style={{ lineHeight: 1.6 }}>
+          <Text as="span" color="gray">Signing as:</Text> {userLabel}<br />
+          <Text as="span" color="gray">Decision:</Text> {decision}
+        </Text>
 
         {saveError && (
-          <div style={{ marginTop: 12 }}>
+          <Box mt="3">
             <Banner tone="danger" title="Decision couldn't be submitted">{saveError}</Banner>
-          </div>
+          </Box>
         )}
       </div>
 
       <div className="card__foot">
-        <Btn variant="ghost" onClick={onCancel} disabled={busy}>
+        <Button variant="ghost" onClick={onCancel} disabled={busy}>
           <IconPause className="ic ic--sm" /> Back
-        </Btn>
-        <Btn
-          variant={isApprove ? 'primary' : 'danger'}
+        </Button>
+        <Button
+          color={isApprove ? undefined : 'red'}
           onClick={onConfirm}
           disabled={!canSubmit}
-          icon={isApprove ? <IconCheck /> : <IconX />}
         >
+          {isApprove ? <IconCheck /> : <IconX />}
           {busy
             ? 'submitting…'
             : isApprove
               ? 'Approve · resume run'
               : 'Reject · stop action'}
-        </Btn>
+        </Button>
       </div>
     </div>
   )
@@ -558,37 +556,40 @@ function ResolvedCard({ approval }: { approval: ApprovalRequest }) {
       }}
     >
       <div className="card__body">
-        <div className="row" style={{ gap: 14 }}>
+        <Flex align="center" gap="4">
           <span style={{
             width: 40, height: 40, borderRadius: 6, display: 'grid', placeItems: 'center',
             color: toneColor, border: `1px solid ${toneColor}`, background: 'var(--gray-3)',
           }}>
             {iconTone}
           </span>
-          <div style={{ flex: 1 }}>
-            <div style={{ fontFamily: 'var(--heading-font-family)', fontSize: 22, color: toneColor }}>
+          <Box flexGrow="1">
+            <Text as="div" size="6" style={{ color: toneColor }}>
               {approval.status[0].toUpperCase() + approval.status.slice(1)}
-            </div>
+            </Text>
             {approval.approver_user_id && (
-              <div style={{ fontSize: 11, color: 'var(--gray-10)', marginTop: 4 }}>
+              <Text as="div" size="1" color="gray" mt="1">
                 by {approval.approver_user_id}
-              </div>
+              </Text>
             )}
             {approval.resolved_at && (
-              <div style={{ fontSize: 11, color: 'var(--gray-10)', marginTop: 2 }}>
+              <Text as="div" size="1" color="gray" mt="1">
                 {absTime(approval.resolved_at)}
-              </div>
+              </Text>
             )}
             {approval.reason && (
-              <div style={{ fontSize: 13, color: 'var(--gray-11)', marginTop: 8, lineHeight: 1.55, fontStyle: 'italic' }}>
+              <Text as="div" size="2" color="gray" mt="2" style={{ lineHeight: 1.55, fontStyle: 'italic' }}>
                 "{approval.reason}"
-              </div>
+              </Text>
             )}
-          </div>
-          <Btn href={`/runs/${approval.run_id}`} variant="ghost" size="sm" icon={<IconArrowRight className="ic ic--sm" />}>
-            Open run
-          </Btn>
-        </div>
+          </Box>
+          <Button asChild variant="ghost" size="1">
+            <a href={`#/runs/${approval.run_id}`}>
+              <IconArrowRight className="ic ic--sm" />
+              Open run
+            </a>
+          </Button>
+        </Flex>
       </div>
     </div>
   )
@@ -596,10 +597,10 @@ function ResolvedCard({ approval }: { approval: ApprovalRequest }) {
 
 function MetaRow({ label, value }: { label: string; value: React.ReactNode }) {
   return (
-    <div className="row row--between" style={{ padding: '6px 0', borderBottom: '1px dashed var(--gray-6)' }}>
-      <Caption style={{ fontSize: 10.5 }}>{label}</Caption>
-      <span style={{ fontSize: 12 }}>{value}</span>
-    </div>
+    <Flex align="center" justify="between" gap="3" py="1" style={{ borderBottom: '1px dashed var(--gray-6)' }}>
+      <Caption>{label}</Caption>
+      <Text as="span" size="1">{value}</Text>
+    </Flex>
   )
 }
 
@@ -623,7 +624,7 @@ function ResumeBanner({
         tone="info"
         icon={<IconApproval className="ic" />}
         title={<>{label} queued · <Code variant="ghost">status = queued</Code></>}
-        action={<Chip tone="info" square>polling</Chip>}
+        action={<Badge color="cyan" variant="soft" radius="small" size="1">polling</Badge>}
       >
         Gateway accepted the decision (<Code variant="ghost">202 Accepted</Code>) and enqueued it for the orchestrator.
         Resume typically takes 8вЂ“15 s. Polling <Code variant="ghost">GET /approvals/{approval.id}</Code> and{' '}
@@ -638,7 +639,7 @@ function ResumeBanner({
         tone="info"
         icon={<IconPlay className="ic" />}
         title={<>Approval {approval.status} · run resuming</>}
-        action={<Chip tone="accent" square>polling run</Chip>}
+        action={<Badge color="blue" variant="soft" radius="small" size="1">polling run</Badge>}
       >
         Orchestrator picked up the decision. Waiting for <Code variant="ghost">run {approval.run_id}</Code> to reach a terminal state…
       </Banner>
@@ -663,9 +664,12 @@ function ResumeBanner({
       icon={icon}
       title={<>Run {run.status.replace(/_/g, ' ')}</>}
       action={
-        <Btn href={`/runs/${run.id}`} variant="ghost" size="sm" icon={<IconArrowRight />}>
-          Open run
-        </Btn>
+        <Button asChild variant="ghost" size="1">
+          <a href={`#/runs/${run.id}`}>
+            <IconArrowRight />
+            Open run
+          </a>
+        </Button>
       }
     >
       {run.error_message ?? (

@@ -1,6 +1,6 @@
 import '@radix-ui/themes/styles.css'
 import './prototype.css'
-import { Theme as RadixTheme, ThemePanel } from '@radix-ui/themes'
+import { Text, Theme as RadixTheme, ThemePanel } from '@radix-ui/themes'
 import { AuthProvider, useAuth } from './auth'
 import { RouterProvider, matchRoute, useRouter } from './router'
 import { ThemeProvider, useTheme } from './theme'
@@ -30,9 +30,9 @@ function Router() {
   if (loading) {
     return (
       <div className="prototype-root" style={{ display: 'grid', placeItems: 'center', minHeight: '100svh' }}>
-        <div style={{ color: 'var(--gray-10)', letterSpacing: '0.1em', textTransform: 'uppercase', fontSize: 11 }}>
+        <Text size="1" color="gray" style={{ letterSpacing: '0.1em', textTransform: 'uppercase' }}>
           connecting …
-        </div>
+        </Text>
       </div>
     )
   }

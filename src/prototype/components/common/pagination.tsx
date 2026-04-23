@@ -28,8 +28,9 @@ export function Pagination({
       justify="between"
       gap="4"
       wrap="wrap"
+      px="4"
+      py="2"
       style={{
-        padding: '10px 16px',
         borderTop: '1px solid var(--gray-6)',
         background: 'var(--gray-3)',
       }}

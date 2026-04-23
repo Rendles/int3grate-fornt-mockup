@@ -1,5 +1,5 @@
 import type { ReactNode } from 'react'
-import { Tooltip } from '@radix-ui/themes'
+import { IconButton, Tooltip } from '@radix-ui/themes'
 import { IconHelp } from '../icons'
 
 export function InfoHint({
@@ -11,9 +11,9 @@ export function InfoHint({
 }) {
   return (
     <Tooltip content={children}>
-      <button type="button" className="info-hint" aria-label="More information">
-        <IconHelp size={size} className="info-hint__icon" />
-      </button>
+      <IconButton variant="ghost" color="gray" size="1" radius="full" aria-label="More information">
+        <IconHelp size={size} />
+      </IconButton>
     </Tooltip>
   )
 }

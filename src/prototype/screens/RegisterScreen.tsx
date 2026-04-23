@@ -1,9 +1,8 @@
 import { useState } from 'react'
-import { Code, Text } from '@radix-ui/themes'
+import { Button, Code, Flex, Heading, Text } from '@radix-ui/themes'
 
 import { useAuth } from '../auth'
 import { useRouter } from '../router'
-import { Btn } from '../components/common'
 import { PasswordField, TextInput } from '../components/fields'
 import { Banner } from '../components/states'
 import { IconArrowRight } from '../components/icons'
@@ -129,32 +128,32 @@ export default function RegisterScreen() {
   return (
     <div className="login">
       <div className="login__side">
-        <div className="login__brand">
+        <Heading as="h2" size="6" weight="regular" className="login__brand">
           <div className="sb__brand-mark" style={{ width: 28, height: 28 }}>
             <img src={logo} alt="" />
           </div>
-          <span>Int3grate.ai</span>
-          <Code variant="ghost" style={{ fontSize: 10, letterSpacing: '0.14em', color: 'var(--gray-10)', textTransform: 'uppercase', marginLeft: 6 }}>
+          <Text as="span">Int3grate.ai</Text>
+          <Code variant="ghost" size="1" color="gray" ml="2" style={{ letterSpacing: '0.14em', textTransform: 'uppercase' }}>
             Control Plane
           </Code>
-        </div>
-        <h1 className="login__tagline">
+        </Heading>
+        <Heading as="h1" size="9" weight="regular" className="login__tagline">
           Start with a workspace.<br />
           Keep agents <em>accountable.</em>
-        </h1>
-        <div className="login__meta">
+        </Heading>
+        <Text as="div" size="1" color="gray" className="login__meta">
           <span>Tenant / new workspace</span>
           <span>Role / tenant admin</span>
           <span>Session / local mock</span>
-        </div>
+        </Text>
       </div>
 
       <div className="login__form-wrap">
         <form className="login__form" onSubmit={submit} noValidate>
           <div>
-            <div className="page__eyebrow" style={{ marginBottom: 8 }}>SIGN UP</div>
-            <h2>Create account.</h2>
-            <Text as="p" color="gray" style={{ fontSize: 13, marginTop: 4 }}>
+            <Text as="div" size="1" color="gray" className="page__eyebrow" mb="2">SIGN UP</Text>
+            <Heading as="h2" size="8" weight="regular" className="login__form-heading">Create account.</Heading>
+            <Text as="p" size="2" color="gray" mt="1">
               Create a workspace owner account for the control plane.
             </Text>
           </div>
@@ -223,28 +222,27 @@ export default function RegisterScreen() {
             error={showConfirmErr}
           />
 
-          <Btn
-            variant="primary"
-            size="lg"
-            type="submit"
-            disabled={busy}
-            icon={busy ? undefined : <IconArrowRight />}
-          >
+          <Button size="3" type="submit" disabled={busy}>
             {busy ? (
-              <span className="row row--sm">
+              <Flex align="center" gap="2">
                 <span
                   className="status-pulse"
                   style={{ width: 6, height: 6, borderRadius: 999, background: 'var(--accent-9)', color: 'var(--accent-9)', display: 'inline-block' }}
                 />
                 creating account...
-              </span>
-            ) : 'Create account'}
-          </Btn>
+              </Flex>
+            ) : (
+              <>
+                <IconArrowRight />
+                Create account
+              </>
+            )}
+          </Button>
 
-          <div className="row row--sm" style={{ justifyContent: 'space-between', color: 'var(--gray-11)', fontSize: 12.5 }}>
-            <span>Already have an account?</span>
-            <Btn variant="ghost" href="/login">Sign in</Btn>
-          </div>
+          <Flex align="center" justify="between" gap="2">
+            <Text size="1" color="gray">Already have an account?</Text>
+            <Button asChild variant="ghost"><a href="#/login">Sign in</a></Button>
+          </Flex>
         </form>
       </div>
     </div>

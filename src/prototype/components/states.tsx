@@ -1,7 +1,6 @@
 import type { ComponentProps, ReactNode } from 'react'
-import { Box, Callout, Card, Flex, Heading, Skeleton, Text } from '@radix-ui/themes'
+import { Box, Button, Callout, Card, Flex, Heading, Skeleton, Text } from '@radix-ui/themes'
 import { IconAlert, IconCheck, IconInfo, IconLock, IconTask } from './icons'
-import { Btn } from './common'
 
 type BannerTone = 'info' | 'warn' | 'danger' | 'success' | 'ghost'
 type CalloutColor = NonNullable<ComponentProps<typeof Callout.Root>['color']>
@@ -86,9 +85,15 @@ export function EmptyState({
       body={body}
       action={
         action && (
-          <Btn variant="primary" href={action.href} onClick={action.onClick}>
-            {action.label}
-          </Btn>
+          action.href
+            ? (
+              <Button asChild>
+                <a href={`#${action.href}`} onClick={action.onClick}>{action.label}</a>
+              </Button>
+            )
+            : (
+              <Button onClick={action.onClick}>{action.label}</Button>
+            )
         )
       }
     />
@@ -120,7 +125,7 @@ export function ErrorState({
       icon={<IconAlert />}
       title={title}
       body={body}
-      action={onRetry && <Btn onClick={onRetry}>Retry</Btn>}
+      action={onRetry && <Button onClick={onRetry}>Retry</Button>}
     />
   )
 }

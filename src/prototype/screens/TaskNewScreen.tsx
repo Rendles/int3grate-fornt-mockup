@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useState } from 'react'
-import { Code, DataList, Text } from '@radix-ui/themes'
+import { Badge, Box, Button, Code, DataList, Flex, Grid, Separator, Text } from '@radix-ui/themes'
 import { AppShell } from '../components/shell'
-import { PageHeader, Btn, Chip, MetaRow, Status, InfoHint } from '../components/common'
+import { PageHeader, MetaRow, Status, InfoHint } from '../components/common'
 import { TextAreaField, TextInput } from '../components/fields'
 import { Banner, LoadingList } from '../components/states'
 import { IconAlert, IconArrowRight, IconCheck, IconPlay } from '../components/icons'
@@ -98,19 +98,18 @@ export default function TaskNewScreen() {
           }
           actions={
             created ? (
-              <Btn variant="ghost" href="/tasks">Back to tasks</Btn>
+              <Button asChild variant="ghost"><a href="#/tasks">Back to tasks</a></Button>
             ) : (
               <>
-                <Btn variant="ghost" href="/tasks" disabled={busy}>Cancel</Btn>
-                <Btn
-                  variant="primary"
-                  icon={<IconPlay />}
+                <Button asChild variant="ghost" disabled={busy}><a href="#/tasks">Cancel</a></Button>
+                <Button
                   onClick={submit}
                   disabled={busy || !agentRunnable}
                   title={!agentRunnable ? 'Agent must be active with an active version' : undefined}
                 >
+                  <IconPlay />
                   {busy ? 'dispatching…' : 'Start task'}
-                </Btn>
+                </Button>
               </>
             )
           }
@@ -131,7 +130,7 @@ export default function TaskNewScreen() {
               <Banner
                 tone="warn"
                 title="Couldn't start task"
-                action={<Btn variant="ghost" onClick={() => setSaveError(null)}>Dismiss</Btn>}
+                action={<Button variant="ghost" onClick={() => setSaveError(null)}>Dismiss</Button>}
               >
                 {saveError}
               </Banner>
@@ -140,15 +139,15 @@ export default function TaskNewScreen() {
             {/* AGENT PICKER */}
             <div className="card">
               <div className="card__head">
-                <div className="card__title">Agent</div>
+                <Text as="div" size="2" weight="medium" className="card__title">Agent</Text>
                 {agent && !agentRunnable && (
-                  <Chip tone="warn">
+                  <Badge color="amber" variant="soft" radius="full" size="1">
                     {agent.status !== 'active' ? `${agent.status} · can't run` : 'no active version'}
-                  </Chip>
+                  </Badge>
                 )}
               </div>
               <div className="card__body">
-                <div className="stack stack--sm">
+                <Flex direction="column" gap="2">
                   {agents.filter(a => a.status !== 'archived').map(a => {
                     const on = a.id === agentId
                     return (
@@ -169,27 +168,29 @@ export default function TaskNewScreen() {
                         onClick={() => setAgentId(a.id)}
                       >
                         <div style={{ minWidth: 0, textAlign: 'left' }}>
-                          <div style={{ color: 'var(--gray-12)', fontSize: 13 }}>{a.name}</div>
-                          <div className="truncate" style={{ fontSize: 10.5, color: 'var(--gray-10)', marginTop: 2 }}>
+                          <Text as="div" size="2">{a.name}</Text>
+                          <Text as="div" size="1" color="gray" mt="1" className="truncate">
                             {a.id}
-                          </div>
+                          </Text>
                         </div>
                         <div style={{ textAlign: 'right' }}>
                           <Status status={a.status} />
                           {a.active_version && (
-                            <div style={{ fontSize: 10.5, color: 'var(--gray-10)', marginTop: 3 }}>
+                            <Text as="div" size="1" color="gray" mt="1">
                               v{a.active_version.version}
-                            </div>
+                            </Text>
                           )}
                         </div>
                       </button>
                     )
                   })}
-                </div>
+                </Flex>
                 {show('agent') && (
-                  <div className="row row--sm" style={{ marginTop: 8, color: 'var(--red-11)', fontSize: 11.5 }}>
-                    <IconAlert className="ic ic--sm" /> {fieldErrors.agent}
-                  </div>
+                  <Text as="div" size="1" color="red" mt="2">
+                    <Flex align="center" gap="2">
+                      <IconAlert className="ic ic--sm" /> {fieldErrors.agent}
+                    </Flex>
+                  </Text>
                 )}
               </div>
             </div>
@@ -198,9 +199,9 @@ export default function TaskNewScreen() {
 
             {/* TYPE PICKER */}
             <div className="card">
-              <div className="card__head"><div className="card__title">Type</div></div>
+              <div className="card__head"><Text as="div" size="2" weight="medium" className="card__title">Type</Text></div>
               <div className="card__body">
-                <div className="grid grid--3">
+                <Grid columns="3" gap="4">
                   {(['chat', 'one_time', 'schedule'] as TaskType[]).map(t => {
                     const on = type === t
                     return (
@@ -215,14 +216,14 @@ export default function TaskNewScreen() {
                         }}
                         onClick={() => setType(t)}
                       >
-                        <div style={{ fontFamily: 'var(--heading-font-family)', fontSize: 18, color: 'var(--gray-12)', marginBottom: 6 }}>
+                        <Text as="div" size="4" mb="2">
                           {t.replace('_', ' ')}
-                        </div>
-                        <div style={{ fontSize: 11.5, color: 'var(--gray-11)', lineHeight: 1.5 }}>{TYPE_DESC[t]}</div>
+                        </Text>
+                        <Text as="div" size="1" color="gray" style={{ lineHeight: 1.5 }}>{TYPE_DESC[t]}</Text>
                       </button>
                     )
                   })}
-                </div>
+                </Grid>
               </div>
             </div>
 
@@ -230,25 +231,26 @@ export default function TaskNewScreen() {
 
             <div className="card">
               <div className="card__body">
-                <div className="form-row">
-                  <div>
-                    <div className="form-row__label">Title</div>
-                    <div className="form-row__hint">Optional — shows in task lists.</div>
-                  </div>
-                  <div className="form-row__control">
+                <Grid columns={{ initial: '1', md: '240px 1fr' }} gap="5" py="5">
+                  <Box>
+                    <Text as="div" size="2" weight="medium">Title</Text>
+                    <Text as="div" size="1" color="gray" mt="1">Optional — shows in task lists.</Text>
+                  </Box>
+                  <Box>
                     <TextInput
                       value={title}
                       onChange={e => setTitle(e.target.value)}
                       placeholder="Triage today's inbound leads"
                     />
-                  </div>
-                </div>
-                <div className="form-row">
-                  <div>
-                    <div className="form-row__label">Input <Text as="span" color="red">*</Text></div>
-                    <div className="form-row__hint">Required. The message the agent will see.</div>
-                  </div>
-                  <div className="form-row__control">
+                  </Box>
+                </Grid>
+                <Separator size="4" />
+                <Grid columns={{ initial: '1', md: '240px 1fr' }} gap="5" py="5">
+                  <Box>
+                    <Text as="div" size="2" weight="medium">Input <Text as="span" color="red">*</Text></Text>
+                    <Text as="div" size="1" color="gray" mt="1">Required. The message the agent will see.</Text>
+                  </Box>
+                  <Box>
                     <TextAreaField
                       style={{ minHeight: 140 }}
                       value={input}
@@ -256,8 +258,8 @@ export default function TaskNewScreen() {
                       placeholder="Describe what needs to happen…"
                       error={show('input') ? fieldErrors.input : undefined}
                     />
-                  </div>
-                </div>
+                  </Box>
+                </Grid>
               </div>
             </div>
 
@@ -274,7 +276,7 @@ export default function TaskNewScreen() {
 
 function SuccessPanel({ task }: { task: Task }) {
   return (
-    <div className="stack">
+    <Flex direction="column" gap="4">
       <div
         className="card"
         style={{
@@ -283,7 +285,7 @@ function SuccessPanel({ task }: { task: Task }) {
         }}
       >
         <div className="card__body">
-          <div className="row" style={{ gap: 14, alignItems: 'flex-start' }}>
+          <Flex align="start" gap="4">
             <div
               className="state__icon"
               style={{
@@ -295,21 +297,21 @@ function SuccessPanel({ task }: { task: Task }) {
             >
               <IconCheck />
             </div>
-            <div style={{ flex: 1 }}>
-              <div style={{ fontFamily: 'var(--heading-font-family)', fontSize: 26, color: 'var(--gray-12)', letterSpacing: '-0.01em' }}>
+            <Box flexGrow="1">
+              <Text as="div" size="7" style={{ letterSpacing: '-0.01em' }}>
                 Task queued.
-              </div>
-              <div style={{ fontSize: 13, color: 'var(--gray-11)', marginTop: 6, lineHeight: 1.5 }}>
+              </Text>
+              <Text as="div" size="2" color="gray" mt="2" style={{ lineHeight: 1.5 }}>
                 The orchestrator will pick it up shortly. Open the task detail to watch for run attachment.
-              </div>
-            </div>
-          </div>
+              </Text>
+            </Box>
+          </Flex>
         </div>
       </div>
 
       <div className="card">
         <div className="card__head">
-          <div className="card__title">Response</div>
+          <Text as="div" size="2" weight="medium" className="card__title">Response</Text>
           <Status status={task.status} />
         </div>
         <div className="card__body">
@@ -317,16 +319,16 @@ function SuccessPanel({ task }: { task: Task }) {
             <MetaRow label="task id" value={<Code variant="ghost">{task.id}</Code>} />
             <MetaRow label="agent_id" value={<Link to={`/agents/${task.assigned_agent_id}`}><Code variant="ghost">{task.assigned_agent_id}</Code></Link>} />
             <MetaRow label="version_id" value={<Code variant="ghost">{task.assigned_agent_version_id ?? '—'}</Code>} />
-            <MetaRow label="type" value={<Chip>{task.type.replace('_', ' ')}</Chip>} />
+            <MetaRow label="type" value={<Badge color="gray" variant="soft" radius="full" size="1">{task.type.replace('_', ' ')}</Badge>} />
             <MetaRow label="tenant_id" value={<Code variant="ghost">{task.tenant_id}</Code>} />
             <MetaRow label="domain_id" value={<Code variant="ghost">{task.domain_id ?? '—'}</Code>} />
           </DataList.Root>
         </div>
       </div>
 
-      <div className="row" style={{ gap: 8, justifyContent: 'flex-end' }}>
-        <Btn variant="primary" href={`/tasks/${task.id}`} icon={<IconArrowRight />}>Open task detail</Btn>
-      </div>
-    </div>
+      <Flex justify="end" gap="2">
+        <Button asChild><a href={`#/tasks/${task.id}`}><IconArrowRight />Open task detail</a></Button>
+      </Flex>
+    </Flex>
   )
 }

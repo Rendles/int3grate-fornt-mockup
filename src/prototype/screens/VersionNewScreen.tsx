@@ -1,8 +1,8 @@
 import { useEffect, useState } from 'react'
-import { Code, Text } from '@radix-ui/themes'
+import { Box, Button, Code, Flex, Grid, Separator, Text } from '@radix-ui/themes'
 
 import { AppShell } from '../components/shell'
-import { PageHeader, Btn, InfoHint } from '../components/common'
+import { PageHeader, InfoHint } from '../components/common'
 import { SelectField, TextAreaField, TextInput } from '../components/fields'
 import { Banner, LoadingList, NoAccessState } from '../components/states'
 import { useRouter } from '../router'
@@ -135,16 +135,16 @@ export default function VersionNewScreen({ agentId }: { agentId: string }) {
               </InfoHint>
             </>
           }
-          title={<>New <em>version</em> <span style={{ color: 'var(--gray-11)', fontSize: 26, marginLeft: 6 }}>v{nextVer}</span></>}
+          title={<>New <em>version</em> <Text as="span" size="7" color="gray" ml="2">v{nextVer}</Text></>}
           subtitle={agent.active_version
             ? `Forking from v${agent.active_version.version}. Changes below produce a new immutable version.`
             : 'This is the first version for this agent.'}
           actions={
             <>
-              <Btn variant="ghost" href={`/agents/${agent.id}`} disabled={busy}>Cancel</Btn>
-              <Btn variant="primary" onClick={submit} disabled={busy}>
+              <Button asChild variant="ghost" disabled={busy}><a href={`#/agents/${agent.id}`}>Cancel</a></Button>
+              <Button onClick={submit} disabled={busy}>
                 {busy ? 'creating…' : activateImmediately ? `Create & activate v${nextVer}` : `Create v${nextVer}`}
-              </Btn>
+              </Button>
             </>
           }
         />
@@ -153,7 +153,7 @@ export default function VersionNewScreen({ agentId }: { agentId: string }) {
           <Banner
             tone="warn"
             title="Couldn't create version"
-            action={<Btn variant="ghost" onClick={() => setSaveError(null)}>Dismiss</Btn>}
+            action={<Button variant="ghost" onClick={() => setSaveError(null)}>Dismiss</Button>}
           >
             {saveError}
           </Banner>
@@ -161,16 +161,15 @@ export default function VersionNewScreen({ agentId }: { agentId: string }) {
 
         <div className="card">
           <div className="card__head">
-            <div className="card__title">instruction_spec <Text as="span" color="red">*</Text></div>
+            <Text as="div" size="2" weight="medium" className="card__title">instruction_spec <Text as="span" color="red">*</Text></Text>
           </div>
           <div className="card__body">
             <TextAreaField
               style={{
                 minHeight: 260,
-                fontFamily: 'var(--code-font-family)',
-                fontSize: 12.5,
                 lineHeight: 1.5,
               }}
+              size="2"
               value={instruction}
               onChange={e => setInstruction(e.target.value)}
               error={showInstructionErr ? instructionError : undefined}
@@ -181,27 +180,28 @@ export default function VersionNewScreen({ agentId }: { agentId: string }) {
         <div style={{ height: 16 }} />
 
         <div className="card">
-          <div className="card__head"><div className="card__title">model_chain_config</div></div>
+          <div className="card__head"><Text as="div" size="2" weight="medium" className="card__title">model_chain_config</Text></div>
           <div className="card__body">
-            <div className="form-row">
-              <div>
-                <div className="form-row__label">Primary model</div>
-                <div className="form-row__hint">Model the agent uses by default.</div>
-              </div>
-              <div className="form-row__control">
+            <Grid columns={{ initial: '1', md: '240px 1fr' }} gap="5" py="5">
+              <Box>
+                <Text as="div" size="2" weight="medium">Primary model</Text>
+                <Text as="div" size="1" color="gray" mt="1">Model the agent uses by default.</Text>
+              </Box>
+              <Box>
                 <SelectField
                   value={primary}
                   onChange={setPrimary}
                   options={MODELS.map(m => ({ value: m }))}
                 />
-              </div>
-            </div>
-            <div className="form-row">
-              <div>
-                <div className="form-row__label">max_tokens</div>
-                <div className="form-row__hint">Output budget.</div>
-              </div>
-              <div className="form-row__control">
+              </Box>
+            </Grid>
+            <Separator size="4" />
+            <Grid columns={{ initial: '1', md: '240px 1fr' }} gap="5" py="5">
+              <Box>
+                <Text as="div" size="2" weight="medium">max_tokens</Text>
+                <Text as="div" size="1" color="gray" mt="1">Output budget.</Text>
+              </Box>
+              <Box>
                 <TextInput
                   type="number"
                   value={maxTokens}
@@ -209,14 +209,15 @@ export default function VersionNewScreen({ agentId }: { agentId: string }) {
                   max={32000}
                   onChange={e => setMaxTokens(Number(e.target.value))}
                 />
-              </div>
-            </div>
-            <div className="form-row">
-              <div>
-                <div className="form-row__label">temperature</div>
-                <div className="form-row__hint">0 = deterministic, 1 = exploratory.</div>
-              </div>
-              <div className="form-row__control">
+              </Box>
+            </Grid>
+            <Separator size="4" />
+            <Grid columns={{ initial: '1', md: '240px 1fr' }} gap="5" py="5">
+              <Box>
+                <Text as="div" size="2" weight="medium">temperature</Text>
+                <Text as="div" size="1" color="gray" mt="1">0 = deterministic, 1 = exploratory.</Text>
+              </Box>
+              <Box>
                 <TextInput
                   type="number"
                   step={0.1}
@@ -225,8 +226,8 @@ export default function VersionNewScreen({ agentId }: { agentId: string }) {
                   value={temperature}
                   onChange={e => setTemperature(Number(e.target.value))}
                 />
-              </div>
-            </div>
+              </Box>
+            </Grid>
           </div>
         </div>
 
@@ -234,19 +235,21 @@ export default function VersionNewScreen({ agentId }: { agentId: string }) {
 
         <div className="card">
           <div className="card__body">
-            <label className="row" style={{ gap: 10, cursor: 'pointer' }}>
-              <input
-                type="checkbox"
-                checked={activateImmediately}
-                onChange={e => setActivateImmediately(e.target.checked)}
-              />
-              <span>
-                <div style={{ fontSize: 13 }}>Activate immediately after create</div>
-                <Text as="div" color="gray" style={{ fontSize: 11.5, marginTop: 2 }}>
-                  Set this version as the active one right after it's created.
-                </Text>
-              </span>
-            </label>
+            <Flex asChild align="center" gap="3" style={{ cursor: 'pointer' }}>
+              <label>
+                <input
+                  type="checkbox"
+                  checked={activateImmediately}
+                  onChange={e => setActivateImmediately(e.target.checked)}
+                />
+                <Box>
+                  <Text as="div" size="2">Activate immediately after create</Text>
+                  <Text as="div" size="1" color="gray" mt="1">
+                    Set this version as the active one right after it's created.
+                  </Text>
+                </Box>
+              </label>
+            </Flex>
           </div>
         </div>
 

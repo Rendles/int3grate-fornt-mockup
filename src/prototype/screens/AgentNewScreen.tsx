@@ -1,8 +1,8 @@
 import { useState } from 'react'
-import { Code, Text } from '@radix-ui/themes'
+import { Badge, Box, Button, Code, Flex, Grid, Separator, Text } from '@radix-ui/themes'
 
 import { AppShell } from '../components/shell'
-import { PageHeader, Btn, Chip, InfoHint } from '../components/common'
+import { PageHeader, InfoHint } from '../components/common'
 import { SelectField, TextAreaField, TextInput } from '../components/fields'
 import { Banner, NoAccessState } from '../components/states'
 import { useRouter } from '../router'
@@ -40,9 +40,9 @@ export default function AgentNewScreen() {
             requiredRole="domain_admin or admin"
             body="Creating agents is restricted to admins."
           />
-          <div className="row" style={{ justifyContent: 'center', marginTop: 12 }}>
-            <Btn variant="ghost" href="/agents">Back to agents</Btn>
-          </div>
+          <Flex justify="center" mt="3">
+            <Button asChild variant="ghost"><a href="#/agents">Back to agents</a></Button>
+          </Flex>
         </div>
       </AppShell>
     )
@@ -84,17 +84,17 @@ export default function AgentNewScreen() {
           subtitle="Name, description, domain. Owner is inferred from you."
           actions={
             <>
-              <Btn variant="ghost" href="/agents" disabled={busy}>Cancel</Btn>
-              <Btn variant="primary" onClick={submit} disabled={busy || success}>
+              <Button asChild variant="ghost" disabled={busy}><a href="#/agents">Cancel</a></Button>
+              <Button onClick={submit} disabled={busy || success}>
                 {busy ? 'creating…' : success ? 'created ✓' : 'Create draft'}
-              </Btn>
+              </Button>
             </>
           }
         />
 
         {success && (
           <Banner tone="info" title="Agent created · redirecting">
-            The new agent is in <Chip>draft</Chip>. Next step is creating its first version.
+            The new agent is in <Badge color="gray" variant="soft" radius="full" size="1">draft</Badge>. Next step is creating its first version.
           </Banner>
         )}
 
@@ -108,12 +108,12 @@ export default function AgentNewScreen() {
 
         <div className="card">
           <div className="card__body">
-            <div className="form-row">
-              <div>
-                <div className="form-row__label">Name <Text as="span" color="red">*</Text></div>
-                <div className="form-row__hint">1–200 characters. Shown everywhere.</div>
-              </div>
-              <div className="form-row__control">
+            <Grid columns={{ initial: '1', md: '240px 1fr' }} gap="5" py="5">
+              <Box>
+                <Text as="div" size="2" weight="medium">Name <Text as="span" color="red">*</Text></Text>
+                <Text as="div" size="1" color="gray" mt="1">1–200 characters. Shown everywhere.</Text>
+              </Box>
+              <Box>
                 <TextInput
                   value={name}
                   onChange={e => setName(e.target.value)}
@@ -122,36 +122,38 @@ export default function AgentNewScreen() {
                   maxLength={200}
                   error={nameErrVisible}
                 />
-              </div>
-            </div>
-            <div className="form-row">
-              <div>
-                <div className="form-row__label">Description</div>
-                <div className="form-row__hint">Optional. One-line summary.</div>
-              </div>
-              <div className="form-row__control">
+              </Box>
+            </Grid>
+            <Separator size="4" />
+            <Grid columns={{ initial: '1', md: '240px 1fr' }} gap="5" py="5">
+              <Box>
+                <Text as="div" size="2" weight="medium">Description</Text>
+                <Text as="div" size="1" color="gray" mt="1">Optional. One-line summary.</Text>
+              </Box>
+              <Box>
                 <TextAreaField
                   value={desc}
                   onChange={e => setDesc(e.target.value)}
                   placeholder="Triages inbound leads and drafts personalised outreach."
                 />
-              </div>
-            </div>
-            <div className="form-row">
-              <div>
-                <div className="form-row__label">Domain</div>
-                <div className="form-row__hint">
+              </Box>
+            </Grid>
+            <Separator size="4" />
+            <Grid columns={{ initial: '1', md: '240px 1fr' }} gap="5" py="5">
+              <Box>
+                <Text as="div" size="2" weight="medium">Domain</Text>
+                <Text as="div" size="1" color="gray" mt="1">
                   Scope to a domain (nullable for tenant-wide).
-                </div>
-              </div>
-              <div className="form-row__control">
+                </Text>
+              </Box>
+              <Box>
                 <SelectField
                   value={domainId}
                   onChange={setDomainId}
                   options={DOMAINS.map(d => ({ value: d.id, label: `${d.name} · ${d.id}` }))}
                 />
-              </div>
-            </div>
+              </Box>
+            </Grid>
           </div>
         </div>
 

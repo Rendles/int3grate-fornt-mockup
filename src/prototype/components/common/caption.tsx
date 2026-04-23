@@ -1,21 +1,24 @@
-import type { CSSProperties, ReactNode } from 'react'
+import type { ComponentProps, ReactNode } from 'react'
 import { Text } from '@radix-ui/themes'
 
+// Kept intentionally: Radix Themes Text has no textTransform / letterSpacing props,
+// so this is the one legitimate typography extension on top of Radix.
 type CaptionAs = 'span' | 'div' | 'p' | 'label'
+type TextProps = ComponentProps<typeof Text>
 
 export function Caption({
   children,
   as = 'span',
-  style,
+  ...rest
 }: {
   children: ReactNode
   as?: CaptionAs
-  style?: CSSProperties
-}) {
-  const base: CSSProperties = { textTransform: 'uppercase', letterSpacing: '0.08em' }
-  const merged = style ? { ...base, ...style } : base
-  if (as === 'span') return <Text as="span" color="gray" size="1" style={merged}>{children}</Text>
-  if (as === 'div') return <Text as="div" color="gray" size="1" style={merged}>{children}</Text>
-  if (as === 'p') return <Text as="p" color="gray" size="1" style={merged}>{children}</Text>
-  return <Text as="label" color="gray" size="1" style={merged}>{children}</Text>
+} & Pick<TextProps, 'm' | 'mt' | 'mr' | 'mb' | 'ml' | 'mx' | 'my' | 'style'>) {
+  const base = { textTransform: 'uppercase' as const, letterSpacing: '0.08em' }
+  const merged = rest.style ? { ...base, ...rest.style } : base
+  return (
+    <Text as={as} color="gray" size="1" {...rest} style={merged}>
+      {children}
+    </Text>
+  )
 }

@@ -1,8 +1,8 @@
 import { useEffect, useMemo, useState } from 'react'
-import { Code, Text } from '@radix-ui/themes'
+import { Badge, Button, Code, Flex, Text } from '@radix-ui/themes'
 
 import { AppShell } from '../components/shell'
-import { Caption, PageHeader, Btn, Chip, Status, InfoHint, Pagination } from '../components/common'
+import { Caption, PageHeader, Status, InfoHint, Pagination } from '../components/common'
 import { Banner, EmptyState, ErrorState, LoadingList } from '../components/states'
 import { IconArrowRight, IconPlus, IconTask } from '../components/icons'
 import { Link } from '../router'
@@ -59,7 +59,7 @@ export default function TasksScreen() {
           title={<>Work <em>in motion.</em></>}
           subtitle="Each task is dispatched to an agent. Runs are fetched separately."
           actions={
-            <Btn variant="primary" href="/tasks/new" icon={<IconPlus />}>Create task</Btn>
+            <Button asChild><a href="#/tasks/new"><IconPlus />Create task</a></Button>
           }
         />
 
@@ -68,18 +68,23 @@ export default function TasksScreen() {
         </Banner>
         <div style={{ height: 16 }} />
 
-        <div className="row" style={{ gap: 6, marginBottom: 16, flexWrap: 'wrap' }}>
-          <Caption style={{ marginRight: 4 }}>status</Caption>
+        <Flex align="center" gap="2" mb="4" wrap="wrap">
+          <Caption mr="1">status</Caption>
           {STATUSES.map(s => (
-            <Chip
+            <Badge
               key={s}
-              tone={status === s ? 'accent' : undefined}
-              onClick={() => { setStatus(s); setPage(0) }}
+              asChild
+              color={status === s ? 'blue' : 'gray'}
+              variant={status === s ? 'soft' : 'outline'}
+              radius="full"
+              size="1"
             >
-              {s} <Code variant="ghost" style={{ color: 'var(--gray-10)' }}>{counts[s] ?? 0}</Code>
-            </Chip>
+              <button type="button" onClick={() => { setStatus(s); setPage(0) }}>
+                {s} <Code variant="ghost" style={{ color: 'var(--gray-10)' }}>{counts[s] ?? 0}</Code>
+              </button>
+            </Badge>
           ))}
-        </div>
+        </Flex>
 
         {error ? (
           <ErrorState
@@ -104,18 +109,15 @@ export default function TasksScreen() {
               display: 'grid',
               gridTemplateColumns: 'minmax(0, 1fr) 80px 130px 140px 140px 120px 32px',
               gap: 14,
-              fontFamily: 'var(--code-font-family)',
-              fontSize: 10,
-              color: 'var(--gray-10)',
               textTransform: 'uppercase',
               letterSpacing: '0.12em',
             }}>
-              <span>id · title</span>
-              <span>type</span>
-              <span>status</span>
-              <span>agent · version</span>
-              <span>created by</span>
-              <span>updated</span>
+              <Text as="span" size="1" color="gray">id · title</Text>
+              <Text as="span" size="1" color="gray">type</Text>
+              <Text as="span" size="1" color="gray">status</Text>
+              <Text as="span" size="1" color="gray">agent · version</Text>
+              <Text as="span" size="1" color="gray">created by</Text>
+              <Text as="span" size="1" color="gray">updated</Text>
               <span />
             </div>
             {pageItems.map(t => (
@@ -126,25 +128,30 @@ export default function TasksScreen() {
                 style={{ gridTemplateColumns: 'minmax(0, 1fr) 80px 130px 140px 140px 120px 32px' }}
               >
                 <div style={{ minWidth: 0 }}>
-                  <div style={{ fontSize: 11, color: 'var(--gray-10)' }}>{t.id}</div>
-                  <div style={{ fontSize: 13, color: 'var(--gray-12)', marginTop: 2 }} className="truncate">
+                  <Text as="div" size="1" color="gray">{t.id}</Text>
+                  <Text as="div" size="2" mt="1" className="truncate">
                     {t.title ?? <Text color="gray">— untitled —</Text>}
-                  </div>
+                  </Text>
                 </div>
-                <Chip tone={t.type === 'schedule' ? 'info' : t.type === 'chat' ? 'accent' : 'ghost'}>
+                <Badge
+                  color={t.type === 'schedule' ? 'cyan' : t.type === 'chat' ? 'blue' : 'gray'}
+                  variant={t.type === 'schedule' || t.type === 'chat' ? 'soft' : 'outline'}
+                  radius="full"
+                  size="1"
+                >
                   {t.type.replace('_', ' ')}
-                </Chip>
+                </Badge>
                 <Status status={t.status} />
-                <div style={{ fontSize: 11, color: 'var(--gray-11)' }}>
-                  <div className="truncate">{t.assigned_agent_id ?? '—'}</div>
-                  <div style={{ color: 'var(--gray-10)', marginTop: 2 }}>{t.assigned_agent_version_id ?? '—'}</div>
+                <div>
+                  <Text as="div" size="1" className="truncate">{t.assigned_agent_id ?? '—'}</Text>
+                  <Text as="div" size="1" color="gray" mt="1">{t.assigned_agent_version_id ?? '—'}</Text>
                 </div>
-                <div className="truncate" style={{ fontSize: 11, color: 'var(--gray-11)' }}>
+                <Text as="div" size="1" className="truncate">
                   {t.created_by ?? '—'}
-                </div>
-                <div style={{ fontSize: 11, color: 'var(--gray-10)' }}>
+                </Text>
+                <Text as="div" size="1" color="gray">
                   {ago(t.updated_at)}
-                </div>
+                </Text>
                 <IconArrowRight className="ic" />
               </Link>
             ))}

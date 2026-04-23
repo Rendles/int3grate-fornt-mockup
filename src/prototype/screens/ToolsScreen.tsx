@@ -1,8 +1,8 @@
 import { useEffect, useMemo, useState } from 'react'
-import { Code, Text } from '@radix-ui/themes'
+import { Badge, Code, Flex, Text } from '@radix-ui/themes'
 
 import { AppShell } from '../components/shell'
-import { Caption, Chip, PageHeader, CommandBar, InfoHint, PolicyModeChip } from '../components/common'
+import { Caption, PageHeader, CommandBar, InfoHint } from '../components/common'
 import { TextInput } from '../components/fields'
 import { EmptyState, ErrorState, LoadingList } from '../components/states'
 import { IconArrowRight, IconTool } from '../components/icons'
@@ -87,7 +87,7 @@ export default function ToolsScreen() {
 
         <div style={{ height: 16 }} />
 
-        <div className="row" style={{ gap: 8, marginBottom: 16, flexWrap: 'wrap', alignItems: 'center' }}>
+        <Flex align="center" gap="2" mb="4" wrap="wrap">
           <div style={{ flex: '1 1 260px', maxWidth: 420 }}>
             <TextInput
               size="1"
@@ -96,18 +96,23 @@ export default function ToolsScreen() {
               onChange={e => setQuery(e.target.value)}
             />
           </div>
-          <Caption style={{ marginLeft: 4 }}>default_mode</Caption>
+          <Caption ml="1">default_mode</Caption>
           {MODES.map(m => (
-            <Chip
+            <Badge
               key={m}
-              tone={mode === m ? (m === 'requires_approval' ? 'warn' : 'accent') : undefined}
-              onClick={() => setMode(m)}
+              asChild
+              color={mode === m ? (m === 'requires_approval' ? 'amber' : 'blue') : 'gray'}
+              variant={mode === m ? 'soft' : 'outline'}
+              radius="full"
+              size="1"
             >
-              {m}{' '}
-              <Code variant="ghost" style={{ color: 'var(--gray-10)' }}>{counts[m] ?? 0}</Code>
-            </Chip>
+              <button type="button" onClick={() => setMode(m)}>
+                {m}{' '}
+                <Code variant="ghost" style={{ color: 'var(--gray-10)' }}>{counts[m] ?? 0}</Code>
+              </button>
+            </Badge>
           ))}
-        </div>
+        </Flex>
 
         {error ? (
           <ErrorState
@@ -129,16 +134,13 @@ export default function ToolsScreen() {
                 padding: '10px 16px',
                 background: 'var(--gray-3)',
                 borderBottom: '1px solid var(--gray-6)',
-                fontFamily: 'var(--code-font-family)',
-                fontSize: 10,
-                color: 'var(--gray-10)',
                 textTransform: 'uppercase',
                 letterSpacing: '0.12em',
               }}
             >
-              <span>name</span>
-              <span>default_mode</span>
-              <span>description</span>
+              <Text as="span" size="1" color="gray">name</Text>
+              <Text as="span" size="1" color="gray">default_mode</Text>
+              <Text as="span" size="1" color="gray">description</Text>
               <span />
             </div>
             {filtered.map(t => {
@@ -159,11 +161,20 @@ export default function ToolsScreen() {
                       color: 'var(--gray-12)',
                     }}
                   >
-                    <Code variant="ghost" style={{ fontSize: 12, color: 'var(--gray-12)' }}>{t.name}</Code>
-                    <span><PolicyModeChip mode={t.default_mode} /></span>
-                    <span style={{ fontSize: 12.5, color: 'var(--gray-11)', lineHeight: 1.5 }}>
-                      {t.description ?? <Text color="gray">—</Text>}
+                    <Code variant="ghost" size="1">{t.name}</Code>
+                    <span>
+                      <Badge
+                        color={t.default_mode === 'read_only' ? 'cyan' : t.default_mode === 'requires_approval' ? 'amber' : 'red'}
+                        variant="soft"
+                        radius="small"
+                        size="1"
+                      >
+                        {t.default_mode}
+                      </Badge>
                     </span>
+                    <Text as="span" size="1" color="gray" style={{ lineHeight: 1.5 }}>
+                      {t.description ?? '—'}
+                    </Text>
                     <IconArrowRight
                       className="ic"
                       style={{ transform: open ? 'rotate(90deg)' : undefined, transition: 'transform 120ms' }}
@@ -171,26 +182,22 @@ export default function ToolsScreen() {
                   </button>
                   {open && (
                     <div style={{ padding: '0 16px 16px' }}>
-                      <Caption as="div" style={{ fontSize: 9.5, marginBottom: 6 }}>
+                      <Caption as="div" mb="2">
                         input_schema
                       </Caption>
-                      <pre
-                        style={{
-                          fontFamily: 'var(--code-font-family)',
-                          fontSize: 11,
-                          color: 'var(--gray-12)',
-                          background: 'var(--gray-3)',
-                          border: '1px solid var(--gray-6)',
-                          padding: 12,
-                          borderRadius: 4,
-                          margin: 0,
-                          whiteSpace: 'pre-wrap',
-                          maxHeight: 280,
-                          overflow: 'auto',
-                        }}
-                      >
-                        {JSON.stringify(t.input_schema, null, 2)}
-                      </pre>
+                      <Code asChild size="1" variant="soft">
+                        <pre
+                          style={{
+                            padding: 12,
+                            margin: 0,
+                            whiteSpace: 'pre-wrap',
+                            maxHeight: 280,
+                            overflow: 'auto',
+                          }}
+                        >
+                          {JSON.stringify(t.input_schema, null, 2)}
+                        </pre>
+                      </Code>
                     </div>
                   )}
                 </div>

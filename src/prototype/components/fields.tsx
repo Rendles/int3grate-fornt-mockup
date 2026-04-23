@@ -3,48 +3,6 @@ import type { ComponentProps, ReactNode } from 'react'
 import { Flex, IconButton, Select, Text, TextArea, TextField } from '@radix-ui/themes'
 import { IconAlert, IconEye, IconEyeOff } from './icons'
 
-export function FieldLabel({
-  htmlFor,
-  required,
-  children,
-}: {
-  htmlFor?: string
-  required?: boolean
-  children: ReactNode
-}) {
-  return (
-    <Text
-      as="label"
-      htmlFor={htmlFor}
-      size="1"
-      weight="medium"
-      color="gray"
-      mb="1"
-      style={{ display: 'block' }}
-    >
-      {children}
-      {required && <span style={{ color: 'var(--red-11)' }}> *</span>}
-    </Text>
-  )
-}
-
-export function FieldHint({ id, children }: { id?: string; children: ReactNode }) {
-  return (
-    <Text id={id} as="div" size="1" color="gray" mt="1">
-      {children}
-    </Text>
-  )
-}
-
-export function FieldError({ id, children }: { id?: string; children: ReactNode }) {
-  return (
-    <Flex id={id} align="center" gap="1" mt="1">
-      <IconAlert className="ic ic--sm" style={{ color: 'var(--red-11)' }} />
-      <Text size="1" color="red">{children}</Text>
-    </Flex>
-  )
-}
-
 type FieldChromeProps = {
   id?: string
   label?: string
@@ -59,6 +17,34 @@ function useFieldIds(idProp: string | undefined) {
   return { id, errId: `${id}-err`, hintId: `${id}-hint` }
 }
 
+function FieldLabel({ htmlFor, required, children }: { htmlFor: string; required?: boolean; children: ReactNode }) {
+  return (
+    <Text as="label" htmlFor={htmlFor} size="1" weight="medium" color="gray">
+      {children}
+      {required && <Text as="span" color="red"> *</Text>}
+    </Text>
+  )
+}
+
+function FieldError({ id, children }: { id: string; children: ReactNode }) {
+  return (
+    <Text id={id} as="div" size="1" color="red">
+      <Flex align="center" gap="1">
+        <IconAlert className="ic ic--sm" />
+        <span>{children}</span>
+      </Flex>
+    </Text>
+  )
+}
+
+function FieldHint({ id, children }: { id: string; children: ReactNode }) {
+  return (
+    <Text id={id} as="div" size="1" color="gray">
+      {children}
+    </Text>
+  )
+}
+
 type TextInputOwnProps = ComponentProps<typeof TextField.Root>
 
 export function TextInput({
@@ -71,7 +57,7 @@ export function TextInput({
 }: FieldChromeProps & TextInputOwnProps) {
   const { id, errId, hintId } = useFieldIds(idProp)
   return (
-    <div>
+    <Flex direction="column" gap="1">
       {label && <FieldLabel htmlFor={id} required={required}>{label}</FieldLabel>}
       <TextField.Root
         id={id}
@@ -83,7 +69,7 @@ export function TextInput({
       />
       {error && <FieldError id={errId}>{error}</FieldError>}
       {!error && hint && <FieldHint id={hintId}>{hint}</FieldHint>}
-    </div>
+    </Flex>
   )
 }
 
@@ -100,7 +86,7 @@ export function PasswordField({
   const { id, errId, hintId } = useFieldIds(idProp)
   const [visible, setVisible] = useState(false)
   return (
-    <div>
+    <Flex direction="column" gap="1">
       {label && <FieldLabel htmlFor={id} required={required}>{label}</FieldLabel>}
       <TextField.Root
         id={id}
@@ -127,7 +113,7 @@ export function PasswordField({
       </TextField.Root>
       {error && <FieldError id={errId}>{error}</FieldError>}
       {!error && hint && <FieldHint id={hintId}>{hint}</FieldHint>}
-    </div>
+    </Flex>
   )
 }
 
@@ -143,7 +129,7 @@ export function TextAreaField({
 }: FieldChromeProps & TextAreaFieldOwnProps) {
   const { id, errId, hintId } = useFieldIds(idProp)
   return (
-    <div>
+    <Flex direction="column" gap="1">
       {label && <FieldLabel htmlFor={id} required={required}>{label}</FieldLabel>}
       <TextArea
         id={id}
@@ -155,7 +141,7 @@ export function TextAreaField({
       />
       {error && <FieldError id={errId}>{error}</FieldError>}
       {!error && hint && <FieldHint id={hintId}>{hint}</FieldHint>}
-    </div>
+    </Flex>
   )
 }
 
@@ -177,7 +163,6 @@ export function SelectField({
   options,
   disabled,
   size,
-  triggerStyle,
 }: FieldChromeProps & {
   value: string | undefined
   onChange: (value: string) => void
@@ -185,11 +170,10 @@ export function SelectField({
   options: SelectOption[]
   disabled?: boolean
   size?: '1' | '2' | '3'
-  triggerStyle?: React.CSSProperties
 }) {
   const { id, errId, hintId } = useFieldIds(idProp)
   return (
-    <div>
+    <Flex direction="column" gap="1">
       {label && <FieldLabel htmlFor={id} required={required}>{label}</FieldLabel>}
       <Select.Root value={value} onValueChange={onChange} disabled={disabled} size={size}>
         <Select.Trigger
@@ -198,7 +182,6 @@ export function SelectField({
           color={error ? 'red' : undefined}
           aria-invalid={error ? true : undefined}
           aria-describedby={error ? errId : hint ? hintId : undefined}
-          style={triggerStyle}
         />
         <Select.Content>
           {options.map(opt => (
@@ -210,6 +193,6 @@ export function SelectField({
       </Select.Root>
       {error && <FieldError id={errId}>{error}</FieldError>}
       {!error && hint && <FieldHint id={hintId}>{hint}</FieldHint>}
-    </div>
+    </Flex>
   )
 }

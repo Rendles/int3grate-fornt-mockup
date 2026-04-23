@@ -1,15 +1,16 @@
-import type { CSSProperties } from 'react'
-import { Box, Flex, Text } from '@radix-ui/themes'
+import type { ComponentProps } from 'react'
+import { Badge, Flex, Text } from '@radix-ui/themes'
 
+type BadgeColor = NonNullable<ComponentProps<typeof Badge>['color']>
 type Tone = 'accent' | 'warn' | 'success' | 'danger' | 'info' | 'ghost'
 
-const DOT_COLOR: Record<Tone, string> = {
-  accent: 'var(--accent-9)',
-  warn: 'var(--amber-11)',
-  danger: 'var(--red-11)',
-  success: 'var(--green-11)',
-  info: 'var(--cyan-11)',
-  ghost: 'var(--gray-10)',
+const TONE_COLOR: Record<Tone, BadgeColor> = {
+  accent: 'blue',
+  warn: 'amber',
+  danger: 'red',
+  success: 'green',
+  info: 'cyan',
+  ghost: 'gray',
 }
 
 const STATUS_MAP: Record<string, { tone: Tone; label: string; pulse?: boolean; dotted?: boolean }> = {
@@ -38,24 +39,21 @@ export function Status({
     | 'approved' | 'rejected' | 'expired'
 }) {
   const s = STATUS_MAP[status]
-  const color = DOT_COLOR[s.tone]
-  const dotStyle: CSSProperties = {
-    width: 6,
-    height: 6,
-    borderRadius: 999,
-    flexShrink: 0,
-    background: s.dotted ? 'transparent' : color,
-    border: s.dotted ? '1.5px dashed var(--amber-11)' : undefined,
-    color,
-  }
+  const color = TONE_COLOR[s.tone]
+  // Dotted variant (completed_with_errors) uses Badge outline; everything else is soft.
+  // The pulse animation remains a CSS extension (keyframes in prototype.css) since
+  // Radix does not expose a "pulsing" state on Badge.
   return (
     <Flex align="center" gap="2">
-      <Box asChild className={s.pulse ? 'status-pulse' : undefined}>
-        <span style={dotStyle} />
-      </Box>
-      <Text size="1" style={{ whiteSpace: 'nowrap', color: 'var(--gray-12)' }}>
-        {s.label}
-      </Text>
+      <Badge
+        color={color}
+        variant={s.dotted ? 'outline' : 'soft'}
+        radius="full"
+        size="1"
+        className={s.pulse ? 'status-pulse' : undefined}
+      >
+        <Text size="1">{s.label}</Text>
+      </Badge>
     </Flex>
   )
 }

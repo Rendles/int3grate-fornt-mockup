@@ -1,8 +1,8 @@
 import { useEffect, useMemo, useState } from 'react'
-import { Code } from '@radix-ui/themes'
+import { Badge, Box, Button, Code, Flex, Text } from '@radix-ui/themes'
 
 import { AppShell } from '../components/shell'
-import { PageHeader, Btn, Chip, Status, InfoHint, Pagination } from '../components/common'
+import { PageHeader, Status, InfoHint, Pagination } from '../components/common'
 import { TextInput } from '../components/fields'
 import { EmptyState, ErrorState, LoadingList } from '../components/states'
 import { IconAgent, IconArrowRight, IconLock, IconPlus } from '../components/icons'
@@ -78,34 +78,39 @@ export default function AgentsScreen() {
           subtitle="Configure what agents are and what they may touch."
           actions={
             canCreate
-              ? <Btn variant="primary" href="/agents/new" icon={<IconPlus />}>New agent</Btn>
-              : <Btn variant="ghost" disabled icon={<IconLock />} title="Admins only">New agent</Btn>
+              ? <Button asChild><a href="#/agents/new"><IconPlus />New agent</a></Button>
+              : <Button variant="ghost" disabled title="Admins only"><IconLock />New agent</Button>
           }
         />
 
-        <div className="row" style={{ gap: 10, marginBottom: 16, flexWrap: 'wrap' }}>
-          <div className="row row--sm">
+        <Flex align="center" gap="2" mb="4" wrap="wrap">
+          <Flex align="center" gap="2">
             {STATUSES.map(f => (
-              <Chip
+              <Badge
                 key={f}
-                tone={filter === f ? 'accent' : undefined}
-                onClick={() => { setFilter(f); setPage(0) }}
+                asChild
+                color={filter === f ? 'blue' : 'gray'}
+                variant={filter === f ? 'soft' : 'outline'}
+                radius="full"
+                size="1"
               >
-                {f}{' '}
-                <Code variant="ghost" style={{ color: 'var(--gray-10)' }}>{counts[f] ?? 0}</Code>
-              </Chip>
+                <button type="button" onClick={() => { setFilter(f); setPage(0) }}>
+                  {f}{' '}
+                  <Code variant="ghost" style={{ color: 'var(--gray-10)' }}>{counts[f] ?? 0}</Code>
+                </button>
+              </Badge>
             ))}
-          </div>
-          <div style={{ flex: 1 }} />
-          <div style={{ width: 260 }}>
+          </Flex>
+          <Box flexGrow="1" />
+          <Box width="260px">
             <TextInput
               size="1"
               placeholder="Filter by name or description..."
               value={query}
               onChange={e => { setQuery(e.target.value); setPage(0) }}
             />
-          </div>
-        </div>
+          </Box>
+        </Flex>
 
         {error ? (
           <ErrorState
@@ -127,15 +132,14 @@ export default function AgentsScreen() {
               display: 'grid',
               gridTemplateColumns: 'minmax(0, 1fr) 120px 130px 160px 120px 32px',
               gap: 14, padding: '10px 16px', background: 'var(--gray-3)',
-              fontFamily: 'var(--code-font-family)', fontSize: 10, color: 'var(--gray-10)',
               textTransform: 'uppercase', letterSpacing: '0.14em',
               borderBottom: '1px solid var(--gray-6)',
             }}>
-              <span>name · description</span>
-              <span>status</span>
-              <span>active version</span>
-              <span>owner · domain</span>
-              <span>updated</span>
+              <Text as="span" size="1" color="gray">name · description</Text>
+              <Text as="span" size="1" color="gray">status</Text>
+              <Text as="span" size="1" color="gray">active version</Text>
+              <Text as="span" size="1" color="gray">owner · domain</Text>
+              <Text as="span" size="1" color="gray">updated</Text>
               <span />
             </div>
             {pageItems.map(a => (
@@ -146,38 +150,38 @@ export default function AgentsScreen() {
                 style={{ gridTemplateColumns: 'minmax(0, 1fr) 120px 130px 160px 120px 32px' }}
               >
                 <div style={{ minWidth: 0 }}>
-                  <div style={{ fontSize: 13.5, color: 'var(--gray-12)' }}>{a.name}</div>
+                  <Text as="div" size="2">{a.name}</Text>
                   {a.description && (
-                    <div className="agent-row__desc truncate" style={{ marginTop: 2 }}>{a.description}</div>
+                    <Text as="div" size="1" color="gray" mt="1" className="truncate">{a.description}</Text>
                   )}
-                  <div style={{ fontSize: 10.5, color: 'var(--gray-10)', marginTop: 4 }}>
+                  <Text as="div" size="1" color="gray" mt="1">
                     {a.id}
-                  </div>
+                  </Text>
                 </div>
                 <Status status={a.status} />
                 <div>
                   {a.active_version ? (
                     <>
-                      <Chip tone="accent">v{a.active_version.version}</Chip>
-                      <div style={{ fontSize: 10.5, color: 'var(--gray-10)', marginTop: 4 }}>
+                      <Badge color="blue" variant="soft" radius="full" size="1">v{a.active_version.version}</Badge>
+                      <Text as="div" size="1" color="gray" mt="1">
                         {(a.active_version.model_chain_config as { primary?: string })?.primary ?? '—'}
-                      </div>
+                      </Text>
                     </>
                   ) : (
-                    <Chip tone="ghost">no active version</Chip>
+                    <Badge color="gray" variant="outline" radius="full" size="1">no active version</Badge>
                   )}
                 </div>
                 <div>
-                  <div style={{ fontSize: 11, color: 'var(--gray-12)' }}>
+                  <Text as="div" size="1">
                     {a.owner_user_id ?? '—'}
-                  </div>
-                  <div style={{ fontSize: 10.5, color: 'var(--gray-10)', marginTop: 4 }}>
+                  </Text>
+                  <Text as="div" size="1" color="gray" mt="1">
                     {a.domain_id ?? '—'}
-                  </div>
+                  </Text>
                 </div>
-                <div style={{ fontSize: 11, color: 'var(--gray-11)' }}>
+                <Text as="div" size="1" color="gray">
                   {ago(a.updated_at)}
-                </div>
+                </Text>
                 <IconArrowRight className="ic" />
               </Link>
             ))}

@@ -1,4 +1,4 @@
-import { Code, Flex, Text } from '@radix-ui/themes'
+import { Card, Code, Flex, Text } from '@radix-ui/themes'
 
 type Tone = 'accent' | 'warn' | 'muted'
 
@@ -14,30 +14,23 @@ export function CommandBar({
   parts: { label: string; value: string; tone?: Tone }[]
 }) {
   return (
-    <Flex
-      gap="5"
-      wrap="wrap"
-      style={{
-        background: 'var(--gray-3)',
-        border: '1px solid var(--gray-6)',
-        borderRadius: 'var(--radius)',
-        padding: '10px 14px',
-      }}
-    >
-      {parts.map((p, i) => (
-        <Flex key={i} gap="2" align="baseline">
-          <Text
-            size="1"
-            color="gray"
-            style={{ textTransform: 'uppercase', letterSpacing: '0.04em' }}
-          >
-            {p.label}
-          </Text>
-          <Code variant="ghost" color={p.tone ? VALUE_COLOR[p.tone] : undefined}>
-            {p.value}
-          </Code>
-        </Flex>
-      ))}
-    </Flex>
+    <Card size="1">
+      <Flex gap="5" wrap="wrap" px="1" py="1">
+        {parts.map((p, i) => (
+          <Flex key={i} gap="2" align="baseline">
+            <Text
+              size="1"
+              color="gray"
+              style={{ textTransform: 'uppercase', letterSpacing: '0.04em' }}
+            >
+              {p.label}
+            </Text>
+            <Code variant="ghost" color={p.tone ? VALUE_COLOR[p.tone] : undefined}>
+              {p.value}
+            </Code>
+          </Flex>
+        ))}
+      </Flex>
+    </Card>
   )
 }

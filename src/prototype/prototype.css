@@ -66,7 +66,7 @@
   text-decoration: none;
 }
 /* Native form-element resets. Wrapped in :where() so they carry zero
-   specificity — any component class (.tb__action / .sb__item / …)
+   specificity — any component class (.sb__item / …)
    or Radix Themes style overrides freely. */
 :where(.prototype-root) button,
 :where(.prototype-root) input,
@@ -121,18 +121,6 @@
   height: 100svh;
   overflow-y: auto;
 }
-.shell__topbar {
-  grid-area: topbar;
-  border-bottom: 1px solid var(--gray-6);
-  background: var(--gray-2);
-  display: flex;
-  align-items: center;
-  padding: 0 20px;
-  gap: 16px;
-  position: sticky;
-  top: 0;
-  z-index: 10;
-}
 .shell__main {
   grid-area: main;
   min-width: 0;
@@ -163,12 +151,10 @@
   display: block;
 }
 .sb__brand-name {
-  font-size: 20px;
   letter-spacing: -0.01em;
   line-height: 1;
 }
 .sb__brand-sub {
-  font-size: 10px;
   color: var(--gray-10);
   letter-spacing: 0.05em;
   text-transform: uppercase;
@@ -180,7 +166,6 @@
   background: var(--gray-3);
 }
 .sb__tenant-label {
-  font-size: 9.5px;
   letter-spacing: 0.14em;
   text-transform: uppercase;
   color: var(--gray-10);
@@ -193,18 +178,14 @@
   gap: 8px;
 }
 .sb__tenant-name {
-  font-size: 13px;
-  font-weight: 500;
   color: var(--gray-12);
   line-height: 1.2;
 }
 .sb__tenant-domain {
-  font-size: 11px;
   color: var(--gray-11);
 }
 .sb__tenant-switch {
   color: var(--gray-10);
-  font-size: 11px;
   padding: 2px 6px;
   border: 1px solid var(--gray-7);
   border-radius: 3px;
@@ -228,7 +209,6 @@
   padding: 7px 10px;
   border-radius: 4px;
   color: var(--gray-11);
-  font-size: 13px;
   border: 1px solid transparent;
   transition: background 120ms, color 120ms, border-color 120ms;
   position: relative;
@@ -259,24 +239,9 @@
   color: currentColor;
   opacity: 0.9;
 }
+/* Radix Badge handles bg/color/border/radius; we only keep positioning. */
 .sb__item-badge {
   margin-left: auto;
-  font-size: 10px;
-  padding: 1px 6px;
-  border-radius: 999px;
-  background: var(--accent-a3);
-  color: var(--accent-9);
-  border: 1px solid var(--accent-a7);
-}
-.sb__item-badge--warn {
-  background: var(--amber-a3);
-  color: var(--amber-11);
-  border-color: var(--amber-a6);
-}
-.sb__item-badge--muted {
-  background: transparent;
-  color: var(--gray-10);
-  border-color: var(--gray-7);
 }
 
 .sb__footer {
@@ -294,49 +259,6 @@
   transition: background 120ms;
 }
 .sb__user:hover { background: var(--gray-3); }
-.sb__user-name { font-size: 12.5px; color: var(--gray-12); line-height: 1.2; }
-.sb__user-role {
-  font-size: 10px;
-  color: var(--gray-10);
-  letter-spacing: 0.04em;
-  text-transform: uppercase;
-}
-
-/* ============================================================= TOPBAR */
-
-.tb__crumbs {
-  display: flex;
-  align-items: center;
-  gap: 6px;
-  font-size: 11px;
-  letter-spacing: 0.02em;
-  color: var(--gray-11);
-}
-.tb__crumb-sep { color: var(--gray-9); }
-.tb__crumb--last { color: var(--gray-12); }
-
-.tb__spacer { flex: 1; }
-
-.tb__meta {
-  display: flex;
-  align-items: center;
-  gap: 14px;
-  font-size: 11px;
-  color: var(--gray-10);
-}
-
-.tb__action {
-  padding: 4px 8px;
-  border-radius: 3px;
-  color: var(--gray-11);
-  border: 1px solid var(--gray-6);
-  font-size: 12px;
-  transition: border-color 120ms, color 120ms;
-}
-.tb__action:hover {
-  border-color: var(--gray-8);
-  color: var(--gray-12);
-}
 
 /* ============================================================= PAGE */
 
@@ -346,44 +268,15 @@
 .page--wide { max-width: none; }
 .page--narrow { max-width: 920px; margin-inline: auto; }
 
-.page__header {
-  display: flex;
-  align-items: flex-end;
-  justify-content: space-between;
-  gap: 24px;
-  padding-bottom: 22px;
-  border-bottom: 1px solid var(--gray-6);
-  margin-bottom: 24px;
-}
-.page__header-info { min-width: 0; }
+/* .page__eyebrow — kept: used in Login / Register / StyleGuide section headers */
 .page__eyebrow {
-  font-size: 10.5px;
   text-transform: uppercase;
   letter-spacing: 0.18em;
-  color: var(--gray-10);
-  margin-bottom: 8px;
 }
-.page__title {
-  font-size: 44px;
-  line-height: 1;
-  letter-spacing: -0.02em;
-  color: var(--gray-12);
-  font-weight: 400;
-}
+/* .page__title em — kept: accent-colored italic em inside PageHeader <Heading> */
 .page__title em {
   font-style: italic;
   color: var(--accent-9);
-}
-.page__subtitle {
-  font-size: 13.5px;
-  color: var(--gray-11);
-  margin-top: 10px;
-  max-width: 640px;
-}
-.page__actions {
-  display: flex;
-  gap: 8px;
-  align-items: center;
 }
 
 /* Pulse halo for status dots — inlined color via `currentColor`. */
@@ -420,9 +313,6 @@
   gap: 12px;
 }
 .card__title {
-  font-size: 13px;
-  font-weight: 500;
-  color: var(--gray-12);
   display: flex;
   align-items: center;
   gap: 10px;
@@ -434,84 +324,7 @@
   display: flex;
   align-items: center;
   justify-content: space-between;
-  font-size: 12px;
-  color: var(--gray-11);
 }
-/* ============================================================= TABLES */
-
-.table {
-  width: 100%;
-  border-collapse: separate;
-  border-spacing: 0;
-  font-size: 13px;
-}
-.table th {
-  font-size: 10px;
-  letter-spacing: 0.14em;
-  text-transform: uppercase;
-  font-weight: 500;
-  color: var(--gray-10);
-  text-align: left;
-  padding: 10px 14px;
-  border-bottom: 1px solid var(--gray-6);
-  background: var(--gray-2);
-  position: sticky;
-  top: 0;
-}
-.table td {
-  padding: 11px 14px;
-  border-bottom: 1px solid var(--gray-6);
-  color: var(--gray-12);
-  vertical-align: middle;
-}
-.table tbody tr {
-  transition: background 120ms;
-}
-.table tbody tr:hover {
-  background: var(--gray-3);
-}
-.table tbody tr.clickable { cursor: pointer; }
-.table tbody tr:last-child td { border-bottom: 0; }
-.table__id { font-size: 11.5px; color: var(--gray-11); }
-.table__primary { font-weight: 500; color: var(--gray-12); }
-.table__secondary { color: var(--gray-11); font-size: 12px; }
-.table__num {
-  font-variant-numeric: tabular-nums;
-  text-align: right;
-}
-
-.table-wrap {
-  background: var(--gray-2);
-  border: 1px solid var(--gray-6);
-  border-radius: var(--radius);
-  overflow: hidden;
-}
-
-/* ============================================================= FORMS */
-
-.form-row {
-  display: grid;
-  grid-template-columns: 240px 1fr;
-  gap: 24px;
-  padding: 20px 0;
-  border-bottom: 1px solid var(--gray-6);
-}
-.form-row:last-child { border-bottom: 0; }
-.form-row__label {
-  font-size: 13px;
-  font-weight: 500;
-  color: var(--gray-12);
-}
-.form-row__hint {
-  font-size: 12px;
-  color: var(--gray-11);
-  margin-top: 4px;
-  line-height: 1.5;
-}
-.form-row__control {
-  min-width: 0;
-}
-
 /* ============================================================= STATES */
 
 /* Kept for inline usage in TaskNewScreen SuccessPanel. */
@@ -593,14 +406,11 @@
   display: flex;
   align-items: center;
   gap: 12px;
-  font-size: 24px;
   position: relative;
 }
 .login__tagline {
-  font-size: 56px;
   line-height: 1.02;
   letter-spacing: -0.02em;
-  color: var(--gray-12);
   position: relative;
   max-width: 480px;
 }
@@ -609,8 +419,6 @@
   color: var(--accent-9);
 }
 .login__meta {
-  font-size: 10.5px;
-  color: var(--gray-10);
   letter-spacing: 0.12em;
   text-transform: uppercase;
   position: relative;
@@ -630,19 +438,16 @@
   flex-direction: column;
   gap: 16px;
 }
-.login__form h2 {
-  font-size: 32px;
+.login__form-heading {
   line-height: 1.1;
   letter-spacing: -0.02em;
   margin-bottom: 4px;
-  font-weight: 400;
 }
 /* Clickable tile — used by task/type pickers. */
 .login__role {
   padding: 8px;
   border: 1px solid var(--gray-6);
   border-radius: 4px;
-  font-size: 11.5px;
   color: var(--gray-11);
   text-align: center;
   background: var(--gray-2);
@@ -653,22 +458,6 @@
   border-color: var(--gray-8);
   color: var(--gray-12);
 }
-
-/* ============================================================= HOME DASHBOARD */
-
-.grid {
-  display: grid;
-  gap: 16px;
-}
-.grid--4 { grid-template-columns: repeat(4, 1fr); }
-.grid--3 { grid-template-columns: repeat(3, 1fr); }
-.grid--2 { grid-template-columns: repeat(2, 1fr); }
-
-.stack { display: flex; flex-direction: column; gap: 16px; }
-.stack--sm { gap: 8px; }
-.row { display: flex; align-items: center; gap: 12px; }
-.row--sm { gap: 6px; }
-.row--between { justify-content: space-between; }
 
 /* ============================================================= AGENT LIST / DETAIL */
 
@@ -684,54 +473,6 @@
 }
 .agent-row:hover { background: var(--gray-3); }
 .agent-row:last-child { border-bottom: 0; }
-.agent-row__avatar {
-  width: 36px;
-  height: 36px;
-  background: var(--gray-4);
-  border: 1px solid var(--gray-7);
-  border-radius: 6px;
-  display: grid;
-  place-items: center;
-  font-weight: 600;
-  font-size: 12px;
-  color: var(--gray-12);
-  position: relative;
-  overflow: hidden;
-}
-.agent-row__avatar::before {
-  content: '';
-  position: absolute;
-  inset: 0;
-  background:
-    linear-gradient(135deg, transparent 40%, var(--lime-a3) 100%);
-}
-.agent-row__name {
-  font-weight: 500;
-  color: var(--gray-12);
-  display: flex;
-  align-items: center;
-  gap: 10px;
-  margin-bottom: 3px;
-}
-.agent-row__desc {
-  font-size: 12px;
-  color: var(--gray-11);
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-}
-.agent-row__col {
-  font-size: 11.5px;
-  color: var(--gray-11);
-}
-.agent-row__col-label {
-  font-size: 9.5px;
-  letter-spacing: 0.14em;
-  text-transform: uppercase;
-  color: var(--gray-10);
-  margin-bottom: 2px;
-}
-
 /* ============================================================= SPEND */
 
 .spend-row {
@@ -764,42 +505,6 @@
   white-space: nowrap;
 }
 
-
-/* ============================================================= INFO HINT
-   Tiny `?` icon that reveals a popover on hover / focus. Used next to
-   field labels, page titles, or section headers to expose technical
-   context (endpoint, schema note, etc.) without cluttering the UI. */
-
-.info-hint {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  position: relative;
-  width: 14px;
-  height: 14px;
-  color: var(--gray-10);
-  cursor: help;
-  background: transparent;
-  border: 0;
-  padding: 0;
-  vertical-align: middle;
-  transition: color 120ms ease;
-  flex: none;
-}
-.info-hint:hover,
-.info-hint:focus-visible {
-  color: var(--gray-12);
-  outline: none;
-}
-.info-hint__icon {
-  width: 13px;
-  height: 13px;
-}
-.split {
-  display: grid;
-  grid-template-columns: 2fr 1fr;
-  gap: 20px;
-}
 
 /* ============================================================= ICONS (svg currentColor) */
 
@@ -840,23 +545,10 @@
     font-size: 9px;
   }
 
-  .grid--4 { grid-template-columns: repeat(2, 1fr); }
-  .grid--3 { grid-template-columns: repeat(2, 1fr); }
-
-  .split { grid-template-columns: 1fr; }
-
   .page { padding: 24px 20px 80px; }
-  .page__header { flex-direction: column; align-items: flex-start; gap: 16px; padding-bottom: 18px; margin-bottom: 20px; }
-  .page__actions { flex-wrap: wrap; gap: 16px; }
-  .page__title { font-size: 38px; }
-  .page__subtitle { max-width: none; }
-
-  .form-row { grid-template-columns: 1fr; gap: 10px; padding: 16px 0; }
-  .form-row__label { font-size: 12.5px; }
 
   .login { grid-template-columns: 1fr; }
   .login__side { padding: 32px 32px 40px; }
-  .login__tagline { font-size: 44px; }
   .login__form-wrap { padding: 36px 32px 48px; }
 }
 
@@ -918,28 +610,8 @@
     display: inline-flex;
   }
 
-  /* Topbar compaction */
-  .shell__topbar { padding: 0 12px; gap: 8px; }
-  .tb__crumbs {
-    flex: 1 1 0;
-    min-width: 0;
-    flex-wrap: nowrap;
-    overflow-x: auto;
-    white-space: nowrap;
-    -webkit-overflow-scrolling: touch;
-    scrollbar-width: none;
-  }
-  .tb__crumbs::-webkit-scrollbar { display: none; }
-  .tb__spacer { display: none; }
-  .tb__meta { display: none; }
-
   /* Page chrome */
   .page { padding: 16px 14px 88px; }
-  .page__title { font-size: 30px; }
-  .page__header { gap: 12px; padding-bottom: 14px; margin-bottom: 18px; }
-
-  /* Grids collapse to one column */
-  .grid--4, .grid--3, .grid--2 { grid-template-columns: 1fr; }
 
   /* Large tables: allow horizontal scroll inside the card */
   .card { overflow-x: auto; }
@@ -949,7 +621,5 @@
 
   /* Login */
   .login__side { padding: 24px 20px; }
-  .login__tagline { font-size: 32px; }
-  .login__brand { font-size: 20px; }
   .login__form-wrap { padding: 24px 20px 40px; }
 }

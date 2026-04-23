@@ -1,11 +1,10 @@
 import { useEffect, useState } from 'react'
-import { Code, Text } from '@radix-ui/themes'
+import { Badge, Button, Code, Flex, IconButton, Switch, Text } from '@radix-ui/themes'
 import { Caption } from './common/caption'
 
 import { api } from '../lib/api'
 import type { Agent, ToolDefinition, ToolGrant, ToolGrantMode, ToolGrantScopeType } from '../lib/types'
 import { Banner, LoadingList, NoAccessState } from './states'
-import { Btn, Chip, Toggle } from './common'
 import { SelectField, TextInput } from './fields'
 import { IconAlert, IconCheck, IconPlus, IconX } from './icons'
 
@@ -118,23 +117,18 @@ export function GrantsEditor({
 
   return (
     <div>
-      <div className="row row--between" style={{ marginBottom: 12 }}>
+      <Flex align="center" justify="between" gap="3" mb="3">
         <Caption as="div">
           {local.length} grants · {local.filter(g => g.approval_required).length} require approval
         </Caption>
-        <div className="row row--sm">
-          {dirty && <Btn variant="ghost" size="sm" onClick={reset} disabled={saving}>Reset</Btn>}
-          <Btn
-            variant="primary"
-            size="sm"
-            onClick={save}
-            disabled={!dirty || saving}
-            icon={<IconCheck />}
-          >
+        <Flex align="center" gap="2">
+          {dirty && <Button variant="ghost" size="1" onClick={reset} disabled={saving}>Reset</Button>}
+          <Button size="1" onClick={save} disabled={!dirty || saving}>
+            <IconCheck />
             {saving ? 'saving…' : 'Save grants'}
-          </Btn>
-        </div>
-      </div>
+          </Button>
+        </Flex>
+      </Flex>
 
       {saveError && (
         <Banner tone="warn" title="Couldn't save grants">
@@ -151,23 +145,20 @@ export function GrantsEditor({
             padding: '10px 16px',
             background: 'var(--gray-3)',
             borderBottom: '1px solid var(--gray-6)',
-            fontFamily: 'var(--code-font-family)',
-            fontSize: 10,
-            color: 'var(--gray-10)',
             textTransform: 'uppercase',
             letterSpacing: '0.14em',
           }}
         >
-          <span>tool_name</span>
-          <span>scope</span>
-          <span>mode</span>
-          <span>approval</span>
+          <Text as="span" size="1" color="gray">tool_name</Text>
+          <Text as="span" size="1" color="gray">scope</Text>
+          <Text as="span" size="1" color="gray">mode</Text>
+          <Text as="span" size="1" color="gray">approval</Text>
           <span />
         </div>
         {local.length === 0 ? (
-          <div style={{ padding: '20px 16px', color: 'var(--gray-11)', fontSize: 12.5, textAlign: 'center' }}>
+          <Text as="div" size="1" color="gray" align="center" style={{ padding: '20px 16px' }}>
             No grants yet. Add one below.
-          </div>
+          </Text>
         ) : (
           local.map(g => (
             <div
@@ -181,7 +172,7 @@ export function GrantsEditor({
                 borderBottom: '1px solid var(--gray-6)',
               }}
             >
-              <Code variant="ghost" style={{ fontSize: 12 }}>{g.tool_name}</Code>
+              <Code variant="ghost" size="1">{g.tool_name}</Code>
               <SelectField
                 size="1"
                 value={g.scope_type}
@@ -194,19 +185,26 @@ export function GrantsEditor({
                 onChange={v => updateGrant(g.id, { mode: v as ToolGrantMode })}
                 options={MODES.map(m => ({ value: m }))}
               />
-              <Toggle
-                on={g.approval_required}
-                onChange={v => updateGrant(g.id, { approval_required: v })}
-                label={g.approval_required ? 'required' : 'auto'}
-              />
-              <button
+              <Flex align="center" gap="2" asChild>
+                <label>
+                  <Switch
+                    size="1"
+                    checked={g.approval_required}
+                    onCheckedChange={v => updateGrant(g.id, { approval_required: v })}
+                  />
+                  <Text size="2">{g.approval_required ? 'required' : 'auto'}</Text>
+                </label>
+              </Flex>
+              <IconButton
+                size="1"
+                variant="ghost"
+                color="red"
                 onClick={() => removeGrant(g.id)}
                 title="Remove grant"
-                className="tb__action"
-                style={{ color: 'var(--red-11)' }}
+                aria-label="Remove grant"
               >
-                <IconX className="ic ic--sm" />
-              </button>
+                <IconX size={12} />
+              </IconButton>
             </div>
           ))
         )}
@@ -234,7 +232,7 @@ export function GrantsEditor({
               <option key={t.name} value={t.name}>{t.description ?? ''}</option>
             ))}
           </datalist>
-          <Btn size="sm" icon={<IconPlus />} onClick={addGrant} disabled={!newTool.trim()}>Add</Btn>
+          <Button size="1" onClick={addGrant} disabled={!newTool.trim()}><IconPlus />Add</Button>
         </div>
       </div>
 
@@ -256,7 +254,7 @@ export function GrantsEditor({
 
 function ReadOnlyGrants({ grants }: { grants: ToolGrant[] }) {
   if (grants.length === 0) {
-    return <Text as="div" color="gray" style={{ fontSize: 12.5 }}>No grants configured.</Text>
+    return <Text as="div" size="1" color="gray">No grants configured.</Text>
   }
   return (
     <div className="card" style={{ padding: 0 }}>
@@ -272,10 +270,12 @@ function ReadOnlyGrants({ grants }: { grants: ToolGrant[] }) {
             borderBottom: '1px solid var(--gray-6)',
           }}
         >
-          <Code variant="ghost" style={{ fontSize: 12 }}>{g.tool_name}</Code>
-          <Chip>{g.scope_type}</Chip>
-          <Chip>{g.mode}</Chip>
-          {g.approval_required ? <Chip tone="warn">approval</Chip> : <Chip tone="ghost">auto</Chip>}
+          <Code variant="ghost" size="1">{g.tool_name}</Code>
+          <Badge color="gray" variant="soft" radius="full" size="1">{g.scope_type}</Badge>
+          <Badge color="gray" variant="soft" radius="full" size="1">{g.mode}</Badge>
+          {g.approval_required
+            ? <Badge color="amber" variant="soft" radius="full" size="1">approval</Badge>
+            : <Badge color="gray" variant="outline" radius="full" size="1">auto</Badge>}
         </div>
       ))}
     </div>
