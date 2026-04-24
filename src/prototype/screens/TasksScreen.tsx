@@ -1,17 +1,21 @@
 import { useEffect, useMemo, useState } from 'react'
+import { Badge, Button, Code, Flex, Text } from '@radix-ui/themes'
+
 import { AppShell } from '../components/shell'
-import { PageHeader, Btn, Chip, Status, InfoHint, Pagination } from '../components/common'
+import { Caption, PageHeader, Status, InfoHint, Pagination } from '../components/common'
 import { Banner, EmptyState, ErrorState, LoadingList } from '../components/states'
 import { IconArrowRight, IconPlus, IconTask } from '../components/icons'
 import { Link } from '../router'
 import { api } from '../lib/api'
-import type { Task, TaskStatus } from '../lib/types'
+import type { Agent, Task, TaskStatus, User } from '../lib/types'
 import { ago } from '../lib/format'
 
 const STATUSES: Array<TaskStatus | 'all'> = ['all', 'pending', 'running', 'completed', 'failed', 'cancelled']
 
 export default function TasksScreen() {
   const [tasks, setTasks] = useState<Task[] | null>(null)
+  const [agents, setAgents] = useState<Agent[]>([])
+  const [users, setUsers] = useState<User[]>([])
   const [status, setStatus] = useState<TaskStatus | 'all'>('all')
   const [error, setError] = useState<string | null>(null)
   const [reloadTick, setReloadTick] = useState(0)
@@ -20,10 +24,16 @@ export default function TasksScreen() {
 
   useEffect(() => {
     let cancelled = false
-    api.listTasks(status === 'all' ? undefined : { status })
-      .then(t => {
+    Promise.all([
+      api.listTasks(status === 'all' ? undefined : { status }),
+      api.listAgents(),
+      api.listUsers(),
+    ])
+      .then(([t, a, u]) => {
         if (cancelled) return
         setTasks(t)
+        setAgents(a)
+        setUsers(u)
         setError(null)
       })
       .catch(e => {
@@ -32,6 +42,11 @@ export default function TasksScreen() {
       })
     return () => { cancelled = true }
   }, [status, reloadTick])
+
+  const agentName = (id: string | null) =>
+    (id && agents.find(a => a.id === id)?.name) || '—'
+  const userName = (id: string | null) =>
+    (id && users.find(u => u.id === id)?.name) || '—'
 
   const counts = useMemo(() => {
     const c: Record<string, number> = { all: tasks?.length ?? 0 }
@@ -50,35 +65,41 @@ export default function TasksScreen() {
             <>
               TASKS{' '}
               <InfoHint>
-                List from <span className="mono">GET /tasks</span>. Status filter is applied server-side. Runs and step details are fetched separately.
+                List from <Code variant="ghost">GET /tasks</Code>. Status filter is applied server-side. Runs and step details are fetched separately.
               </InfoHint>
             </>
           }
           title={<>Work <em>in motion.</em></>}
           subtitle="Each task is dispatched to an agent. Runs are fetched separately."
           actions={
-            <Btn variant="primary" href="/tasks/new" icon={<IconPlus />}>Create task</Btn>
+            <Button asChild><a href="#/tasks/new"><IconPlus />Create task</a></Button>
           }
         />
 
         <Banner tone="warn" title="Task concept is MVP-deferred (ADR-0003)">
-          Gateway v0.2.0 marks <span className="mono">/tasks/*</span> as <span className="mono">x-mvp-deferred</span>. Runs can exist without a task; these screens remain in the prototype for design continuity.
+          Gateway v0.2.0 marks <Code variant="ghost">/tasks/*</Code> as <Code variant="ghost">x-mvp-deferred</Code>. Runs can exist without a task; these screens remain in the prototype for design continuity.
         </Banner>
         <div style={{ height: 16 }} />
 
-        <div className="row" style={{ gap: 6, marginBottom: 16, flexWrap: 'wrap' }}>
-          <span className="mono uppercase muted" style={{ marginRight: 4 }}>status</span>
-          {STATUSES.map(s => (
-            <button
-              key={s}
-              className={`chip${status === s ? ' chip--accent' : ''}`}
-              onClick={() => { setStatus(s); setPage(0) }}
-              style={{ cursor: 'pointer' }}
-            >
-              {s} <span className="mono" style={{ color: 'var(--text-dim)' }}>{counts[s] ?? 0}</span>
-            </button>
-          ))}
-        </div>
+        <Flex align="center" gap="2" mb="4" wrap="wrap">
+          <Caption mr="1">status</Caption>
+          {STATUSES.map(s => {
+            const isActive = status === s
+            return (
+              <Button
+                key={s}
+                type="button"
+                size="2"
+                variant="soft"
+                color={isActive ? 'blue' : 'gray'}
+                onClick={() => { setStatus(s); setPage(0) }}
+              >
+                <span style={{ textTransform: 'capitalize' }}>{s}</span>
+                <Code variant="ghost" size="1" color="gray">{counts[s] ?? 0}</Code>
+              </Button>
+            )
+          })}
+        </Flex>
 
         {error ? (
           <ErrorState
@@ -95,26 +116,14 @@ export default function TasksScreen() {
             action={{ label: 'Create a task', href: '/tasks/new' }}
           />
         ) : (
-          <div className="card" style={{ padding: 0 }}>
-            <div style={{
-              padding: '10px 16px',
-              background: 'var(--surface-2)',
-              borderBottom: '1px solid var(--border)',
-              display: 'grid',
-              gridTemplateColumns: 'minmax(0, 1fr) 80px 130px 140px 140px 120px 32px',
-              gap: 14,
-              fontFamily: 'var(--font-mono)',
-              fontSize: 10,
-              color: 'var(--text-dim)',
-              textTransform: 'uppercase',
-              letterSpacing: '0.12em',
-            }}>
-              <span>id · title</span>
-              <span>type</span>
-              <span>status</span>
-              <span>agent · version</span>
-              <span>created by</span>
-              <span>updated</span>
+          <div className="card card--table">
+            <div className="table-head" style={{ gridTemplateColumns: 'minmax(0, 1fr) 80px 130px 160px 140px 120px 32px' }}>
+              <Text as="span" size="1" color="gray">title</Text>
+              <Text as="span" size="1" color="gray">type</Text>
+              <Text as="span" size="1" color="gray">status</Text>
+              <Text as="span" size="1" color="gray">agent</Text>
+              <Text as="span" size="1" color="gray">created by</Text>
+              <Text as="span" size="1" color="gray">updated</Text>
               <span />
             </div>
             {pageItems.map(t => (
@@ -122,28 +131,29 @@ export default function TasksScreen() {
                 key={t.id}
                 to={`/tasks/${t.id}`}
                 className="agent-row"
-                style={{ gridTemplateColumns: 'minmax(0, 1fr) 80px 130px 140px 140px 120px 32px' }}
+                style={{ gridTemplateColumns: 'minmax(0, 1fr) 80px 130px 160px 140px 120px 32px' }}
               >
-                <div style={{ minWidth: 0 }}>
-                  <div className="mono" style={{ fontSize: 11, color: 'var(--text-dim)' }}>{t.id}</div>
-                  <div style={{ fontSize: 13, color: 'var(--text)', marginTop: 2 }} className="truncate">
-                    {t.title ?? <span className="muted">— untitled —</span>}
-                  </div>
-                </div>
-                <Chip tone={t.type === 'schedule' ? 'info' : t.type === 'chat' ? 'accent' : 'ghost'}>
+                <Text as="div" size="2" className="truncate" style={{ minWidth: 0 }}>
+                  {t.title ?? <Text color="gray">— untitled —</Text>}
+                </Text>
+                <Badge
+                  color={t.type === 'schedule' ? 'cyan' : t.type === 'chat' ? 'blue' : 'gray'}
+                  variant={t.type === 'schedule' || t.type === 'chat' ? 'soft' : 'outline'}
+                  radius="full"
+                  size="1"
+                >
                   {t.type.replace('_', ' ')}
-                </Chip>
+                </Badge>
                 <Status status={t.status} />
-                <div className="mono" style={{ fontSize: 11, color: 'var(--text-muted)' }}>
-                  <div className="truncate">{t.assigned_agent_id ?? '—'}</div>
-                  <div style={{ color: 'var(--text-dim)', marginTop: 2 }}>{t.assigned_agent_version_id ?? '—'}</div>
-                </div>
-                <div className="mono truncate" style={{ fontSize: 11, color: 'var(--text-muted)' }}>
-                  {t.created_by ?? '—'}
-                </div>
-                <div className="mono" style={{ fontSize: 11, color: 'var(--text-dim)' }}>
+                <Text as="div" size="1" className="truncate">
+                  {agentName(t.assigned_agent_id)}
+                </Text>
+                <Text as="div" size="1" className="truncate">
+                  {userName(t.created_by)}
+                </Text>
+                <Text as="div" size="1" color="gray">
                   {ago(t.updated_at)}
-                </div>
+                </Text>
                 <IconArrowRight className="ic" />
               </Link>
             ))}

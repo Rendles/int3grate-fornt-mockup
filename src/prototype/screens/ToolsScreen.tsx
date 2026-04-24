@@ -1,9 +1,13 @@
 import { useEffect, useMemo, useState } from 'react'
+import { Badge, Button, Code, Flex, Text } from '@radix-ui/themes'
+
 import { AppShell } from '../components/shell'
-import { PageHeader, CommandBar, InfoHint, PolicyModeChip } from '../components/common'
+import { Caption, PageHeader, CommandBar, InfoHint } from '../components/common'
+import { TextInput } from '../components/fields'
 import { EmptyState, ErrorState, LoadingList } from '../components/states'
 import { IconArrowRight, IconTool } from '../components/icons'
 import { api } from '../lib/api'
+import { toolLabel } from '../lib/format'
 import type { ToolDefinition, ToolPolicyMode } from '../lib/types'
 
 type ModeFilter = ToolPolicyMode | 'all'
@@ -44,7 +48,9 @@ export default function ToolsScreen() {
     return tools.filter(t => {
       if (mode !== 'all' && t.default_mode !== mode) return false
       if (!q) return true
-      return t.name.toLowerCase().includes(q) || (t.description ?? '').toLowerCase().includes(q)
+      return t.name.toLowerCase().includes(q)
+        || toolLabel(t.name).toLowerCase().includes(q)
+        || (t.description ?? '').toLowerCase().includes(q)
     })
   }, [tools, query, mode])
 
@@ -65,7 +71,7 @@ export default function ToolsScreen() {
             <>
               TOOLS{' '}
               <InfoHint>
-                Public catalog from <span className="mono">GET /tools</span> (gateway v0.2.0). Used by the UI tool-picker and for validating dispatch before the orchestrator runs.
+                Public catalog from <Code variant="ghost">GET /tools</Code> (gateway v0.2.0). Used by the UI tool-picker and for validating dispatch before the orchestrator runs.
               </InfoHint>
             </>
           }
@@ -84,27 +90,34 @@ export default function ToolsScreen() {
 
         <div style={{ height: 16 }} />
 
-        <div className="row" style={{ gap: 8, marginBottom: 16, flexWrap: 'wrap', alignItems: 'center' }}>
-          <input
-            className="input"
-            placeholder="filter by name or description…"
-            value={query}
-            onChange={e => setQuery(e.target.value)}
-            style={{ flex: '1 1 260px', maxWidth: 420 }}
-          />
-          <span className="mono uppercase muted" style={{ marginLeft: 4 }}>default_mode</span>
-          {MODES.map(m => (
-            <button
-              key={m}
-              className={`chip${mode === m ? (m === 'requires_approval' ? ' chip--warn' : ' chip--accent') : ''}`}
-              style={{ cursor: 'pointer' }}
-              onClick={() => setMode(m)}
-            >
-              {m}{' '}
-              <span className="mono" style={{ color: 'var(--text-dim)' }}>{counts[m] ?? 0}</span>
-            </button>
-          ))}
-        </div>
+        <Flex align="center" gap="2" mb="4" wrap="wrap">
+          <div style={{ flex: '1 1 260px', maxWidth: 420 }}>
+            <TextInput
+              size="1"
+              placeholder="filter by name or description…"
+              value={query}
+              onChange={e => setQuery(e.target.value)}
+            />
+          </div>
+          <Caption ml="1">default_mode</Caption>
+          {MODES.map(m => {
+            const isActive = mode === m
+            const activeColor = m === 'requires_approval' ? 'amber' : 'blue'
+            return (
+              <Button
+                key={m}
+                type="button"
+                size="2"
+                variant="soft"
+                color={isActive ? activeColor : 'gray'}
+                onClick={() => setMode(m)}
+              >
+                <span style={{ textTransform: 'capitalize' }}>{m}</span>
+                <Code variant="ghost" size="1" color="gray">{counts[m] ?? 0}</Code>
+              </Button>
+            )
+          })}
+        </Flex>
 
         {error ? (
           <ErrorState
@@ -117,31 +130,17 @@ export default function ToolsScreen() {
         ) : filtered.length === 0 ? (
           <EmptyState icon={<IconTool />} title="No tools match the current filters" />
         ) : (
-          <div className="card" style={{ padding: 0 }}>
-            <div
-              style={{
-                display: 'grid',
-                gridTemplateColumns: '240px 140px minmax(0, 1fr) 28px',
-                gap: 14,
-                padding: '10px 16px',
-                background: 'var(--surface-2)',
-                borderBottom: '1px solid var(--border)',
-                fontFamily: 'var(--font-mono)',
-                fontSize: 10,
-                color: 'var(--text-dim)',
-                textTransform: 'uppercase',
-                letterSpacing: '0.12em',
-              }}
-            >
-              <span>name</span>
-              <span>default_mode</span>
-              <span>description</span>
+          <div className="card card--table">
+            <div className="table-head" style={{ gridTemplateColumns: '240px 140px minmax(0, 1fr) 28px' }}>
+              <Text as="span" size="1" color="gray">name</Text>
+              <Text as="span" size="1" color="gray">default_mode</Text>
+              <Text as="span" size="1" color="gray">description</Text>
               <span />
             </div>
             {filtered.map(t => {
               const open = expanded.has(t.name)
               return (
-                <div key={t.name} style={{ borderBottom: '1px solid var(--border)' }}>
+                <div key={t.name} className="tool-row-wrap" style={{ borderBottom: '1px solid var(--gray-a3)' }}>
                   <button
                     onClick={() => toggle(t.name)}
                     style={{
@@ -153,14 +152,23 @@ export default function ToolsScreen() {
                       textAlign: 'left',
                       alignItems: 'start',
                       background: 'transparent',
-                      color: 'var(--text)',
+                      color: 'var(--gray-12)',
                     }}
                   >
-                    <span className="mono" style={{ fontSize: 12, color: 'var(--text)' }}>{t.name}</span>
-                    <span><PolicyModeChip mode={t.default_mode} /></span>
-                    <span style={{ fontSize: 12.5, color: 'var(--text-muted)', lineHeight: 1.5 }}>
-                      {t.description ?? <span className="muted">—</span>}
+                    <Text as="div" size="2">{toolLabel(t.name)}</Text>
+                    <span>
+                      <Badge
+                        color={t.default_mode === 'read_only' ? 'cyan' : t.default_mode === 'requires_approval' ? 'amber' : 'red'}
+                        variant="soft"
+                        radius="small"
+                        size="1"
+                      >
+                        {t.default_mode}
+                      </Badge>
                     </span>
+                    <Text as="span" size="1" color="gray" style={{ lineHeight: 1.5 }}>
+                      {t.description ?? '—'}
+                    </Text>
                     <IconArrowRight
                       className="ic"
                       style={{ transform: open ? 'rotate(90deg)' : undefined, transition: 'transform 120ms' }}
@@ -168,26 +176,22 @@ export default function ToolsScreen() {
                   </button>
                   {open && (
                     <div style={{ padding: '0 16px 16px' }}>
-                      <div className="mono uppercase muted" style={{ fontSize: 9.5, marginBottom: 6 }}>
+                      <Caption as="div" mb="2">
                         input_schema
-                      </div>
-                      <pre
-                        style={{
-                          fontFamily: 'var(--font-mono)',
-                          fontSize: 11,
-                          color: 'var(--text)',
-                          background: 'var(--surface-2)',
-                          border: '1px solid var(--border)',
-                          padding: 12,
-                          borderRadius: 4,
-                          margin: 0,
-                          whiteSpace: 'pre-wrap',
-                          maxHeight: 280,
-                          overflow: 'auto',
-                        }}
-                      >
-                        {JSON.stringify(t.input_schema, null, 2)}
-                      </pre>
+                      </Caption>
+                      <Code asChild size="1" variant="soft">
+                        <pre
+                          style={{
+                            padding: 12,
+                            margin: 0,
+                            whiteSpace: 'pre-wrap',
+                            maxHeight: 280,
+                            overflow: 'auto',
+                          }}
+                        >
+                          {JSON.stringify(t.input_schema, null, 2)}
+                        </pre>
+                      </Code>
                     </div>
                   )}
                 </div>

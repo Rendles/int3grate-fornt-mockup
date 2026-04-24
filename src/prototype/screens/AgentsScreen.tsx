@@ -1,19 +1,31 @@
 import { useEffect, useMemo, useState } from 'react'
+import { Badge, Box, Button, Code, Flex, Text } from '@radix-ui/themes'
+
 import { AppShell } from '../components/shell'
-import { PageHeader, Btn, Chip, Status, InfoHint, Pagination } from '../components/common'
+import { PageHeader, Status, InfoHint, Pagination } from '../components/common'
+import { TextInput } from '../components/fields'
 import { EmptyState, ErrorState, LoadingList } from '../components/states'
 import { IconAgent, IconArrowRight, IconLock, IconPlus } from '../components/icons'
 import { Link } from '../router'
 import { useAuth } from '../auth'
 import { api } from '../lib/api'
-import type { Agent, AgentStatus } from '../lib/types'
+import type { Agent, AgentStatus, User } from '../lib/types'
 import { ago } from '../lib/format'
 
 const STATUSES: Array<AgentStatus | 'all'> = ['all', 'active', 'paused', 'draft', 'archived']
 
+const DOMAIN_NAMES: Record<string, string> = {
+  dom_hq: 'HQ',
+  dom_sales: 'Sales',
+  dom_support: 'Support',
+}
+const humanDomain = (id: string | null) =>
+  id ? (DOMAIN_NAMES[id] ?? id.replace(/^dom_/, '')) : '—'
+
 export default function AgentsScreen() {
   const { user } = useAuth()
   const [agents, setAgents] = useState<Agent[] | null>(null)
+  const [users, setUsers] = useState<User[]>([])
   const [error, setError] = useState<string | null>(null)
   const [reloadTick, setReloadTick] = useState(0)
   const [filter, setFilter] = useState<AgentStatus | 'all'>('all')
@@ -25,10 +37,11 @@ export default function AgentsScreen() {
 
   useEffect(() => {
     let cancelled = false
-    api.listAgents()
-      .then(a => {
+    Promise.all([api.listAgents(), api.listUsers()])
+      .then(([a, u]) => {
         if (cancelled) return
         setAgents(a)
+        setUsers(u)
         setError(null)
       })
       .catch(e => {
@@ -37,6 +50,9 @@ export default function AgentsScreen() {
       })
     return () => { cancelled = true }
   }, [reloadTick])
+
+  const ownerName = (id: string | null) =>
+    (id && users.find(u => u.id === id)?.name) || '—'
 
   const filtered = useMemo(() => {
     if (!agents) return []
@@ -67,7 +83,7 @@ export default function AgentsScreen() {
             <>
               AGENTS{' '}
               <InfoHint>
-                List from <span className="mono">GET /agents</span>. Each row is one agent record returned by the gateway.
+                List from <Code variant="ghost">GET /agents</Code>. Each row is one agent record returned by the gateway.
               </InfoHint>
             </>
           }
@@ -75,34 +91,40 @@ export default function AgentsScreen() {
           subtitle="Configure what agents are and what they may touch."
           actions={
             canCreate
-              ? <Btn variant="primary" href="/agents/new" icon={<IconPlus />}>New agent</Btn>
-              : <Btn variant="ghost" disabled icon={<IconLock />} title="Admins only">New agent</Btn>
+              ? <Button asChild><a href="#/agents/new"><IconPlus />New agent</a></Button>
+              : <Button variant="ghost" disabled title="Admins only"><IconLock />New agent</Button>
           }
         />
 
-        <div className="row" style={{ gap: 10, marginBottom: 16, flexWrap: 'wrap' }}>
-          <div className="row row--sm">
-            {STATUSES.map(f => (
-              <button
-                key={f}
-                className={`chip${filter === f ? ' chip--accent' : ''}`}
-                onClick={() => { setFilter(f); setPage(0) }}
-                style={{ cursor: 'pointer' }}
-              >
-                {f}
-                <span className="mono" style={{ color: 'var(--text-dim)' }}>{counts[f] ?? 0}</span>
-              </button>
-            ))}
-          </div>
-          <div style={{ flex: 1 }} />
-          <input
-            className="input"
-            style={{ width: 260, padding: '6px 10px', fontSize: 12 }}
-            placeholder="Filter by name or description..."
-            value={query}
-            onChange={e => { setQuery(e.target.value); setPage(0) }}
-          />
-        </div>
+        <Flex align="center" gap="2" mb="4" wrap="wrap">
+          <Flex align="center" gap="2">
+            {STATUSES.map(f => {
+              const isActive = filter === f
+              return (
+                <Button
+                  key={f}
+                  type="button"
+                  size="2"
+                  variant="soft"
+                  color={isActive ? 'blue' : 'gray'}
+                  onClick={() => { setFilter(f); setPage(0) }}
+                >
+                  <span style={{ textTransform: 'capitalize' }}>{f}</span>
+                  <Code variant="ghost" size="1" color="gray">{counts[f] ?? 0}</Code>
+                </Button>
+              )
+            })}
+          </Flex>
+          <Box flexGrow="1" />
+          <Box width="260px">
+            <TextInput
+              size="2"
+              placeholder="Filter by name or description..."
+              value={query}
+              onChange={e => { setQuery(e.target.value); setPage(0) }}
+            />
+          </Box>
+        </Flex>
 
         {error ? (
           <ErrorState
@@ -119,20 +141,13 @@ export default function AgentsScreen() {
             action={canCreate ? { label: 'Create an agent', href: '/agents/new' } : undefined}
           />
         ) : (
-          <div className="card" style={{ padding: 0 }}>
-            <div style={{
-              display: 'grid',
-              gridTemplateColumns: 'minmax(0, 1fr) 120px 130px 160px 120px 32px',
-              gap: 14, padding: '10px 16px', background: 'var(--surface-2)',
-              fontFamily: 'var(--font-mono)', fontSize: 10, color: 'var(--text-dim)',
-              textTransform: 'uppercase', letterSpacing: '0.14em',
-              borderBottom: '1px solid var(--border)',
-            }}>
-              <span>name · description</span>
-              <span>status</span>
-              <span>active version</span>
-              <span>owner · domain</span>
-              <span>updated</span>
+          <div className="card card--table">
+            <div className="table-head" style={{ gridTemplateColumns: 'minmax(0, 1fr) 120px 130px 160px 120px 32px' }}>
+              <Text as="span" size="1" color="gray">name · description</Text>
+              <Text as="span" size="1" color="gray">status</Text>
+              <Text as="span" size="1" color="gray">active version</Text>
+              <Text as="span" size="1" color="gray">owner · domain</Text>
+              <Text as="span" size="1" color="gray">updated</Text>
               <span />
             </div>
             {pageItems.map(a => (
@@ -143,38 +158,35 @@ export default function AgentsScreen() {
                 style={{ gridTemplateColumns: 'minmax(0, 1fr) 120px 130px 160px 120px 32px' }}
               >
                 <div style={{ minWidth: 0 }}>
-                  <div style={{ fontSize: 13.5, color: 'var(--text)' }}>{a.name}</div>
+                  <Text as="div" size="2">{a.name}</Text>
                   {a.description && (
-                    <div className="agent-row__desc truncate" style={{ marginTop: 2 }}>{a.description}</div>
+                    <Text as="div" size="1" color="gray" mt="1" className="truncate">{a.description}</Text>
                   )}
-                  <div className="mono" style={{ fontSize: 10.5, color: 'var(--text-dim)', marginTop: 4 }}>
-                    {a.id}
-                  </div>
                 </div>
                 <Status status={a.status} />
                 <div>
                   {a.active_version ? (
                     <>
-                      <Chip tone="accent">v{a.active_version.version}</Chip>
-                      <div className="mono" style={{ fontSize: 10.5, color: 'var(--text-dim)', marginTop: 4 }}>
+                      <Badge color="blue" variant="soft" radius="full" size="1">v{a.active_version.version}</Badge>
+                      <Text as="div" size="1" color="gray" mt="1">
                         {(a.active_version.model_chain_config as { primary?: string })?.primary ?? '—'}
-                      </div>
+                      </Text>
                     </>
                   ) : (
-                    <Chip tone="ghost">no active version</Chip>
+                    <Badge color="gray" variant="outline" radius="full" size="1">no active version</Badge>
                   )}
                 </div>
                 <div>
-                  <div className="mono" style={{ fontSize: 11, color: 'var(--text)' }}>
-                    {a.owner_user_id ?? '—'}
-                  </div>
-                  <div className="mono" style={{ fontSize: 10.5, color: 'var(--text-dim)', marginTop: 4 }}>
-                    {a.domain_id ?? '—'}
-                  </div>
+                  <Text as="div" size="1">
+                    {ownerName(a.owner_user_id)}
+                  </Text>
+                  <Text as="div" size="1" color="gray" mt="1">
+                    {humanDomain(a.domain_id)}
+                  </Text>
                 </div>
-                <div className="mono" style={{ fontSize: 11, color: 'var(--text-muted)' }}>
+                <Text as="div" size="1" color="gray">
                   {ago(a.updated_at)}
-                </div>
+                </Text>
                 <IconArrowRight className="ic" />
               </Link>
             ))}

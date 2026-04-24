@@ -1,6 +1,8 @@
 import { useEffect, useState } from 'react'
+import { Badge, Box, Button, Code, Flex, Grid, Text } from '@radix-ui/themes'
+
 import { AppShell } from '../components/shell'
-import { PageHeader, Chip, InfoHint, Pagination } from '../components/common'
+import { Caption, PageHeader, InfoHint, MetricCard, Pagination } from '../components/common'
 import { EmptyState, ErrorState, LoadingList, NoAccessState } from '../components/states'
 import { IconAgent, IconArrowRight, IconSpend } from '../components/icons'
 import { Link } from '../router'
@@ -94,7 +96,7 @@ export default function SpendScreen() {
             <>
               {`SPEND · ${data.range} · ${data.group_by}`}{' '}
               <InfoHint>
-                Loaded via <span className="mono">GET /dashboard/spend</span> with <span className="mono">range</span> and <span className="mono">group_by</span> parameters. Only cost and token aggregates are returned.
+                Loaded via <Code variant="ghost">GET /dashboard/spend</Code> with <Code variant="ghost">range</Code> and <Code variant="ghost">group_by</Code> parameters. Only cost and token aggregates are returned.
               </InfoHint>
             </>
           }
@@ -103,71 +105,70 @@ export default function SpendScreen() {
         />
 
         {/* Controls */}
-        <div className="row" style={{ gap: 6, marginBottom: 16, flexWrap: 'wrap', alignItems: 'center' }}>
-          <span className="mono uppercase muted" style={{ marginRight: 4 }}>range</span>
-          {RANGES.map(r => (
-            <button
-              key={r}
-              className={`chip${range === r ? ' chip--accent' : ''}`}
-              style={{ cursor: 'pointer' }}
-              onClick={() => { setRange(r); setPage(0) }}
-            >
-              {r}
-            </button>
-          ))}
-          <span style={{ width: 1, height: 16, background: 'var(--border)', margin: '0 6px' }} />
-          <span className="mono uppercase muted" style={{ marginRight: 4 }}>group_by</span>
-          {GROUPINGS.map(g => (
-            <button
-              key={g}
-              className={`chip${groupBy === g ? ' chip--accent' : ''}`}
-              style={{ cursor: 'pointer' }}
-              onClick={() => { setGroupBy(g); setPage(0) }}
-            >
-              {g}
-            </button>
-          ))}
-        </div>
+        <Flex align="center" gap="2" mb="4" wrap="wrap">
+          <Caption mr="1">range</Caption>
+          {RANGES.map(r => {
+            const isActive = range === r
+            return (
+              <Button
+                key={r}
+                type="button"
+                size="2"
+                variant="soft"
+                color={isActive ? 'blue' : 'gray'}
+                onClick={() => { setRange(r); setPage(0) }}
+              >
+                {r}
+              </Button>
+            )
+          })}
+          <span style={{ width: 1, height: 20, background: 'var(--gray-a3)', margin: '0 6px' }} />
+          <Caption mr="1">group_by</Caption>
+          {GROUPINGS.map(g => {
+            const isActive = groupBy === g
+            return (
+              <Button
+                key={g}
+                type="button"
+                size="2"
+                variant="soft"
+                color={isActive ? 'blue' : 'gray'}
+                onClick={() => { setGroupBy(g); setPage(0) }}
+              >
+                <span style={{ textTransform: 'capitalize' }}>{g}</span>
+              </Button>
+            )
+          })}
+        </Flex>
 
         {/* Summary cards — all derived from the response */}
-        <div className="grid grid--3" style={{ marginBottom: 18 }}>
-          <div className="card card--metric">
-            <div className="card__body">
-              <div className="metric__label">Total spend</div>
-              <div className="row" style={{ alignItems: 'baseline', gap: 6 }}>
-                <div className="metric__value">{money(data.total_usd, { compact: true })}</div>
-                <span className="metric__unit">USD</span>
-              </div>
-              <div className="metric__delta">across the selected window</div>
-            </div>
-          </div>
-          <div className="card card--metric">
-            <div className="card__body">
-              <div className="metric__label">Total runs</div>
-              <div className="metric__value">{num(totalRuns)}</div>
-              <div className="metric__delta">across {items.length} {groupBy}{items.length === 1 ? '' : 's'}</div>
-            </div>
-          </div>
-          <div className="card card--metric">
-            <div className="card__body">
-              <div className="metric__label">tokens · in / out</div>
-              <div className="row" style={{ alignItems: 'baseline', gap: 6 }}>
-                <div className="metric__value">{num(Math.round((totalTokensIn + totalTokensOut) / 1000))}</div>
-                <span className="metric__unit">k</span>
-              </div>
-              <div className="metric__delta">
-                in {num(Math.round(totalTokensIn / 1000))}k · out {num(Math.round(totalTokensOut / 1000))}k
-              </div>
-            </div>
-          </div>
-        </div>
+        <Grid columns="3" gap="4" mb="4">
+          <MetricCard
+            label="Total spend"
+            value={money(data.total_usd, { compact: true })}
+            unit="USD"
+            delta="across the selected window"
+          />
+          <MetricCard
+            label="Total runs"
+            value={num(totalRuns)}
+            delta={`across ${items.length} ${groupBy}${items.length === 1 ? '' : 's'}`}
+          />
+          <MetricCard
+            label="tokens · in / out"
+            value={num(Math.round((totalTokensIn + totalTokensOut) / 1000))}
+            unit="k"
+            delta={`in ${num(Math.round(totalTokensIn / 1000))}k · out ${num(Math.round(totalTokensOut / 1000))}k`}
+          />
+        </Grid>
 
         {/* Horizontal bars — derived from items */}
         {!empty && (
-          <div className="card" style={{ marginBottom: 18 }}>
+          <Box asChild mb="4">
+            <div className="card">
             <div className="card__head">
-              <div className="card__title">Spend by {groupBy}</div>
-              <Chip>{items.length} {groupBy}{items.length === 1 ? '' : 's'}</Chip>
+              <Text as="div" size="2" weight="medium" className="card__title">Spend by {groupBy}</Text>
+              <Badge color="gray" variant="soft" radius="full" size="1">{items.length} {groupBy}{items.length === 1 ? '' : 's'}</Badge>
             </div>
             <div className="card__body" style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
               {sorted.map(r => {
@@ -183,22 +184,23 @@ export default function SpendScreen() {
                       alignItems: 'center',
                     }}
                   >
-                    <div className="truncate" style={{ fontSize: 12.5 }}>{r.label}</div>
+                    <Text as="div" size="1" className="truncate">{r.label}</Text>
                     <div className="spend-row__bar-track" style={{ height: 14 }}>
                       <div
                         className="spend-row__bar-fill"
                         style={{ width: `${Math.max(2, share * 100)}%` }}
                       />
                     </div>
-                    <div className="mono" style={{ fontSize: 11.5, color: 'var(--text)', textAlign: 'right' }}>
+                    <Text as="div" size="1" style={{ textAlign: 'right' }}>
                       {money(r.total_usd, { compact: true })}{' '}
-                      <span className="muted">· {pctOfTotal.toFixed(1)}%</span>
-                    </div>
+                      <Text color="gray">· {pctOfTotal.toFixed(1)}%</Text>
+                    </Text>
                   </div>
                 )
               })}
             </div>
-          </div>
+            </div>
+          </Box>
         )}
 
         {/* Breakdown table */}
@@ -208,57 +210,46 @@ export default function SpendScreen() {
             title={`No spend in the ${data.range} window`}
           />
         ) : (
-          <div className="card" style={{ padding: 0 }}>
-            <div
-              className="spend-row"
-              style={{
-                gridTemplateColumns: TABLE_COLS,
-                background: 'var(--surface-2)',
-                fontFamily: 'var(--font-mono)',
-                fontSize: 10,
-                color: 'var(--text-dim)',
-                textTransform: 'uppercase',
-                letterSpacing: '0.14em',
-              }}
-            >
-              <span>{groupBy}</span>
-              <span style={{ textAlign: 'right' }}>spend</span>
-              <span style={{ textAlign: 'right' }}>runs</span>
-              <span style={{ textAlign: 'right' }}>tokens in</span>
-              <span style={{ textAlign: 'right' }}>tokens out</span>
-              <span style={{ textAlign: 'right' }}>date</span>
+          <div className="card card--table">
+            <div className="table-head" style={{ gridTemplateColumns: TABLE_COLS }}>
+              <Text as="span" size="1" color="gray">{groupBy}</Text>
+              <Text as="span" size="1" color="gray" style={{ textAlign: 'right' }}>spend</Text>
+              <Text as="span" size="1" color="gray" style={{ textAlign: 'right' }}>runs</Text>
+              <Text as="span" size="1" color="gray" style={{ textAlign: 'right' }}>tokens in</Text>
+              <Text as="span" size="1" color="gray" style={{ textAlign: 'right' }}>tokens out</Text>
+              <Text as="span" size="1" color="gray" style={{ textAlign: 'right' }}>date</Text>
             </div>
             {pageItems.map(r => {
               const rowInner = (
                 <>
                   <div style={{ minWidth: 0 }}>
-                    <div className="row row--sm">
+                    <Flex align="center" gap="2">
                       {groupBy === 'agent' && (
-                        <span style={{ color: 'var(--text-dim)' }}>
+                        <span style={{ color: 'var(--gray-10)' }}>
                           <IconAgent className="ic ic--sm" />
                         </span>
                       )}
-                      <div className="truncate" style={{ fontSize: 13, color: 'var(--text)' }}>{r.label}</div>
-                    </div>
-                    <div className="mono" style={{ fontSize: 10.5, color: 'var(--text-dim)', marginTop: 2 }}>
+                      <Text as="div" size="2" className="truncate">{r.label}</Text>
+                    </Flex>
+                    <Text as="div" size="1" color="gray" mt="1">
                       {r.id}
-                    </div>
+                    </Text>
                   </div>
-                  <div className="mono" style={{ fontSize: 13, color: 'var(--text)', textAlign: 'right' }}>
+                  <Text as="div" size="2" style={{ textAlign: 'right' }}>
                     {money(r.total_usd, { cents: r.total_usd < 100 })}
-                  </div>
-                  <div className="mono" style={{ fontSize: 12, color: 'var(--text)', textAlign: 'right' }}>
+                  </Text>
+                  <Text as="div" size="1" style={{ textAlign: 'right' }}>
                     {num(r.run_count)}
-                  </div>
-                  <div className="mono" style={{ fontSize: 11, color: 'var(--text-muted)', textAlign: 'right' }}>
+                  </Text>
+                  <Text as="div" size="1" color="gray" style={{ textAlign: 'right' }}>
                     {num(r.total_tokens_in)}
-                  </div>
-                  <div className="mono" style={{ fontSize: 11, color: 'var(--text-muted)', textAlign: 'right' }}>
+                  </Text>
+                  <Text as="div" size="1" color="gray" style={{ textAlign: 'right' }}>
                     {num(r.total_tokens_out)}
-                  </div>
-                  <div className="mono" style={{ fontSize: 11, color: 'var(--text-dim)', textAlign: 'right' }}>
+                  </Text>
+                  <Text as="div" size="1" color="gray" style={{ textAlign: 'right' }}>
                     {r.spend_date ? shortDate(r.spend_date) : '—'}
-                  </div>
+                  </Text>
                 </>
               )
 

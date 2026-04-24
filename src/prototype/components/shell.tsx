@@ -1,5 +1,7 @@
 import type { ReactNode } from 'react'
-import { useEffect, useState } from 'react'
+import { Badge, Box, Code, Flex, IconButton, Text } from '@radix-ui/themes'
+
+import { Fragment, useEffect, useState } from 'react'
 import { Link, useRouter } from '../router'
 import { useAuth } from '../auth'
 import { useTheme } from '../theme'
@@ -77,25 +79,10 @@ export function Sidebar() {
           <img src={logo} alt="" />
         </div>
         <div>
-          <div className="sb__brand-name">Int3grate.ai</div>
-          <div className="sb__brand-sub">CONTROL · v0.7</div>
+          <Text as="div" size="5" weight="medium" className="sb__brand-name">Int3grate.ai</Text>
+          <Text as="div" size="1" className="sb__brand-sub">CONTROL · v0.7</Text>
         </div>
       </div>
-
-      {user && (
-        <div className="sb__tenant">
-          <div className="sb__tenant-label">Tenant / Domain</div>
-          <div className="sb__tenant-body">
-            <div>
-              <div className="sb__tenant-name mono">{user.tenant_id}</div>
-              <div className="sb__tenant-domain mono">{user.domain_id ?? '—'}</div>
-            </div>
-            <Link to="/profile" className="sb__tenant-switch">
-              open
-            </Link>
-          </div>
-        </div>
-      )}
 
       <div className="sb__nav">
         {items.map(item => (
@@ -105,37 +92,29 @@ export function Sidebar() {
             className={`sb__item${isActive(item.to) ? ' sb__item--active' : ''}`}
           >
             <span className="sb__item-icon">{item.icon}</span>
-            <span>{item.label}</span>
+            <Text as="span" size="2">{item.label}</Text>
             {item.note && (
-              <span
-                className="mono"
+              <Badge
+                color="gray"
+                variant="outline"
+                radius="small"
+                size="1"
                 title="MVP-deferred per ADR-0003"
-                style={{
-                  fontSize: 9,
-                  letterSpacing: '0.14em',
-                  textTransform: 'uppercase',
-                  color: 'var(--text-dim)',
-                  border: '1px dashed var(--border-2)',
-                  borderRadius: 3,
-                  padding: '1px 5px',
-                  marginLeft: 6,
-                }}
+                style={{ letterSpacing: '0.14em', textTransform: 'uppercase', borderStyle: 'dashed' }}
               >
                 {item.note}
-              </span>
+              </Badge>
             )}
             {item.badge && (
-              <span
-                className={`sb__item-badge${
-                  item.badge.tone === 'warn'
-                    ? ' sb__item-badge--warn'
-                    : item.badge.tone === 'muted'
-                      ? ' sb__item-badge--muted'
-                      : ''
-                }`}
+              <Badge
+                color={item.badge.tone === 'warn' ? 'amber' : item.badge.tone === 'muted' ? 'gray' : 'blue'}
+                variant={item.badge.tone === 'muted' ? 'outline' : 'soft'}
+                radius="full"
+                size="1"
+                className="sb__item-badge"
               >
                 {item.badge.count}
-              </span>
+              </Badge>
             )}
           </Link>
         ))}
@@ -145,10 +124,12 @@ export function Sidebar() {
         <div className="sb__footer">
           <Link to="/profile" className="sb__user">
             <Avatar initials={user.name.slice(0, 2).toUpperCase()} size={30} />
-            <div style={{ minWidth: 0, flex: 1 }}>
-              <div className="sb__user-name truncate">{user.name}</div>
-              <div className="sb__user-role">{roleLabel(user.role)} · L{user.approval_level}</div>
-            </div>
+            <Box flexGrow="1" minWidth="0">
+              <Text as="div" size="1" className="truncate">{user.name}</Text>
+              <Text as="div" size="1" color="gray" style={{ textTransform: 'uppercase', letterSpacing: '0.04em' }}>
+                {roleLabel(user.role)} · L{user.approval_level}
+              </Text>
+            </Box>
           </Link>
         </div>
       )}
@@ -164,45 +145,72 @@ export function Topbar({
   const { user, logout } = useAuth()
   const { theme, toggle } = useTheme()
   return (
-    <header className="shell__topbar">
-      <nav className="tb__crumbs">
-        {crumbs.map((c, i) => (
-          <span key={i} style={{ display: 'inline-flex', alignItems: 'center', gap: 6 }}>
-            {i > 0 && <span className="tb__crumb-sep">/</span>}
-            {c.to ? (
-              <Link to={c.to} className={i === crumbs.length - 1 ? 'tb__crumb--last' : ''}>
-                {c.label}
-              </Link>
-            ) : (
-              <span className={i === crumbs.length - 1 ? 'tb__crumb--last' : ''}>{c.label}</span>
-            )}
-          </span>
-        ))}
-      </nav>
+    <Flex
+      asChild
+      align="center"
+      gap={{ initial: '2', md: '4' }}
+      px={{ initial: '3', md: '5' }}
+      gridArea="topbar"
+      position="sticky"
+      top="0"
+      style={{
+        zIndex: 10,
+        background: 'var(--color-panel-solid)',
+      }}
+    >
+      <header>
+        <Flex asChild align="center" gap="2" flexGrow="1">
+          <nav aria-label="Breadcrumb">
+            {crumbs.map((c, i) => {
+              const isLast = i === crumbs.length - 1
+              const label = (
+                <Text size="1" color={isLast ? undefined : 'gray'}>
+                  {c.label}
+                </Text>
+              )
+              return (
+                <Fragment key={i}>
+                  {i > 0 && (
+                    <Text size="1" color="gray">
+                      /
+                    </Text>
+                  )}
+                  {c.to ? <Link to={c.to}>{label}</Link> : label}
+                </Fragment>
+              )
+            })}
+          </nav>
+        </Flex>
 
-      <div className="tb__spacer" />
+        {user && (
+          <Box display={{ initial: 'none', md: 'block' }}>
+            <Code variant="ghost" size="1" color="gray">
+              {user.email}
+            </Code>
+          </Box>
+        )}
 
-      {user && (
-        <div className="tb__meta">
-          <span className="mono" style={{ fontSize: 11, color: 'var(--text-dim)' }}>
-            {user.email}
-          </span>
-        </div>
-      )}
+        <IconButton
+          variant="ghost"
+          size="1"
+          onClick={toggle}
+          title={theme === 'dark' ? 'Switch to light theme' : 'Switch to dark theme'}
+          aria-label="Toggle theme"
+        >
+          {theme === 'dark' ? <IconSun size={14} /> : <IconMoon size={14} />}
+        </IconButton>
 
-      <button
-        className="tb__action"
-        onClick={toggle}
-        title={theme === 'dark' ? 'Switch to light theme' : 'Switch to dark theme'}
-        aria-label="Toggle theme"
-      >
-        {theme === 'dark' ? <IconSun className="ic ic--sm" /> : <IconMoon className="ic ic--sm" />}
-      </button>
-
-      <button className="tb__action" onClick={logout} title="Sign out">
-        <IconLogout className="ic ic--sm" />
-      </button>
-    </header>
+        <IconButton
+          variant="ghost"
+          size="1"
+          onClick={logout}
+          title="Sign out"
+          aria-label="Sign out"
+        >
+          <IconLogout size={14} />
+        </IconButton>
+      </header>
+    </Flex>
   )
 }
 

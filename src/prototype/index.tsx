@@ -1,4 +1,6 @@
+import '@radix-ui/themes/styles.css'
 import './prototype.css'
+import { Text, Theme as RadixTheme, ThemePanel } from '@radix-ui/themes'
 import { AuthProvider, useAuth } from './auth'
 import { RouterProvider, matchRoute, useRouter } from './router'
 import { ThemeProvider, useTheme } from './theme'
@@ -28,9 +30,9 @@ function Router() {
   if (loading) {
     return (
       <div className="prototype-root" style={{ display: 'grid', placeItems: 'center', minHeight: '100svh' }}>
-        <div className="mono" style={{ color: 'var(--text-dim)', letterSpacing: '0.1em', textTransform: 'uppercase', fontSize: 11 }}>
+        <Text size="1" color="gray" style={{ letterSpacing: '0.1em', textTransform: 'uppercase' }}>
           connecting …
-        </div>
+        </Text>
       </div>
     )
   }
@@ -74,13 +76,25 @@ function Router() {
 function ThemedRoot() {
   const { theme } = useTheme()
   return (
-    <div className={`prototype-root${theme === 'light' ? ' theme-light' : ''}`}>
-      <AuthProvider>
-        <RouterProvider>
-          <Router />
-        </RouterProvider>
-      </AuthProvider>
-    </div>
+    <RadixTheme
+      asChild
+      appearance={theme}
+      accentColor='indigo'
+      grayColor="slate"
+      panelBackground="solid"
+      radius="small"
+      scaling="100%"
+      hasBackground={false}
+    >
+      <div className="prototype-root">
+        <AuthProvider>
+          <RouterProvider>
+            <Router />
+          </RouterProvider>
+        </AuthProvider>
+        {import.meta.env.DEV && <ThemePanel defaultOpen={true} />}
+      </div>
+    </RadixTheme>
   )
 }
 

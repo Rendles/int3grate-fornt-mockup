@@ -1,11 +1,13 @@
 import { useEffect, useMemo, useState } from 'react'
+import { Badge, Box, Button, Code, Flex, Text } from '@radix-ui/themes'
+
 import { AppShell } from '../components/shell'
-import { PageHeader, Chip, Status, InfoHint, Pagination } from '../components/common'
-import { EmptyState, ErrorState, LoadingList } from '../components/states'
+import { Caption, PageHeader, Status, InfoHint, Pagination } from '../components/common'
+import { Banner, EmptyState, ErrorState, LoadingList } from '../components/states'
 import { IconApproval, IconArrowRight, IconCheck, IconX } from '../components/icons'
 import { Link, useRouter } from '../router'
 import { api } from '../lib/api'
-import type { ApprovalRequest, ApprovalStatus } from '../lib/types'
+import type { ApprovalRequest, ApprovalStatus, User } from '../lib/types'
 import { ago } from '../lib/format'
 
 type StatusFilter = ApprovalStatus | 'all'
@@ -14,6 +16,7 @@ const STATUSES: StatusFilter[] = ['all', 'pending', 'approved', 'rejected', 'exp
 export default function ApprovalsScreen() {
   const { navigate } = useRouter()
   const [approvals, setApprovals] = useState<ApprovalRequest[] | null>(null)
+  const [users, setUsers] = useState<User[]>([])
   const [statusFilter, setStatusFilter] = useState<StatusFilter>('pending')
   const [error, setError] = useState<string | null>(null)
   const [reloadTick, setReloadTick] = useState(0)
@@ -22,10 +25,14 @@ export default function ApprovalsScreen() {
 
   useEffect(() => {
     let cancelled = false
-    api.listApprovals(statusFilter === 'all' ? undefined : { status: statusFilter })
-      .then(list => {
+    Promise.all([
+      api.listApprovals(statusFilter === 'all' ? undefined : { status: statusFilter }),
+      api.listUsers(),
+    ])
+      .then(([list, u]) => {
         if (cancelled) return
         setApprovals(list)
+        setUsers(u)
         setError(null)
       })
       .catch(e => {
@@ -34,6 +41,9 @@ export default function ApprovalsScreen() {
       })
     return () => { cancelled = true }
   }, [statusFilter, reloadTick])
+
+  const userName = (id: string | null) =>
+    (id && users.find(u => u.id === id)?.name) || null
 
   const counts = useMemo(() => {
     const c: Record<string, number> = { all: approvals?.length ?? 0 }
@@ -56,7 +66,7 @@ export default function ApprovalsScreen() {
             <>
               APPROVALS{' '}
               <InfoHint>
-                List from <span className="mono">GET /approvals</span>. Status filter is applied server-side. Decide via <span className="mono">POST /approvals/{'{id}'}/decision</span>.
+                List from <Code variant="ghost">GET /approvals</Code>. Status filter is applied server-side. Decide via <Code variant="ghost">POST /approvals/{'{id}'}/decision</Code>.
               </InfoHint>
             </>
           }
@@ -66,20 +76,26 @@ export default function ApprovalsScreen() {
 
         <PolicyBanner />
 
-        <div className="row" style={{ gap: 6, marginBottom: 16, flexWrap: 'wrap' }}>
-          <span className="mono uppercase muted" style={{ marginRight: 4 }}>status</span>
-          {STATUSES.map(f => (
-            <button
-              key={f}
-              className={`chip${statusFilter === f ? (f === 'pending' ? ' chip--warn' : ' chip--accent') : ''}`}
-              style={{ cursor: 'pointer' }}
-              onClick={() => { setStatusFilter(f); setPage(0) }}
-            >
-              {f}{' '}
-              <span className="mono" style={{ color: 'var(--text-dim)' }}>{counts[f] ?? 0}</span>
-            </button>
-          ))}
-        </div>
+        <Flex align="center" gap="2" mb="4" wrap="wrap">
+          <Caption mr="1">status</Caption>
+          {STATUSES.map(f => {
+            const isActive = statusFilter === f
+            const activeColor = f === 'pending' ? 'amber' : 'blue'
+            return (
+              <Button
+                key={f}
+                type="button"
+                size="2"
+                variant="soft"
+                color={isActive ? activeColor : 'gray'}
+                onClick={() => { setStatusFilter(f); setPage(0) }}
+              >
+                <span style={{ textTransform: 'capitalize' }}>{f}</span>
+                <Code variant="ghost" size="1" color="gray">{counts[f] ?? 0}</Code>
+              </Button>
+            )
+          })}
+        </Flex>
 
         {error ? (
           <ErrorState
@@ -95,74 +111,56 @@ export default function ApprovalsScreen() {
             title={statusFilter === 'pending' ? 'All caught up' : `No ${statusFilter === 'all' ? '' : statusFilter} approvals`}
           />
         ) : (
-          <div className="card" style={{ padding: 0 }}>
-            <div style={{
-              padding: '10px 16px',
-              background: 'var(--surface-2)',
-              borderBottom: '1px solid var(--border)',
-              display: 'grid',
-              gridTemplateColumns: '130px minmax(0, 1fr) 160px 130px 120px 120px 28px',
-              gap: 14,
-              fontFamily: 'var(--font-mono)',
-              fontSize: 10,
-              color: 'var(--text-dim)',
-              textTransform: 'uppercase',
-              letterSpacing: '0.12em',
-            }}>
-              <span>id · created</span>
-              <span>requested action</span>
-              <span>requested by</span>
-              <span>approver role</span>
-              <span>status · expires</span>
-              <span>quick decide</span>
+          <div className="card card--table">
+            <div className="table-head" style={{ gridTemplateColumns: '110px minmax(0, 1fr) 160px 140px 130px 120px 28px' }}>
+              <Text as="span" size="1" color="gray">created</Text>
+              <Text as="span" size="1" color="gray">requested action</Text>
+              <Text as="span" size="1" color="gray">requested by</Text>
+              <Text as="span" size="1" color="gray">approver</Text>
+              <Text as="span" size="1" color="gray">status · expires</Text>
+              <Text as="span" size="1" color="gray">quick decide</Text>
               <span />
             </div>
             {pageItems.map(a => {
               const isPending = a.status === 'pending'
+              const approverName = userName(a.approver_user_id)
               return (
                 <Link
                   key={a.id}
                   to={`/approvals/${a.id}`}
                   className="agent-row"
                   style={{
-                    gridTemplateColumns: '130px minmax(0, 1fr) 160px 130px 120px 120px 28px',
+                    gridTemplateColumns: '110px minmax(0, 1fr) 160px 140px 130px 120px 28px',
                   }}
                 >
+                  <Text as="div" size="1" color="gray">{ago(a.created_at)}</Text>
+                  <Text as="div" size="2" className="truncate" style={{ minWidth: 0 }}>
+                    {a.requested_action}
+                  </Text>
+                  <Text as="div" size="1" className="truncate">
+                    {a.requested_by_name ?? userName(a.requested_by) ?? '—'}
+                  </Text>
                   <div>
-                    <div className="mono" style={{ fontSize: 11.5, color: 'var(--text)' }}>{a.id}</div>
-                    <div className="mono" style={{ fontSize: 10.5, color: 'var(--text-dim)', marginTop: 2 }}>{ago(a.created_at)}</div>
-                  </div>
-                  <div style={{ minWidth: 0 }}>
-                    <div className="truncate" style={{ fontSize: 13, color: 'var(--text)' }}>{a.requested_action}</div>
-                    <div className="mono" style={{ fontSize: 10.5, color: 'var(--text-dim)', marginTop: 2 }}>
-                      run {a.run_id} · {a.task_id ? `task ${a.task_id}` : 'standalone'}
-                    </div>
-                  </div>
-                  <div>
-                    <div style={{ fontSize: 12 }}>{a.requested_by_name ?? '—'}</div>
-                    <div className="mono" style={{ fontSize: 10.5, color: 'var(--text-dim)', marginTop: 2 }}>{a.requested_by ?? '—'}</div>
-                  </div>
-                  <div>
-                    <Chip>{a.approver_role ?? '—'}</Chip>
-                    {a.approver_user_id && (
-                      <div className="mono" style={{ fontSize: 10.5, color: 'var(--text-dim)', marginTop: 4 }}>{a.approver_user_id}</div>
+                    <Badge color="gray" variant="soft" radius="full" size="1">{a.approver_role ?? '—'}</Badge>
+                    {approverName && (
+                      <Text as="div" size="1" color="gray" mt="1" className="truncate">{approverName}</Text>
                     )}
                   </div>
                   <div>
                     <Status status={a.status} />
                     {isPending && a.expires_at ? (
-                      <div className="mono" style={{ fontSize: 10.5, color: 'var(--text-dim)', marginTop: 4 }}>
+                      <Text as="div" size="1" color="gray" mt="1">
                         expires {ago(a.expires_at)}
-                      </div>
+                      </Text>
                     ) : a.resolved_at ? (
-                      <div className="mono" style={{ fontSize: 10.5, color: 'var(--text-dim)', marginTop: 4 }}>
+                      <Text as="div" size="1" color="gray" mt="1">
                         resolved {ago(a.resolved_at)}
-                      </div>
+                      </Text>
                     ) : null}
                   </div>
                   <div>
                     {isPending ? (
-                      <div className="row row--sm" style={{ gap: 4 }}>
+                      <Flex align="center" gap="1">
                         <QuickActionButton
                           tone="success"
                           title="Approve"
@@ -175,9 +173,9 @@ export default function ApprovalsScreen() {
                           onClick={() => quickDecide(a.id, 'rejected')}
                           icon={<IconX />}
                         />
-                      </div>
+                      </Flex>
                     ) : (
-                      <span className="mono muted" style={{ fontSize: 10.5 }}>resolved</span>
+                      <Text size="1" color="gray">resolved</Text>
                     )}
                   </div>
                   <IconArrowRight className="ic" />
@@ -202,15 +200,11 @@ export default function ApprovalsScreen() {
 
 function PolicyBanner() {
   return (
-    <div className="banner banner--info" style={{ marginBottom: 16 }}>
-      <span className="banner__icon"><IconApproval className="ic" /></span>
-      <div style={{ flex: 1 }}>
-        <div className="banner__title">Approval is a policy, not an AI decision</div>
-        <div className="banner__body">
-          The orchestrator creates an approval request whenever a grant or rule requires a human decision. The agent doesn't choose — it's gated.
-        </div>
-      </div>
-    </div>
+    <Box mb="4">
+      <Banner tone="info" title="Approval is a policy, not an AI decision" icon={<IconApproval className="ic" />}>
+        The orchestrator creates an approval request whenever a grant or rule requires a human decision. The agent doesn't choose — it's gated.
+      </Banner>
+    </Box>
   )
 }
 
@@ -222,9 +216,9 @@ function QuickActionButton({
   onClick: () => void
   icon: React.ReactNode
 }) {
-  const color = tone === 'success' ? 'var(--success)' : 'var(--danger)'
-  const bg = tone === 'success' ? 'var(--success-soft)' : 'var(--danger-soft)'
-  const border = tone === 'success' ? 'var(--success-border)' : 'var(--danger-border)'
+  const color = tone === 'success' ? 'var(--green-11)' : 'var(--red-11)'
+  const bg = tone === 'success' ? 'var(--green-a3)' : 'var(--red-a3)'
+  const border = tone === 'success' ? 'var(--green-a6)' : 'var(--red-a6)'
   return (
     <button
       title={title}

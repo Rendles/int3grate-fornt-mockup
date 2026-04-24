@@ -1,6 +1,8 @@
 import { useEffect, useMemo, useState } from 'react'
+import { Badge, Box, Button, Code, DataList, Flex, Grid, Separator, Text } from '@radix-ui/themes'
 import { AppShell } from '../components/shell'
-import { PageHeader, Btn, Chip, Status, InfoHint } from '../components/common'
+import { PageHeader, MetaRow, Status, InfoHint } from '../components/common'
+import { TextAreaField, TextInput } from '../components/fields'
 import { Banner, LoadingList } from '../components/states'
 import { IconAlert, IconArrowRight, IconCheck, IconPlay } from '../components/icons'
 import { Link, useRouter } from '../router'
@@ -84,7 +86,7 @@ export default function TaskNewScreen() {
             <>
               DISPATCH TASK{' '}
               <InfoHint>
-                Creates a task via <span className="mono">POST /tasks</span>. Requires an agent and user_input. The orchestrator attaches a run asynchronously — the task response doesn't include a run_id.
+                Creates a task via <Code variant="ghost">POST /tasks</Code>. Requires an agent and user_input. The orchestrator attaches a run asynchronously — the task response doesn't include a run_id.
               </InfoHint>
             </>
           }
@@ -96,26 +98,25 @@ export default function TaskNewScreen() {
           }
           actions={
             created ? (
-              <Btn variant="ghost" href="/tasks">Back to tasks</Btn>
+              <Button asChild variant="ghost"><a href="#/tasks">Back to tasks</a></Button>
             ) : (
               <>
-                <Btn variant="ghost" href="/tasks" disabled={busy}>Cancel</Btn>
-                <Btn
-                  variant="primary"
-                  icon={<IconPlay />}
+                <Button asChild variant="ghost" disabled={busy}><a href="#/tasks">Cancel</a></Button>
+                <Button
                   onClick={submit}
                   disabled={busy || !agentRunnable}
                   title={!agentRunnable ? 'Agent must be active with an active version' : undefined}
                 >
+                  <IconPlay />
                   {busy ? 'dispatching…' : 'Start task'}
-                </Btn>
+                </Button>
               </>
             )
           }
         />
 
         <Banner tone="warn" title="Task concept is MVP-deferred (ADR-0003)">
-          Gateway v0.2.0 marks <span className="mono">POST /tasks</span> as <span className="mono">x-mvp-deferred</span>. The production path will dispatch runs directly; this form remains for design continuity.
+          Gateway v0.2.0 marks <Code variant="ghost">POST /tasks</Code> as <Code variant="ghost">x-mvp-deferred</Code>. The production path will dispatch runs directly; this form remains for design continuity.
         </Banner>
         <div style={{ height: 16 }} />
 
@@ -126,28 +127,27 @@ export default function TaskNewScreen() {
         ) : (
           <>
             {saveError && (
-              <div className="banner banner--warn" role="alert">
-                <span className="banner__icon"><IconAlert className="ic" style={{ color: 'var(--danger)' }} /></span>
-                <div style={{ flex: 1 }}>
-                  <div className="banner__title" style={{ color: 'var(--danger)' }}>Couldn't start task</div>
-                  <div className="banner__body">{saveError}</div>
-                </div>
-                <Btn variant="ghost" onClick={() => setSaveError(null)}>Dismiss</Btn>
-              </div>
+              <Banner
+                tone="warn"
+                title="Couldn't start task"
+                action={<Button variant="ghost" onClick={() => setSaveError(null)}>Dismiss</Button>}
+              >
+                {saveError}
+              </Banner>
             )}
 
             {/* AGENT PICKER */}
             <div className="card">
               <div className="card__head">
-                <div className="card__title">Agent</div>
+                <Text as="div" size="2" weight="medium" className="card__title">Agent</Text>
                 {agent && !agentRunnable && (
-                  <Chip tone="warn">
+                  <Badge color="amber" variant="soft" radius="full" size="1">
                     {agent.status !== 'active' ? `${agent.status} · can't run` : 'no active version'}
-                  </Chip>
+                  </Badge>
                 )}
               </div>
               <div className="card__body">
-                <div className="stack stack--sm">
+                <Flex direction="column" gap="2">
                   {agents.filter(a => a.status !== 'archived').map(a => {
                     const on = a.id === agentId
                     return (
@@ -157,8 +157,8 @@ export default function TaskNewScreen() {
                         style={{
                           textAlign: 'left',
                           padding: 12,
-                          borderColor: on ? 'var(--accent-border)' : undefined,
-                          background: on ? 'var(--accent-soft)' : 'var(--surface-2)',
+                          borderColor: on ? 'var(--accent-a7)' : undefined,
+                          background: on ? 'var(--accent-a3)' : 'var(--gray-3)',
                           display: 'grid',
                           gridTemplateColumns: 'minmax(0, 1fr) 100px',
                           gap: 14,
@@ -168,27 +168,29 @@ export default function TaskNewScreen() {
                         onClick={() => setAgentId(a.id)}
                       >
                         <div style={{ minWidth: 0, textAlign: 'left' }}>
-                          <div style={{ color: 'var(--text)', fontSize: 13 }}>{a.name}</div>
-                          <div className="mono truncate" style={{ fontSize: 10.5, color: 'var(--text-dim)', marginTop: 2 }}>
+                          <Text as="div" size="2">{a.name}</Text>
+                          <Text as="div" size="1" color="gray" mt="1" className="truncate">
                             {a.id}
-                          </div>
+                          </Text>
                         </div>
                         <div style={{ textAlign: 'right' }}>
                           <Status status={a.status} />
                           {a.active_version && (
-                            <div className="mono" style={{ fontSize: 10.5, color: 'var(--text-dim)', marginTop: 3 }}>
+                            <Text as="div" size="1" color="gray" mt="1">
                               v{a.active_version.version}
-                            </div>
+                            </Text>
                           )}
                         </div>
                       </button>
                     )
                   })}
-                </div>
+                </Flex>
                 {show('agent') && (
-                  <div className="row row--sm" style={{ marginTop: 8, color: 'var(--danger)', fontSize: 11.5 }}>
-                    <IconAlert className="ic ic--sm" /> {fieldErrors.agent}
-                  </div>
+                  <Text as="div" size="1" color="red" mt="2">
+                    <Flex align="center" gap="2">
+                      <IconAlert className="ic ic--sm" /> {fieldErrors.agent}
+                    </Flex>
+                  </Text>
                 )}
               </div>
             </div>
@@ -197,9 +199,9 @@ export default function TaskNewScreen() {
 
             {/* TYPE PICKER */}
             <div className="card">
-              <div className="card__head"><div className="card__title">Type</div></div>
+              <div className="card__head"><Text as="div" size="2" weight="medium" className="card__title">Type</Text></div>
               <div className="card__body">
-                <div className="grid grid--3">
+                <Grid columns="3" gap="4">
                   {(['chat', 'one_time', 'schedule'] as TaskType[]).map(t => {
                     const on = type === t
                     return (
@@ -209,19 +211,19 @@ export default function TaskNewScreen() {
                         style={{
                           textAlign: 'left',
                           padding: 14,
-                          borderColor: on ? 'var(--accent-border)' : undefined,
-                          background: on ? 'var(--accent-soft)' : 'var(--surface-2)',
+                          borderColor: on ? 'var(--accent-a7)' : undefined,
+                          background: on ? 'var(--accent-a3)' : 'var(--gray-3)',
                         }}
                         onClick={() => setType(t)}
                       >
-                        <div style={{ fontFamily: 'var(--font-serif)', fontSize: 18, color: 'var(--text)', marginBottom: 6 }}>
+                        <Text as="div" size="4" mb="2">
                           {t.replace('_', ' ')}
-                        </div>
-                        <div style={{ fontSize: 11.5, color: 'var(--text-muted)', lineHeight: 1.5 }}>{TYPE_DESC[t]}</div>
+                        </Text>
+                        <Text as="div" size="1" color="gray" style={{ lineHeight: 1.5 }}>{TYPE_DESC[t]}</Text>
                       </button>
                     )
                   })}
-                </div>
+                </Grid>
               </div>
             </div>
 
@@ -229,44 +231,35 @@ export default function TaskNewScreen() {
 
             <div className="card">
               <div className="card__body">
-                <div className="form-row">
-                  <div>
-                    <div className="form-row__label">Title</div>
-                    <div className="form-row__hint">Optional — shows in task lists.</div>
-                  </div>
-                  <div className="form-row__control">
-                    <input
-                      className="input"
+                <Grid columns={{ initial: '1', md: '240px 1fr' }} gap="5" py="5">
+                  <Box>
+                    <Text as="div" size="2" weight="medium">Title</Text>
+                    <Text as="div" size="1" color="gray" mt="1">Optional — shows in task lists.</Text>
+                  </Box>
+                  <Box>
+                    <TextInput
                       value={title}
                       onChange={e => setTitle(e.target.value)}
                       placeholder="Triage today's inbound leads"
                     />
-                  </div>
-                </div>
-                <div className="form-row">
-                  <div>
-                    <div className="form-row__label">Input <span className="danger">*</span></div>
-                    <div className="form-row__hint">Required. The message the agent will see.</div>
-                  </div>
-                  <div className="form-row__control">
-                    <textarea
-                      className="input textarea"
-                      style={{
-                        minHeight: 140,
-                        borderColor: show('input') ? 'var(--danger-border)' : undefined,
-                      }}
+                  </Box>
+                </Grid>
+                <Separator size="4" />
+                <Grid columns={{ initial: '1', md: '240px 1fr' }} gap="5" py="5">
+                  <Box>
+                    <Text as="div" size="2" weight="medium">Input <Text as="span" color="red">*</Text></Text>
+                    <Text as="div" size="1" color="gray" mt="1">Required. The message the agent will see.</Text>
+                  </Box>
+                  <Box>
+                    <TextAreaField
+                      style={{ minHeight: 140 }}
                       value={input}
                       onChange={e => setInput(e.target.value)}
                       placeholder="Describe what needs to happen…"
-                      aria-invalid={!!show('input')}
+                      error={show('input') ? fieldErrors.input : undefined}
                     />
-                    {show('input') && (
-                      <div className="row row--sm" style={{ marginTop: 6, color: 'var(--danger)', fontSize: 11.5 }}>
-                        <IconAlert className="ic ic--sm" /> {fieldErrors.input}
-                      </div>
-                    )}
-                  </div>
-                </div>
+                  </Box>
+                </Grid>
               </div>
             </div>
 
@@ -283,66 +276,59 @@ export default function TaskNewScreen() {
 
 function SuccessPanel({ task }: { task: Task }) {
   return (
-    <div className="stack">
+    <Flex direction="column" gap="4">
       <div
         className="card"
         style={{
-          borderColor: 'var(--success-border)',
-          background: 'var(--success-soft)',
+          borderColor: 'var(--green-a6)',
+          background: 'var(--green-a3)',
         }}
       >
         <div className="card__body">
-          <div className="row" style={{ gap: 14, alignItems: 'flex-start' }}>
+          <Flex align="start" gap="4">
             <div
               className="state__icon"
               style={{
-                background: 'var(--success-soft)',
-                borderColor: 'var(--success-border)',
-                color: 'var(--success)',
+                background: 'var(--green-a3)',
+                borderColor: 'var(--green-a6)',
+                color: 'var(--green-11)',
                 margin: 0,
               }}
             >
               <IconCheck />
             </div>
-            <div style={{ flex: 1 }}>
-              <div style={{ fontFamily: 'var(--font-serif)', fontSize: 26, color: 'var(--text)', letterSpacing: '-0.01em' }}>
+            <Box flexGrow="1">
+              <Text as="div" size="7" style={{ letterSpacing: '-0.01em' }}>
                 Task queued.
-              </div>
-              <div style={{ fontSize: 13, color: 'var(--text-muted)', marginTop: 6, lineHeight: 1.5 }}>
+              </Text>
+              <Text as="div" size="2" color="gray" mt="2" style={{ lineHeight: 1.5 }}>
                 The orchestrator will pick it up shortly. Open the task detail to watch for run attachment.
-              </div>
-            </div>
-          </div>
+              </Text>
+            </Box>
+          </Flex>
         </div>
       </div>
 
       <div className="card">
         <div className="card__head">
-          <div className="card__title">Response</div>
+          <Text as="div" size="2" weight="medium" className="card__title">Response</Text>
           <Status status={task.status} />
         </div>
         <div className="card__body">
-          <MetaRow label="task id" value={<span className="mono">{task.id}</span>} />
-          <MetaRow label="agent_id" value={<Link to={`/agents/${task.assigned_agent_id}`}><span className="mono">{task.assigned_agent_id}</span></Link>} />
-          <MetaRow label="version_id" value={<span className="mono">{task.assigned_agent_version_id ?? '—'}</span>} />
-          <MetaRow label="type" value={<Chip>{task.type.replace('_', ' ')}</Chip>} />
-          <MetaRow label="tenant_id" value={<span className="mono">{task.tenant_id}</span>} />
-          <MetaRow label="domain_id" value={<span className="mono">{task.domain_id ?? '—'}</span>} />
+          <DataList.Root size="2">
+            <MetaRow label="task id" value={<Code variant="ghost">{task.id}</Code>} />
+            <MetaRow label="agent_id" value={<Link to={`/agents/${task.assigned_agent_id}`}><Code variant="ghost">{task.assigned_agent_id}</Code></Link>} />
+            <MetaRow label="version_id" value={<Code variant="ghost">{task.assigned_agent_version_id ?? '—'}</Code>} />
+            <MetaRow label="type" value={<Badge color="gray" variant="soft" radius="full" size="1">{task.type.replace('_', ' ')}</Badge>} />
+            <MetaRow label="tenant_id" value={<Code variant="ghost">{task.tenant_id}</Code>} />
+            <MetaRow label="domain_id" value={<Code variant="ghost">{task.domain_id ?? '—'}</Code>} />
+          </DataList.Root>
         </div>
       </div>
 
-      <div className="row" style={{ gap: 8, justifyContent: 'flex-end' }}>
-        <Btn variant="primary" href={`/tasks/${task.id}`} icon={<IconArrowRight />}>Open task detail</Btn>
-      </div>
-    </div>
-  )
-}
-
-function MetaRow({ label, value }: { label: string; value: React.ReactNode }) {
-  return (
-    <div className="row row--between" style={{ padding: '6px 0', borderBottom: '1px dashed var(--border)' }}>
-      <span className="mono uppercase muted" style={{ fontSize: 10.5 }}>{label}</span>
-      <span style={{ fontSize: 12 }}>{value}</span>
-    </div>
+      <Flex justify="end" gap="2">
+        <Button asChild><a href={`#/tasks/${task.id}`}><IconArrowRight />Open task detail</a></Button>
+      </Flex>
+    </Flex>
   )
 }

@@ -1,8 +1,11 @@
 import { useState } from 'react'
+import { Button, Code, Flex, Heading, Text } from '@radix-ui/themes'
+
 import { useAuth } from '../auth'
 import { useRouter } from '../router'
-import { Btn } from '../components/common'
-import { IconAlert, IconArrowRight, IconEye, IconEyeOff } from '../components/icons'
+import { PasswordField, TextInput } from '../components/fields'
+import { Banner } from '../components/states'
+import { IconArrowRight } from '../components/icons'
 import logo from '../../assets/logo.svg'
 
 interface FieldErrors {
@@ -28,7 +31,6 @@ export default function LoginScreen() {
   const [invalidCreds, setInvalidCreds] = useState(false)
   const [fieldErrors, setFieldErrors] = useState<FieldErrors>({})
   const [touched, setTouched] = useState<{ email?: boolean; password?: boolean }>({})
-  const [passwordVisible, setPasswordVisible] = useState(false)
 
   const showEmailErr = (touched.email && fieldErrors.email) || undefined
   const showPasswordErr = (touched.password && fieldErrors.password) || undefined
@@ -65,126 +67,92 @@ export default function LoginScreen() {
   return (
     <div className="login">
       <div className="login__side">
-        <div className="login__brand">
+        <Heading as="h2" size="6" weight="regular" className="login__brand">
           <div className="sb__brand-mark" style={{ width: 28, height: 28 }}>
             <img src={logo} alt="" />
           </div>
-          <span>Int3grate.ai</span>
-          <span className="mono" style={{ fontSize: 10, letterSpacing: '0.14em', color: 'var(--text-dim)', textTransform: 'uppercase', marginLeft: 6 }}>
+          <Text as="span">Int3grate.ai</Text>
+          <Code variant="ghost" size="1" color="gray" ml="2" style={{ letterSpacing: '0.14em', textTransform: 'uppercase' }}>
             Control Plane
-          </span>
-        </div>
-        <h1 className="login__tagline">
+          </Code>
+        </Heading>
+        <Heading as="h1" size="9" weight="regular" className="login__tagline">
           Let agents do work.<br />
           Keep humans <em>in control.</em>
-        </h1>
-        <div className="login__meta">
+        </Heading>
+        <Text as="div" size="1" color="gray" className="login__meta">
           <span>Region · eu-west-1</span>
           <span>Build · 2026.04.17-a7c</span>
           <span>Status · nominal</span>
-        </div>
+        </Text>
       </div>
 
       <div className="login__form-wrap">
         <form className="login__form" onSubmit={submit} noValidate>
           <div>
-            <div className="page__eyebrow" style={{ marginBottom: 8 }}>SIGN IN</div>
-            <h2>Welcome back.</h2>
-            <p className="muted" style={{ fontSize: 13, marginTop: 4 }}>
+            <Text as="div" size="1" className="page__eyebrow" mb="2" style={{ color: 'var(--gray-10)' }}>SIGN IN</Text>
+            <Heading as="h2" size="8" weight="regular" className="login__form-heading">Welcome back.</Heading>
+            <Text as="p" size="2" mt="1" style={{ color: 'var(--gray-10)' }}>
               Authenticate with your workspace email to access the control plane.
-            </p>
+            </Text>
           </div>
 
           {invalidCreds && (
-            <div className="banner banner--warn" role="alert">
-              <span className="banner__icon"><IconAlert className="ic" /></span>
-              <div style={{ flex: 1 }}>
-                <div className="banner__title">Invalid credentials</div>
-                <div className="banner__body">That email and password combination isn't recognised.</div>
-              </div>
-            </div>
+            <Banner tone="warn" title="Invalid credentials">
+              That email and password combination isn't recognised.
+            </Banner>
           )}
 
-          <label>
-            <div className="mono uppercase" style={{ color: 'var(--text-dim)', marginBottom: 6 }}>Email</div>
-            <input
-              className="input"
-              type="email"
-              value={email}
-              onChange={e => updateEmail(e.target.value)}
-              onBlur={() => {
-                setTouched(t => ({ ...t, email: true }))
-                setFieldErrors(validate(email, password))
-              }}
-              autoComplete="email"
-              placeholder="you@company.com"
-              aria-invalid={!!showEmailErr}
-              aria-describedby={showEmailErr ? 'login-email-err' : undefined}
-              style={showEmailErr ? { borderColor: 'var(--danger-border)' } : undefined}
-            />
-            {showEmailErr && (
-              <div id="login-email-err" className="row row--sm" style={{ marginTop: 6, color: 'var(--danger)', fontSize: 11.5 }}>
-                <IconAlert className="ic ic--sm" />
-                {showEmailErr}
-              </div>
-            )}
-          </label>
+          <TextInput
+            id="login-email"
+            size="3"
+            type="email"
+            value={email}
+            onChange={e => updateEmail(e.target.value)}
+            onBlur={() => {
+              setTouched(t => ({ ...t, email: true }))
+              setFieldErrors(validate(email, password))
+            }}
+            autoComplete="email"
+            placeholder="you@company.com"
+            error={showEmailErr}
+          />
 
-          <label>
-            <div className="mono uppercase" style={{ color: 'var(--text-dim)', marginBottom: 6 }}>Password</div>
-            <div className="password-field">
-            <input
-              className="input"
-              type={passwordVisible ? 'text' : 'password'}
-              value={password}
-              onChange={e => updatePassword(e.target.value)}
-              onBlur={() => {
-                setTouched(t => ({ ...t, password: true }))
-                setFieldErrors(validate(email, password))
-              }}
-              autoComplete="current-password"
-              placeholder="••••••"
-              aria-invalid={!!showPasswordErr}
-              aria-describedby={showPasswordErr ? 'login-password-err' : undefined}
-              style={showPasswordErr ? { borderColor: 'var(--danger-border)' } : undefined}
-            />
-              <button
-                className="password-field__toggle"
-                type="button"
-                onClick={() => setPasswordVisible(v => !v)}
-                aria-label={passwordVisible ? 'Hide password' : 'Show password'}
-                aria-pressed={passwordVisible}
-              >
-                {passwordVisible ? <IconEyeOff className="ic" /> : <IconEye className="ic" />}
-              </button>
-            </div>
-            {showPasswordErr && (
-              <div id="login-password-err" className="row row--sm" style={{ marginTop: 6, color: 'var(--danger)', fontSize: 11.5 }}>
-                <IconAlert className="ic ic--sm" />
-                {showPasswordErr}
-              </div>
-            )}
-          </label>
+          <PasswordField
+            id="login-password"
+            size="3"
+            value={password}
+            onChange={e => updatePassword(e.target.value)}
+            onBlur={() => {
+              setTouched(t => ({ ...t, password: true }))
+              setFieldErrors(validate(email, password))
+            }}
+            autoComplete="current-password"
+            placeholder="••••••"
+            error={showPasswordErr}
+          />
 
-          <Btn
-            variant="primary"
-            size="lg"
-            type="submit"
-            disabled={busy}
-            icon={busy ? undefined : <IconArrowRight />}
-          >
+          <Button size="3" type="submit" disabled={busy}>
             {busy ? (
-              <span className="row row--sm">
-                <span className="dot dot--accent dot--pulse" />
+              <Flex align="center" gap="2">
+                <span
+                  className="status-pulse"
+                  style={{ width: 6, height: 6, borderRadius: 999, background: 'var(--accent-9)', color: 'var(--accent-9)', display: 'inline-block' }}
+                />
                 signing in …
-              </span>
-            ) : 'Continue'}
-          </Btn>
+              </Flex>
+            ) : (
+              <>
+                <IconArrowRight />
+                Continue
+              </>
+            )}
+          </Button>
 
-          <div className="row row--sm" style={{ justifyContent: 'space-between', color: 'var(--text-muted)', fontSize: 12.5 }}>
-            <span>New to Int3grate.ai?</span>
-            <Btn variant="ghost" href="/register">Create account</Btn>
-          </div>
+          <Flex align="center" justify="between" gap="2">
+            <Text size="1" color="gray">New to Int3grate.ai?</Text>
+            <Button asChild variant="ghost"><a href="#/register">Create account</a></Button>
+          </Flex>
         </form>
       </div>
     </div>

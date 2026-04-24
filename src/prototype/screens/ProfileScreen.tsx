@@ -1,5 +1,7 @@
 import { AppShell } from '../components/shell'
-import { PageHeader, Avatar, Btn, Chip, InfoHint } from '../components/common'
+import { Badge, Box, Button, Code, Flex, Grid, Text } from '@radix-ui/themes'
+
+import { Caption, PageHeader, Avatar, InfoHint } from '../components/common'
 import { useAuth } from '../auth'
 import { roleLabel, absTime } from '../lib/format'
 
@@ -17,93 +19,92 @@ export default function ProfileScreen() {
             <>
               PROFILE{' '}
               <InfoHint>
-                Loaded via <span className="mono">GET /me</span>. Only your own user record is exposed by the gateway.
+                Loaded via <Code variant="ghost">GET /me</Code>. Only your own user record is exposed by the gateway.
               </InfoHint>
             </>
           }
           title={<>Hello, <em>{user.name.split(' ')[0]}.</em></>}
-          actions={<Btn variant="ghost" onClick={logout}>Sign out</Btn>}
+          actions={<Button variant="ghost" onClick={logout}>Sign out</Button>}
         />
 
         <div className="card">
           <div className="card__head">
-            <div className="card__title">Identity</div>
+            <Text as="div" size="2" weight="medium" className="card__title">Identity</Text>
           </div>
           <div className="card__body">
-            <div className="row" style={{ gap: 20 }}>
+            <Flex align="center" gap="5">
               <Avatar initials={initials} size={64} />
-              <div style={{ flex: 1 }}>
-                <div style={{ fontSize: 20, fontFamily: 'var(--font-serif)', letterSpacing: '-0.01em' }}>
+              <Box flexGrow="1">
+                <Text as="div" size="5" style={{ letterSpacing: '-0.01em' }}>
                   {user.name}
-                </div>
-                <div className="mono muted" style={{ fontSize: 12, marginTop: 4 }}>{user.email}</div>
-                <div className="row row--sm" style={{ marginTop: 10 }}>
-                  <Chip tone="accent">{roleLabel(user.role)}</Chip>
-                  <Chip tone="info">approval · L{user.approval_level}</Chip>
-                </div>
-              </div>
-              <div style={{ textAlign: 'right' }}>
-                <div className="mono uppercase muted" style={{ marginBottom: 4 }}>User ID</div>
-                <div className="mono" style={{ fontSize: 12, color: 'var(--text)' }}>{user.id}</div>
-              </div>
-            </div>
+                </Text>
+                <Text as="div" size="1" color="gray" mt="1">{user.email}</Text>
+                <Flex align="center" gap="2" mt="2">
+                  <Badge color="blue" variant="soft" radius="full" size="1">{roleLabel(user.role)}</Badge>
+                  <Badge color="cyan" variant="soft" radius="full" size="1">approval · L{user.approval_level}</Badge>
+                </Flex>
+              </Box>
+              <Box style={{ textAlign: 'right' }}>
+                <Caption as="div" mb="1">User ID</Caption>
+                <Text as="div" size="1">{user.id}</Text>
+              </Box>
+            </Flex>
           </div>
         </div>
 
         <div style={{ height: 16 }} />
 
         <div className="card">
-          <div className="card__head"><div className="card__title">Scope</div></div>
+          <div className="card__head"><Text as="div" size="2" weight="medium" className="card__title">Scope</Text></div>
           <div className="card__body">
-            <div className="grid grid--2">
-              <div>
-                <div className="mono uppercase muted" style={{ marginBottom: 4 }}>Tenant ID</div>
-                <div className="mono">{user.tenant_id}</div>
-              </div>
-              <div>
-                <div className="mono uppercase muted" style={{ marginBottom: 4 }}>Domain ID</div>
-                <div className="mono">{user.domain_id ?? '—'}</div>
-              </div>
-              <div>
-                <div className="mono uppercase muted" style={{ marginBottom: 4 }}>Created</div>
-                <div className="mono">{absTime(user.created_at)}</div>
-              </div>
-              <div>
-                <div className="mono uppercase muted" style={{ marginBottom: 4 }}>Role</div>
-                <div>{roleLabel(user.role)}</div>
-              </div>
-            </div>
+            <Grid columns="2" gap="4">
+              <Box>
+                <Caption as="div" mb="1">Tenant ID</Caption>
+                <Text as="div" size="1">{user.tenant_id}</Text>
+              </Box>
+              <Box>
+                <Caption as="div" mb="1">Domain ID</Caption>
+                <Text as="div" size="1">{user.domain_id ?? '—'}</Text>
+              </Box>
+              <Box>
+                <Caption as="div" mb="1">Created</Caption>
+                <Text as="div" size="1">{absTime(user.created_at)}</Text>
+              </Box>
+              <Box>
+                <Caption as="div" mb="1">Role</Caption>
+                <Text as="div" size="1">{roleLabel(user.role)}</Text>
+              </Box>
+            </Grid>
           </div>
         </div>
 
         <div style={{ height: 16 }} />
 
         <div className="card">
-          <div className="card__head"><div className="card__title">Approval authority</div></div>
+          <div className="card__head"><Text as="div" size="2" weight="medium" className="card__title">Approval authority</Text></div>
           <div className="card__body">
-            <p style={{ fontSize: 12.5, color: 'var(--text-muted)', marginBottom: 14 }}>
-              Your <span className="mono">approval_level</span> is <span className="mono">{user.approval_level}</span>.
+            <Text as="p" size="1" color="gray" mb="4">
+              Your <Code variant="ghost">approval_level</Code> is <Code variant="ghost">{user.approval_level}</Code>.
               Rules attached to agent versions route requests to whichever level they need.
-            </p>
-            <div className="grid grid--4" style={{ gap: 8 }}>
+            </Text>
+            <Grid columns="4" gap="2">
               {[1, 2, 3, 4].map(lvl => {
                 const on = user.approval_level >= lvl
                 return (
-                  <div key={lvl} style={{
-                    padding: 10,
-                    border: `1px solid ${on ? 'var(--accent-border)' : 'var(--border-2)'}`,
+                  <Box key={lvl} p="3" style={{
+                    border: `1px solid ${on ? 'var(--accent-a7)' : 'var(--gray-7)'}`,
                     borderRadius: 4,
-                    background: on ? 'var(--accent-soft)' : 'var(--surface-2)',
+                    background: on ? 'var(--accent-a3)' : 'var(--gray-3)',
                     textAlign: 'center',
                   }}>
-                    <div style={{ fontFamily: 'var(--font-serif)', fontSize: 24, color: on ? 'var(--accent)' : 'var(--text-dim)' }}>L{lvl}</div>
-                    <div className="mono" style={{ fontSize: 10, color: 'var(--text-dim)', letterSpacing: '0.1em', textTransform: 'uppercase', marginTop: 4 }}>
+                    <Text as="div" size="6" style={{ color: on ? 'var(--accent-9)' : 'var(--gray-10)' }}>L{lvl}</Text>
+                    <Text as="div" size="1" color="gray" mt="1" style={{ letterSpacing: '0.1em', textTransform: 'uppercase' }}>
                       {on ? 'can decide' : 'above you'}
-                    </div>
-                  </div>
+                    </Text>
+                  </Box>
                 )
               })}
-            </div>
+            </Grid>
           </div>
         </div>
       </div>

@@ -1,20 +1,15 @@
 import { useEffect, useMemo, useState } from 'react'
+import { Box, Button, Code } from '@radix-ui/themes'
+
 import { AppShell } from '../components/shell'
-import { PageHeader, Btn, Chip, Status, InfoHint } from '../components/common'
+import { PageHeader, InfoHint } from '../components/common'
 import { ErrorState, LoadingList } from '../components/states'
-import {
-  IconAgent,
-  IconApproval,
-  IconArrowRight,
-  IconPlay,
-  IconSpend,
-  IconTask,
-} from '../components/icons'
-import { Link } from '../router'
+import { IconPlay } from '../components/icons'
 import { useAuth } from '../auth'
 import { api } from '../lib/api'
 import type { Agent, ApprovalRequest, SpendDashboard, Task } from '../lib/types'
-import { ago, money, num } from '../lib/format'
+import { AdminView } from './home/AdminView'
+import { MemberView } from './home/MemberView'
 
 export default function HomeScreen() {
   const { user } = useAuth()
@@ -104,10 +99,10 @@ export default function HomeScreen() {
                   {' '}
                   <InfoHint>
                     Dashboard tiles are derived from{' '}
-                    <span className="mono">GET /agents</span>,{' '}
-                    <span className="mono">GET /tasks</span>,{' '}
-                    <span className="mono">GET /approvals</span>, and{' '}
-                    <span className="mono">GET /dashboard/spend</span>.
+                    <Code variant="ghost">GET /agents</Code>,{' '}
+                    <Code variant="ghost">GET /tasks</Code>,{' '}
+                    <Code variant="ghost">GET /approvals</Code>, and{' '}
+                    <Code variant="ghost">GET /dashboard/spend</Code>.
                   </InfoHint>
                 </>
               )}
@@ -119,18 +114,19 @@ export default function HomeScreen() {
             : 'Fleet-wide counts, live approvals, and spend this week.'}
           actions={
             <>
-              <Btn variant="ghost" href="/approvals">Approvals</Btn>
-              <Btn variant="primary" href="/tasks/new" icon={<IconPlay />}>Start a task</Btn>
+              <Button asChild variant="soft" color="gray"><a href="#/approvals">Approvals</a></Button>
+              <Button asChild><a href="#/tasks/new"><IconPlay />Start a task</a></Button>
             </>
           }
         />
 
         {loading ? (
-          <div style={{ marginTop: 24 }}><LoadingList rows={8} /></div>
+          <Box mt="5"><LoadingList rows={8} /></Box>
         ) : isMember ? (
           <MemberView
             myTasks={myTasks}
             myApprovals={myApprovalRequests}
+            agents={agents!}
           />
         ) : (
           <AdminView
@@ -145,236 +141,5 @@ export default function HomeScreen() {
         )}
       </div>
     </AppShell>
-  )
-}
-
-function AdminView({
-  agents, activeAgents, tasks, failedTasks, pendingApprovals, recentTasks, spend,
-}: {
-  agents: Agent[]
-  activeAgents: Agent[]
-  tasks: Task[]
-  failedTasks: Task[]
-  pendingApprovals: ApprovalRequest[]
-  recentTasks: Task[]
-  spend: SpendDashboard
-}) {
-  return (
-    <>
-      <div className="grid grid--4" style={{ marginBottom: 20 }}>
-        <TileCard
-          label="Active agents"
-          value={num(activeAgents.length)}
-          sub={`${agents.length} total`}
-          href="/agents"
-          icon={<IconAgent />}
-        />
-        <TileCard
-          label="Tasks"
-          value={num(tasks.length)}
-          sub={`${failedTasks.length} failed`}
-          href="/tasks"
-          icon={<IconTask />}
-        />
-        <TileCard
-          label="Pending approvals"
-          value={num(pendingApprovals.length)}
-          sub={pendingApprovals.length > 0 ? 'needs a human decision' : 'queue clear'}
-          href="/approvals"
-          icon={<IconApproval />}
-          tone={pendingApprovals.length > 0 ? 'warn' : undefined}
-        />
-        <TileCard
-          label="Spend · 7d"
-          value={money(spend.total_usd, { compact: true })}
-          sub={`${spend.items.length} ${spend.group_by}s`}
-          href="/spend"
-          icon={<IconSpend />}
-        />
-      </div>
-
-      <div className="split">
-        <div className="card">
-          <div className="card__head">
-            <div className="card__title">Recent tasks</div>
-            <Link to="/tasks" className="btn btn--ghost btn--sm">
-              All tasks <IconArrowRight className="ic ic--sm" />
-            </Link>
-          </div>
-          {recentTasks.length === 0 ? (
-            <div className="card__body">
-              <div style={{ padding: '30px 0', textAlign: 'center', color: 'var(--text-muted)', fontSize: 13 }}>
-                No tasks yet. <Link to="/tasks/new" className="accent">Dispatch a task →</Link>
-              </div>
-            </div>
-          ) : (
-            <div>
-              {recentTasks.map(t => (
-                <Link
-                  key={t.id}
-                  to={`/tasks/${t.id}`}
-                  className="agent-row"
-                  style={{ gridTemplateColumns: 'minmax(0, 1fr) 120px 130px 80px 20px' }}
-                >
-                  <div style={{ minWidth: 0 }}>
-                    <div className="truncate" style={{ fontSize: 13, color: 'var(--text)' }}>
-                      {t.title ?? <span className="muted">untitled</span>}
-                    </div>
-                    <div className="mono" style={{ fontSize: 10.5, color: 'var(--text-dim)', marginTop: 2 }}>
-                      {t.id} · {ago(t.updated_at)}
-                    </div>
-                  </div>
-                  <Status status={t.status} />
-                  <div className="mono truncate" style={{ fontSize: 11, color: 'var(--text-muted)' }}>
-                    {t.assigned_agent_id ?? '—'}
-                  </div>
-                  <Chip>{t.type.replace('_', ' ')}</Chip>
-                  <IconArrowRight className="ic" />
-                </Link>
-              ))}
-            </div>
-          )}
-        </div>
-
-        <div className="card" style={{ borderColor: pendingApprovals.length > 0 ? 'var(--warn-border)' : undefined }}>
-          <div className="card__head">
-            <div className="card__title">
-              <IconApproval className="ic" />
-              Pending approvals
-            </div>
-            <Chip tone={pendingApprovals.length > 0 ? 'warn' : 'ghost'}>{pendingApprovals.length}</Chip>
-          </div>
-          {pendingApprovals.length === 0 ? (
-            <div className="card__body">
-              <div style={{ fontSize: 13, color: 'var(--text-muted)', padding: '14px 0' }}>
-                Queue is clear.
-              </div>
-            </div>
-          ) : (
-            <div className="card__body stack stack--sm">
-              {pendingApprovals.slice(0, 4).map(a => (
-                <Link key={a.id} to={`/approvals/${a.id}`} className="card" style={{ display: 'block', background: 'var(--surface-2)' }}>
-                  <div style={{ padding: '10px 12px' }}>
-                    <div className="row row--between" style={{ marginBottom: 4 }}>
-                      <span className="mono" style={{ fontSize: 10.5, color: 'var(--text-dim)' }}>{a.id}</span>
-                      <Chip>{a.approver_role ?? '—'}</Chip>
-                    </div>
-                    <div style={{ fontSize: 12.5, color: 'var(--text)', marginBottom: 4 }} className="truncate">
-                      {a.requested_action}
-                    </div>
-                    <div className="mono" style={{ fontSize: 10.5, color: 'var(--text-muted)' }}>
-                      {a.requested_by_name ?? a.requested_by ?? '—'} · {ago(a.created_at)}
-                    </div>
-                  </div>
-                </Link>
-              ))}
-              <Link to="/approvals" className="btn btn--ghost btn--sm" style={{ justifyContent: 'center' }}>
-                Open queue
-              </Link>
-            </div>
-          )}
-        </div>
-      </div>
-    </>
-  )
-}
-
-function MemberView({
-  myTasks, myApprovals,
-}: {
-  myTasks: Task[]
-  myApprovals: ApprovalRequest[]
-}) {
-  return (
-    <div className="split">
-      <div className="card">
-        <div className="card__head">
-          <div className="card__title">My tasks</div>
-          <Link to="/tasks" className="btn btn--ghost btn--sm">All tasks <IconArrowRight className="ic ic--sm" /></Link>
-        </div>
-        {myTasks.length === 0 ? (
-          <div className="card__body">
-            <div style={{ padding: '30px 0', textAlign: 'center', color: 'var(--text-muted)', fontSize: 13 }}>
-              You haven't started any tasks. <Link to="/tasks/new" className="accent">Create one →</Link>
-            </div>
-          </div>
-        ) : (
-          <div>
-            {myTasks.map(t => (
-              <Link key={t.id} to={`/tasks/${t.id}`} className="agent-row" style={{ gridTemplateColumns: 'minmax(0, 1fr) 120px 80px 20px' }}>
-                <div style={{ minWidth: 0 }}>
-                  <div className="truncate" style={{ fontSize: 13, color: 'var(--text)' }}>
-                    {t.title ?? <span className="muted">untitled</span>}
-                  </div>
-                  <div className="mono" style={{ fontSize: 10.5, color: 'var(--text-dim)', marginTop: 2 }}>
-                    {t.id} · {ago(t.updated_at)}
-                  </div>
-                </div>
-                <Status status={t.status} />
-                <Chip>{t.type.replace('_', ' ')}</Chip>
-                <IconArrowRight className="ic" />
-              </Link>
-            ))}
-          </div>
-        )}
-      </div>
-
-      <div className="card">
-        <div className="card__head"><div className="card__title">My approval requests</div></div>
-        {myApprovals.length === 0 ? (
-          <div className="card__body">
-            <div style={{ fontSize: 13, color: 'var(--text-muted)', padding: '14px 0' }}>
-              You haven't triggered any approvals.
-            </div>
-          </div>
-        ) : (
-          <div className="card__body stack stack--sm">
-            {myApprovals.slice(0, 6).map(a => (
-              <Link key={a.id} to={`/approvals/${a.id}`} className="card" style={{ display: 'block', background: 'var(--surface-2)' }}>
-                <div style={{ padding: '10px 12px' }}>
-                  <div className="row row--between" style={{ marginBottom: 4 }}>
-                    <span className="mono" style={{ fontSize: 10.5, color: 'var(--text-dim)' }}>{a.id}</span>
-                    <Status status={a.status} />
-                  </div>
-                  <div className="truncate" style={{ fontSize: 12.5, color: 'var(--text)' }}>{a.requested_action}</div>
-                  <div className="mono" style={{ fontSize: 10.5, color: 'var(--text-muted)', marginTop: 2 }}>
-                    {ago(a.created_at)}
-                  </div>
-                </div>
-              </Link>
-            ))}
-          </div>
-        )}
-      </div>
-    </div>
-  )
-}
-
-function TileCard({
-  label, value, sub, href, icon, tone,
-}: {
-  label: string
-  value: string
-  sub: string
-  href: string
-  icon: React.ReactNode
-  tone?: 'warn'
-}) {
-  const borderColor = tone === 'warn' ? 'var(--warn-border)' : undefined
-  return (
-    <Link
-      to={href}
-      className="card card--metric"
-      style={{ display: 'block', borderColor }}
-    >
-      <div className="card__body">
-        <div className="row row--between">
-          <div className="metric__label">{label}</div>
-          <div style={{ color: 'var(--text-dim)' }}>{icon}</div>
-        </div>
-        <div className="metric__value">{value}</div>
-        <div className="metric__delta">{sub}</div>
-      </div>
-    </Link>
   )
 }

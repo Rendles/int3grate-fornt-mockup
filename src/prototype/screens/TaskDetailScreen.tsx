@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react'
+import { Badge, Button, Code, DataList, Text } from '@radix-ui/themes'
 import { AppShell } from '../components/shell'
-import { PageHeader, Btn, Chip, Status, CommandBar, InfoHint } from '../components/common'
+import { PageHeader, MetaRow, Status, CommandBar, InfoHint } from '../components/common'
 import { Banner, LoadingList, NoAccessState } from '../components/states'
 import { IconPlay } from '../components/icons'
 import { Link } from '../router'
@@ -42,7 +43,7 @@ export default function TaskDetailScreen({ taskId }: { taskId: string }) {
             <>
               {`TASK · ${task.id}`}{' '}
               <InfoHint>
-                Loaded via <span className="mono">GET /tasks/{'{id}'}</span>. The task response doesn't include a run ID — open runs directly by ID.
+                Loaded via <Code variant="ghost">GET /tasks/{'{id}'}</Code>. The task response doesn't include a run ID — open runs directly by ID.
               </InfoHint>
             </>
           }
@@ -51,14 +52,12 @@ export default function TaskDetailScreen({ taskId }: { taskId: string }) {
           actions={
             <>
               <Status status={task.status} />
-              <Btn
-                variant="ghost"
-                icon={<IconPlay />}
-                href={`/tasks/new?agent=${task.assigned_agent_id}&type=${task.type}&title=${encodeURIComponent(task.title ?? '')}`}
-                title="Dispatch a new task with the same agent and type"
-              >
-                Start another
-              </Btn>
+              <Button asChild variant="ghost" title="Dispatch a new task with the same agent and type">
+                <a href={`#/tasks/new?agent=${task.assigned_agent_id}&type=${task.type}&title=${encodeURIComponent(task.title ?? '')}`}>
+                  <IconPlay />
+                  Start another
+                </a>
+              </Button>
             </>
           }
         />
@@ -76,49 +75,42 @@ export default function TaskDetailScreen({ taskId }: { taskId: string }) {
 
         <div style={{ height: 16 }} />
         <Banner tone="warn" title="Task concept is MVP-deferred (ADR-0003)">
-          Gateway v0.2.0 marks <span className="mono">/tasks/{'{id}'}</span> as <span className="mono">x-mvp-deferred</span>. This screen is kept for design continuity; runs can exist without a task.
+          Gateway v0.2.0 marks <Code variant="ghost">/tasks/{'{id}'}</Code> as <Code variant="ghost">x-mvp-deferred</Code>. This screen is kept for design continuity; runs can exist without a task.
         </Banner>
 
         <div style={{ height: 20 }} />
 
         <div className="card">
           <div className="card__head">
-            <div className="card__title row row--sm">
+            <Text as="div" size="2" weight="medium" className="card__title">
               Metadata{' '}
               <InfoHint>
                 All fields stored on the Task. There is no run ID, step count, or spend on this record — those live on the run.
               </InfoHint>
-            </div>
+            </Text>
           </div>
           <div className="card__body">
-            <MetaRow label="id" value={<span className="mono">{task.id}</span>} />
-            <MetaRow label="tenant_id" value={<span className="mono">{task.tenant_id}</span>} />
-            <MetaRow label="domain_id" value={<span className="mono">{task.domain_id ?? '—'}</span>} />
-            <MetaRow label="type" value={<Chip>{task.type.replace('_', ' ')}</Chip>} />
-            <MetaRow label="status" value={<Status status={task.status} />} />
-            <MetaRow
-              label="assigned_agent_id"
-              value={task.assigned_agent_id
-                ? <Link to={`/agents/${task.assigned_agent_id}`} className="mono">{task.assigned_agent_id}</Link>
-                : <span className="mono muted">—</span>}
-            />
-            <MetaRow label="assigned_agent_version_id" value={<span className="mono">{task.assigned_agent_version_id ?? '—'}</span>} />
-            <MetaRow label="created_by" value={<span className="mono">{task.created_by ?? '—'}</span>} />
-            <MetaRow label="title" value={task.title ?? <span className="muted">null</span>} />
-            <MetaRow label="created_at" value={<span className="mono">{absTime(task.created_at)}</span>} />
-            <MetaRow label="updated_at" value={<span className="mono">{absTime(task.updated_at)} · {ago(task.updated_at)}</span>} />
+            <DataList.Root size="2">
+              <MetaRow label="id" value={<Code variant="ghost">{task.id}</Code>} />
+              <MetaRow label="tenant_id" value={<Code variant="ghost">{task.tenant_id}</Code>} />
+              <MetaRow label="domain_id" value={<Code variant="ghost">{task.domain_id ?? '—'}</Code>} />
+              <MetaRow label="type" value={<Badge color="gray" variant="soft" radius="full" size="1">{task.type.replace('_', ' ')}</Badge>} />
+              <MetaRow label="status" value={<Status status={task.status} />} />
+              <MetaRow
+                label="assigned_agent_id"
+                value={task.assigned_agent_id
+                  ? <Link to={`/agents/${task.assigned_agent_id}`}><Code variant="ghost">{task.assigned_agent_id}</Code></Link>
+                  : <Code variant="ghost" color="gray">—</Code>}
+              />
+              <MetaRow label="assigned_agent_version_id" value={<Code variant="ghost">{task.assigned_agent_version_id ?? '—'}</Code>} />
+              <MetaRow label="created_by" value={<Code variant="ghost">{task.created_by ?? '—'}</Code>} />
+              <MetaRow label="title" value={task.title ?? <Text color="gray">null</Text>} />
+              <MetaRow label="created_at" value={<Code variant="ghost">{absTime(task.created_at)}</Code>} />
+              <MetaRow label="updated_at" value={<Code variant="ghost">{absTime(task.updated_at)} · {ago(task.updated_at)}</Code>} />
+            </DataList.Root>
           </div>
         </div>
       </div>
     </AppShell>
-  )
-}
-
-function MetaRow({ label, value }: { label: string; value: React.ReactNode }) {
-  return (
-    <div className="row row--between" style={{ padding: '6px 0', borderBottom: '1px dashed var(--border)' }}>
-      <span className="mono uppercase muted" style={{ fontSize: 10.5 }}>{label}</span>
-      <span style={{ fontSize: 12 }}>{value}</span>
-    </div>
   )
 }
