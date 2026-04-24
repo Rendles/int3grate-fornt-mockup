@@ -597,7 +597,7 @@ function ResolvedCard({ approval }: { approval: ApprovalRequest }) {
 
 function MetaRow({ label, value }: { label: string; value: React.ReactNode }) {
   return (
-    <Flex align="center" justify="between" gap="3" py="1" style={{ borderBottom: '1px dashed var(--gray-6)' }}>
+    <Flex align="center" justify="between" gap="3" py="1" style={{ borderBottom: '1px dashed var(--gray-a3)' }}>
       <Caption>{label}</Caption>
       <Text as="span" size="1">{value}</Text>
     </Flex>

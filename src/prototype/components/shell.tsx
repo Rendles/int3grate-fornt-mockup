@@ -84,21 +84,6 @@ export function Sidebar() {
         </div>
       </div>
 
-      {user && (
-        <div className="sb__tenant">
-          <Text as="div" size="1" className="sb__tenant-label">Tenant / Domain</Text>
-          <div className="sb__tenant-body">
-            <div>
-              <Text as="div" size="2" weight="medium" className="sb__tenant-name">{user.tenant_id}</Text>
-              <Text as="div" size="1" className="sb__tenant-domain">{user.domain_id ?? '—'}</Text>
-            </div>
-            <Link to="/profile" className="sb__tenant-switch">
-              <Text size="1">open</Text>
-            </Link>
-          </div>
-        </div>
-      )}
-
       <div className="sb__nav">
         {items.map(item => (
           <Link
@@ -170,8 +155,7 @@ export function Topbar({
       top="0"
       style={{
         zIndex: 10,
-        background: 'var(--gray-2)',
-        borderBottom: '1px solid var(--gray-6)',
+        background: 'var(--color-panel-solid)',
       }}
     >
       <header>

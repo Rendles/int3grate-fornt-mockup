@@ -54,7 +54,8 @@
       "PowerShell(npx tsc -b 2>&1)",
       "Bash(npm view *)",
       "Bash(npm install *)",
-      "Bash(git stash *)"
+      "Bash(git stash *)",
+      "Bash(grep -n \"--text-area-border-radius\\\\|--select-trigger-height\\\\|rt-SelectTrigger {\" \"D:\\\\Work\\\\int3grate-fornt-mockup\\\\node_modules\\\\@radix-ui\\\\themes\\\\styles.css\")"
     ]
   }
 }

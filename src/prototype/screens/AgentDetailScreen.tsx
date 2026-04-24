@@ -8,7 +8,7 @@ import { GrantsEditor } from '../components/grants-editor'
 import { api } from '../lib/api'
 import { useAuth } from '../auth'
 import type { Agent, AgentVersion, GrantsSnapshot, ToolGrant } from '../lib/types'
-import { absTime, ago } from '../lib/format'
+import { absTime, ago, toolLabel } from '../lib/format'
 
 export default function AgentDetailScreen({
   agentId,
@@ -294,8 +294,8 @@ function PolicySnapshotPanel({ agentId, grantsVersion }: { agentId: string; gran
                 gridTemplateColumns: 'minmax(0, 1fr) 180px minmax(0, 1fr)',
                 gap: 14,
                 padding: '10px 16px',
-                background: 'var(--gray-3)',
-                borderBottom: '1px solid var(--gray-6)',
+                background: 'var(--gray-a2)',
+                borderBottom: '1px solid var(--gray-a3)',
                 textTransform: 'uppercase',
                 letterSpacing: '0.14em',
               }}
@@ -313,10 +313,10 @@ function PolicySnapshotPanel({ agentId, grantsVersion }: { agentId: string; gran
                   gap: 14,
                   padding: '10px 16px',
                   alignItems: 'center',
-                  borderBottom: '1px solid var(--gray-6)',
+                  borderBottom: '1px solid var(--gray-a3)',
                 }}
               >
-                <Code variant="ghost" size="1">{g.tool}</Code>
+                <Text as="div" size="2">{toolLabel(g.tool)}</Text>
                 <span>
                   <Badge
                     color={g.mode === 'read_only' ? 'cyan' : g.mode === 'requires_approval' ? 'amber' : 'red'}
@@ -340,8 +340,8 @@ function PolicySnapshotPanel({ agentId, grantsVersion }: { agentId: string; gran
               color="gray"
               style={{
                 padding: '8px 16px',
-                background: 'var(--gray-3)',
-                borderTop: '1px solid var(--gray-6)',
+                background: 'var(--gray-a2)',
+                borderTop: '1px solid var(--gray-a3)',
               }}
             >
               issued_at {absTime(snapshot.issued_at)} · tenant {snapshot.tenant_id}

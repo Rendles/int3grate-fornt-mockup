@@ -61,3 +61,26 @@ export function roleLabel(r: 'admin' | 'domain_admin' | 'member'): string {
   if (r === 'domain_admin') return 'Domain Admin'
   return 'Member'
 }
+
+// Tool key → human label. Format: "Service · Action".
+// Falls back to the raw key if unmapped (so new fixtures don't crash the UI).
+export const TOOL_LABELS: Record<string, string> = {
+  'stripe.read_charge': 'Stripe · Read Charge',
+  'stripe.refund': 'Stripe · Refund',
+  'zoho_crm.read_contact': 'Zoho CRM · Read Contact',
+  'zoho_crm.write_deal': 'Zoho CRM · Write Deal',
+  'apollo.enrich_contact': 'Apollo · Enrich Contact',
+  'email.send': 'Email · Send',
+  'okta.create_user': 'Okta · Create User',
+  'okta.read_user': 'Okta · Read User',
+  'aws.revoke_user': 'AWS · Revoke User',
+  'irs.verify_ein': 'IRS · Verify EIN',
+  'quickbooks.read_invoice': 'QuickBooks · Read Invoice',
+  'slack.post_message': 'Slack · Post Message',
+  'memory.read': 'Memory · Read',
+}
+
+export function toolLabel(key: string | null | undefined): string {
+  if (!key) return '—'
+  return TOOL_LABELS[key] ?? key
+}

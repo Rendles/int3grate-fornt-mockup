@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react'
-import { Badge, Box, Code, Flex, Grid, Text } from '@radix-ui/themes'
+import { Badge, Box, Button, Code, Flex, Grid, Text } from '@radix-ui/themes'
 
 import { AppShell } from '../components/shell'
 import { Caption, PageHeader, InfoHint, MetricCard, Pagination } from '../components/common'
@@ -107,36 +107,38 @@ export default function SpendScreen() {
         {/* Controls */}
         <Flex align="center" gap="2" mb="4" wrap="wrap">
           <Caption mr="1">range</Caption>
-          {RANGES.map(r => (
-            <Badge
-              key={r}
-              asChild
-              color={range === r ? 'blue' : 'gray'}
-              variant={range === r ? 'soft' : 'outline'}
-              radius="full"
-              size="1"
-            >
-              <button type="button" onClick={() => { setRange(r); setPage(0) }}>
+          {RANGES.map(r => {
+            const isActive = range === r
+            return (
+              <Button
+                key={r}
+                type="button"
+                size="2"
+                variant="soft"
+                color={isActive ? 'blue' : 'gray'}
+                onClick={() => { setRange(r); setPage(0) }}
+              >
                 {r}
-              </button>
-            </Badge>
-          ))}
-          <span style={{ width: 1, height: 16, background: 'var(--gray-6)', margin: '0 6px' }} />
+              </Button>
+            )
+          })}
+          <span style={{ width: 1, height: 20, background: 'var(--gray-a3)', margin: '0 6px' }} />
           <Caption mr="1">group_by</Caption>
-          {GROUPINGS.map(g => (
-            <Badge
-              key={g}
-              asChild
-              color={groupBy === g ? 'blue' : 'gray'}
-              variant={groupBy === g ? 'soft' : 'outline'}
-              radius="full"
-              size="1"
-            >
-              <button type="button" onClick={() => { setGroupBy(g); setPage(0) }}>
-                {g}
-              </button>
-            </Badge>
-          ))}
+          {GROUPINGS.map(g => {
+            const isActive = groupBy === g
+            return (
+              <Button
+                key={g}
+                type="button"
+                size="2"
+                variant="soft"
+                color={isActive ? 'blue' : 'gray'}
+                onClick={() => { setGroupBy(g); setPage(0) }}
+              >
+                <span style={{ textTransform: 'capitalize' }}>{g}</span>
+              </Button>
+            )
+          })}
         </Flex>
 
         {/* Summary cards — all derived from the response */}
@@ -208,16 +210,8 @@ export default function SpendScreen() {
             title={`No spend in the ${data.range} window`}
           />
         ) : (
-          <div className="card" style={{ padding: 0 }}>
-            <div
-              className="spend-row"
-              style={{
-                gridTemplateColumns: TABLE_COLS,
-                background: 'var(--gray-3)',
-                textTransform: 'uppercase',
-                letterSpacing: '0.14em',
-              }}
-            >
+          <div className="card card--table">
+            <div className="table-head" style={{ gridTemplateColumns: TABLE_COLS }}>
               <Text as="span" size="1" color="gray">{groupBy}</Text>
               <Text as="span" size="1" color="gray" style={{ textAlign: 'right' }}>spend</Text>
               <Text as="span" size="1" color="gray" style={{ textAlign: 'right' }}>runs</Text>

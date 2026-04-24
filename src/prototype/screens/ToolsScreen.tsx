@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from 'react'
-import { Badge, Code, Flex, Text } from '@radix-ui/themes'
+import { Badge, Button, Code, Flex, Text } from '@radix-ui/themes'
 
 import { AppShell } from '../components/shell'
 import { Caption, PageHeader, CommandBar, InfoHint } from '../components/common'
@@ -7,6 +7,7 @@ import { TextInput } from '../components/fields'
 import { EmptyState, ErrorState, LoadingList } from '../components/states'
 import { IconArrowRight, IconTool } from '../components/icons'
 import { api } from '../lib/api'
+import { toolLabel } from '../lib/format'
 import type { ToolDefinition, ToolPolicyMode } from '../lib/types'
 
 type ModeFilter = ToolPolicyMode | 'all'
@@ -47,7 +48,9 @@ export default function ToolsScreen() {
     return tools.filter(t => {
       if (mode !== 'all' && t.default_mode !== mode) return false
       if (!q) return true
-      return t.name.toLowerCase().includes(q) || (t.description ?? '').toLowerCase().includes(q)
+      return t.name.toLowerCase().includes(q)
+        || toolLabel(t.name).toLowerCase().includes(q)
+        || (t.description ?? '').toLowerCase().includes(q)
     })
   }, [tools, query, mode])
 
@@ -97,21 +100,23 @@ export default function ToolsScreen() {
             />
           </div>
           <Caption ml="1">default_mode</Caption>
-          {MODES.map(m => (
-            <Badge
-              key={m}
-              asChild
-              color={mode === m ? (m === 'requires_approval' ? 'amber' : 'blue') : 'gray'}
-              variant={mode === m ? 'soft' : 'outline'}
-              radius="full"
-              size="1"
-            >
-              <button type="button" onClick={() => setMode(m)}>
-                {m}{' '}
-                <Code variant="ghost" style={{ color: 'var(--gray-10)' }}>{counts[m] ?? 0}</Code>
-              </button>
-            </Badge>
-          ))}
+          {MODES.map(m => {
+            const isActive = mode === m
+            const activeColor = m === 'requires_approval' ? 'amber' : 'blue'
+            return (
+              <Button
+                key={m}
+                type="button"
+                size="2"
+                variant="soft"
+                color={isActive ? activeColor : 'gray'}
+                onClick={() => setMode(m)}
+              >
+                <span style={{ textTransform: 'capitalize' }}>{m}</span>
+                <Code variant="ghost" size="1" color="gray">{counts[m] ?? 0}</Code>
+              </Button>
+            )
+          })}
         </Flex>
 
         {error ? (
@@ -125,19 +130,8 @@ export default function ToolsScreen() {
         ) : filtered.length === 0 ? (
           <EmptyState icon={<IconTool />} title="No tools match the current filters" />
         ) : (
-          <div className="card" style={{ padding: 0 }}>
-            <div
-              style={{
-                display: 'grid',
-                gridTemplateColumns: '240px 140px minmax(0, 1fr) 28px',
-                gap: 14,
-                padding: '10px 16px',
-                background: 'var(--gray-3)',
-                borderBottom: '1px solid var(--gray-6)',
-                textTransform: 'uppercase',
-                letterSpacing: '0.12em',
-              }}
-            >
+          <div className="card card--table">
+            <div className="table-head" style={{ gridTemplateColumns: '240px 140px minmax(0, 1fr) 28px' }}>
               <Text as="span" size="1" color="gray">name</Text>
               <Text as="span" size="1" color="gray">default_mode</Text>
               <Text as="span" size="1" color="gray">description</Text>
@@ -146,7 +140,7 @@ export default function ToolsScreen() {
             {filtered.map(t => {
               const open = expanded.has(t.name)
               return (
-                <div key={t.name} style={{ borderBottom: '1px solid var(--gray-6)' }}>
+                <div key={t.name} className="tool-row-wrap" style={{ borderBottom: '1px solid var(--gray-a3)' }}>
                   <button
                     onClick={() => toggle(t.name)}
                     style={{
@@ -161,7 +155,7 @@ export default function ToolsScreen() {
                       color: 'var(--gray-12)',
                     }}
                   >
-                    <Code variant="ghost" size="1">{t.name}</Code>
+                    <Text as="div" size="2">{toolLabel(t.name)}</Text>
                     <span>
                       <Badge
                         color={t.default_mode === 'read_only' ? 'cyan' : t.default_mode === 'requires_approval' ? 'amber' : 'red'}

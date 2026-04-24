@@ -7,13 +7,15 @@ import { Banner, EmptyState, ErrorState, LoadingList } from '../components/state
 import { IconArrowRight, IconPlus, IconTask } from '../components/icons'
 import { Link } from '../router'
 import { api } from '../lib/api'
-import type { Task, TaskStatus } from '../lib/types'
+import type { Agent, Task, TaskStatus, User } from '../lib/types'
 import { ago } from '../lib/format'
 
 const STATUSES: Array<TaskStatus | 'all'> = ['all', 'pending', 'running', 'completed', 'failed', 'cancelled']
 
 export default function TasksScreen() {
   const [tasks, setTasks] = useState<Task[] | null>(null)
+  const [agents, setAgents] = useState<Agent[]>([])
+  const [users, setUsers] = useState<User[]>([])
   const [status, setStatus] = useState<TaskStatus | 'all'>('all')
   const [error, setError] = useState<string | null>(null)
   const [reloadTick, setReloadTick] = useState(0)
@@ -22,10 +24,16 @@ export default function TasksScreen() {
 
   useEffect(() => {
     let cancelled = false
-    api.listTasks(status === 'all' ? undefined : { status })
-      .then(t => {
+    Promise.all([
+      api.listTasks(status === 'all' ? undefined : { status }),
+      api.listAgents(),
+      api.listUsers(),
+    ])
+      .then(([t, a, u]) => {
         if (cancelled) return
         setTasks(t)
+        setAgents(a)
+        setUsers(u)
         setError(null)
       })
       .catch(e => {
@@ -34,6 +42,11 @@ export default function TasksScreen() {
       })
     return () => { cancelled = true }
   }, [status, reloadTick])
+
+  const agentName = (id: string | null) =>
+    (id && agents.find(a => a.id === id)?.name) || '—'
+  const userName = (id: string | null) =>
+    (id && users.find(u => u.id === id)?.name) || '—'
 
   const counts = useMemo(() => {
     const c: Record<string, number> = { all: tasks?.length ?? 0 }
@@ -70,20 +83,22 @@ export default function TasksScreen() {
 
         <Flex align="center" gap="2" mb="4" wrap="wrap">
           <Caption mr="1">status</Caption>
-          {STATUSES.map(s => (
-            <Badge
-              key={s}
-              asChild
-              color={status === s ? 'blue' : 'gray'}
-              variant={status === s ? 'soft' : 'outline'}
-              radius="full"
-              size="1"
-            >
-              <button type="button" onClick={() => { setStatus(s); setPage(0) }}>
-                {s} <Code variant="ghost" style={{ color: 'var(--gray-10)' }}>{counts[s] ?? 0}</Code>
-              </button>
-            </Badge>
-          ))}
+          {STATUSES.map(s => {
+            const isActive = status === s
+            return (
+              <Button
+                key={s}
+                type="button"
+                size="2"
+                variant="soft"
+                color={isActive ? 'blue' : 'gray'}
+                onClick={() => { setStatus(s); setPage(0) }}
+              >
+                <span style={{ textTransform: 'capitalize' }}>{s}</span>
+                <Code variant="ghost" size="1" color="gray">{counts[s] ?? 0}</Code>
+              </Button>
+            )
+          })}
         </Flex>
 
         {error ? (
@@ -101,21 +116,12 @@ export default function TasksScreen() {
             action={{ label: 'Create a task', href: '/tasks/new' }}
           />
         ) : (
-          <div className="card" style={{ padding: 0 }}>
-            <div style={{
-              padding: '10px 16px',
-              background: 'var(--gray-3)',
-              borderBottom: '1px solid var(--gray-6)',
-              display: 'grid',
-              gridTemplateColumns: 'minmax(0, 1fr) 80px 130px 140px 140px 120px 32px',
-              gap: 14,
-              textTransform: 'uppercase',
-              letterSpacing: '0.12em',
-            }}>
-              <Text as="span" size="1" color="gray">id · title</Text>
+          <div className="card card--table">
+            <div className="table-head" style={{ gridTemplateColumns: 'minmax(0, 1fr) 80px 130px 160px 140px 120px 32px' }}>
+              <Text as="span" size="1" color="gray">title</Text>
               <Text as="span" size="1" color="gray">type</Text>
               <Text as="span" size="1" color="gray">status</Text>
-              <Text as="span" size="1" color="gray">agent · version</Text>
+              <Text as="span" size="1" color="gray">agent</Text>
               <Text as="span" size="1" color="gray">created by</Text>
               <Text as="span" size="1" color="gray">updated</Text>
               <span />
@@ -125,14 +131,11 @@ export default function TasksScreen() {
                 key={t.id}
                 to={`/tasks/${t.id}`}
                 className="agent-row"
-                style={{ gridTemplateColumns: 'minmax(0, 1fr) 80px 130px 140px 140px 120px 32px' }}
+                style={{ gridTemplateColumns: 'minmax(0, 1fr) 80px 130px 160px 140px 120px 32px' }}
               >
-                <div style={{ minWidth: 0 }}>
-                  <Text as="div" size="1" color="gray">{t.id}</Text>
-                  <Text as="div" size="2" mt="1" className="truncate">
-                    {t.title ?? <Text color="gray">— untitled —</Text>}
-                  </Text>
-                </div>
+                <Text as="div" size="2" className="truncate" style={{ minWidth: 0 }}>
+                  {t.title ?? <Text color="gray">— untitled —</Text>}
+                </Text>
                 <Badge
                   color={t.type === 'schedule' ? 'cyan' : t.type === 'chat' ? 'blue' : 'gray'}
                   variant={t.type === 'schedule' || t.type === 'chat' ? 'soft' : 'outline'}
@@ -142,12 +145,11 @@ export default function TasksScreen() {
                   {t.type.replace('_', ' ')}
                 </Badge>
                 <Status status={t.status} />
-                <div>
-                  <Text as="div" size="1" className="truncate">{t.assigned_agent_id ?? '—'}</Text>
-                  <Text as="div" size="1" color="gray" mt="1">{t.assigned_agent_version_id ?? '—'}</Text>
-                </div>
                 <Text as="div" size="1" className="truncate">
-                  {t.created_by ?? '—'}
+                  {agentName(t.assigned_agent_id)}
+                </Text>
+                <Text as="div" size="1" className="truncate">
+                  {userName(t.created_by)}
                 </Text>
                 <Text as="div" size="1" color="gray">
                   {ago(t.updated_at)}

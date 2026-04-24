@@ -8,7 +8,7 @@ import { IconAlert, IconArrowRight } from '../components/icons'
 import { Link } from '../router'
 import { api } from '../lib/api'
 import type { Run, RunStep, RunStepType, RunToolError } from '../lib/types'
-import { absTime, durationMs, money, num } from '../lib/format'
+import { absTime, durationMs, money, num, toolLabel } from '../lib/format'
 
 const STEP_KIND_LABEL: Record<RunStepType, string> = {
   llm_call: 'LLM_CALL',
@@ -191,8 +191,8 @@ export default function RunDetailScreen({ runId }: { runId: string }) {
               gridTemplateColumns: '130px 90px minmax(0, 1fr) 110px 90px 90px 20px',
               gap: 12,
               padding: '8px 16px',
-              background: 'var(--gray-3)',
-              borderBottom: '1px solid var(--gray-6)',
+              background: 'var(--gray-a2)',
+              borderBottom: '1px solid var(--gray-a3)',
               textTransform: 'uppercase',
               letterSpacing: '0.14em',
             }}>
@@ -244,7 +244,7 @@ export default function RunDetailScreen({ runId }: { runId: string }) {
 function StepRow({ step, expanded, onToggle }: { step: RunStep; expanded: boolean; onToggle: () => void }) {
   const tone = statusTone(step.status)
   return (
-    <div style={{ borderBottom: '1px solid var(--gray-6)' }}>
+    <div style={{ borderBottom: '1px solid var(--gray-a3)' }}>
       <button
         onClick={onToggle}
         style={{
@@ -264,7 +264,7 @@ function StepRow({ step, expanded, onToggle }: { step: RunStep; expanded: boolea
         </Code>
         <Badge color={tone.color} variant={tone.variant} radius="full" size="1">{step.status}</Badge>
         <Text as="div" size="1" className="truncate">
-          {step.model_name ?? step.tool_name ?? <Text color="gray">—</Text>}
+          {step.model_name ?? (step.tool_name ? toolLabel(step.tool_name) : <Text color="gray">—</Text>)}
         </Text>
         <Code variant="ghost" size="1" color="gray" style={{ textAlign: 'right' }}>
           {durationMs(step.duration_ms)}
@@ -318,7 +318,7 @@ function JsonPanel({ title, value }: { title: string; value: Record<string, unkn
 
 function MetaRow({ label, value }: { label: string; value: React.ReactNode }) {
   return (
-    <Flex align="center" justify="between" gap="3" py="1" style={{ borderBottom: '1px dashed var(--gray-6)' }}>
+    <Flex align="center" justify="between" gap="3" py="1" style={{ borderBottom: '1px dashed var(--gray-a3)' }}>
       <Caption>{label}</Caption>
       <Text as="span" size="1">{value}</Text>
     </Flex>
@@ -341,8 +341,8 @@ function ToolErrorsCard({ errors }: { errors: RunToolError[] }) {
             gridTemplateColumns: '220px 120px minmax(0, 1fr) 160px',
             gap: 12,
             padding: '8px 16px',
-            background: 'var(--gray-3)',
-            borderBottom: '1px solid var(--gray-6)',
+            background: 'var(--gray-a2)',
+            borderBottom: '1px solid var(--gray-a3)',
             textTransform: 'uppercase',
             letterSpacing: '0.14em',
           }}
@@ -350,7 +350,7 @@ function ToolErrorsCard({ errors }: { errors: RunToolError[] }) {
           <Text as="span" size="1" color="gray">tool</Text>
           <Text as="span" size="1" color="gray">status</Text>
           <Text as="span" size="1" color="gray">message</Text>
-          <Text as="span" size="1" color="gray">at · tool_call_id</Text>
+          <Text as="span" size="1" color="gray">at</Text>
         </div>
         {errors.map((e, i) => {
           const color = e.status === 'timeout' ? 'amber' : e.status === 'denied' ? 'gray' : 'red'
@@ -363,21 +363,16 @@ function ToolErrorsCard({ errors }: { errors: RunToolError[] }) {
                 gridTemplateColumns: '220px 120px minmax(0, 1fr) 160px',
                 gap: 12,
                 padding: '10px 16px',
-                borderBottom: '1px solid var(--gray-6)',
+                borderBottom: '1px solid var(--gray-a3)',
                 alignItems: 'start',
               }}
             >
-              <Code variant="ghost" size="1">{e.tool}</Code>
+              <Text as="div" size="2">{toolLabel(e.tool)}</Text>
               <Badge color={color} variant={variant} radius="full" size="1">{e.status}</Badge>
               <Text as="span" size="1" color="gray" style={{ lineHeight: 1.55 }}>
                 {e.message ?? '—'}
               </Text>
-              <div>
-                <Text as="div" size="1" color="gray">{e.at ? absTime(e.at) : '—'}</Text>
-                {e.tool_call_id && (
-                  <Text as="div" size="1" color="gray" mt="1">{e.tool_call_id}</Text>
-                )}
-              </div>
+              <Text as="div" size="1" color="gray">{e.at ? absTime(e.at) : '—'}</Text>
             </div>
           )
         })}

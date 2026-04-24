@@ -9,14 +9,23 @@ import { IconAgent, IconArrowRight, IconLock, IconPlus } from '../components/ico
 import { Link } from '../router'
 import { useAuth } from '../auth'
 import { api } from '../lib/api'
-import type { Agent, AgentStatus } from '../lib/types'
+import type { Agent, AgentStatus, User } from '../lib/types'
 import { ago } from '../lib/format'
 
 const STATUSES: Array<AgentStatus | 'all'> = ['all', 'active', 'paused', 'draft', 'archived']
 
+const DOMAIN_NAMES: Record<string, string> = {
+  dom_hq: 'HQ',
+  dom_sales: 'Sales',
+  dom_support: 'Support',
+}
+const humanDomain = (id: string | null) =>
+  id ? (DOMAIN_NAMES[id] ?? id.replace(/^dom_/, '')) : '—'
+
 export default function AgentsScreen() {
   const { user } = useAuth()
   const [agents, setAgents] = useState<Agent[] | null>(null)
+  const [users, setUsers] = useState<User[]>([])
   const [error, setError] = useState<string | null>(null)
   const [reloadTick, setReloadTick] = useState(0)
   const [filter, setFilter] = useState<AgentStatus | 'all'>('all')
@@ -28,10 +37,11 @@ export default function AgentsScreen() {
 
   useEffect(() => {
     let cancelled = false
-    api.listAgents()
-      .then(a => {
+    Promise.all([api.listAgents(), api.listUsers()])
+      .then(([a, u]) => {
         if (cancelled) return
         setAgents(a)
+        setUsers(u)
         setError(null)
       })
       .catch(e => {
@@ -40,6 +50,9 @@ export default function AgentsScreen() {
       })
     return () => { cancelled = true }
   }, [reloadTick])
+
+  const ownerName = (id: string | null) =>
+    (id && users.find(u => u.id === id)?.name) || '—'
 
   const filtered = useMemo(() => {
     if (!agents) return []
@@ -85,26 +98,27 @@ export default function AgentsScreen() {
 
         <Flex align="center" gap="2" mb="4" wrap="wrap">
           <Flex align="center" gap="2">
-            {STATUSES.map(f => (
-              <Badge
-                key={f}
-                asChild
-                color={filter === f ? 'blue' : 'gray'}
-                variant={filter === f ? 'soft' : 'outline'}
-                radius="full"
-                size="1"
-              >
-                <button type="button" onClick={() => { setFilter(f); setPage(0) }}>
-                  {f}{' '}
-                  <Code variant="ghost" style={{ color: 'var(--gray-10)' }}>{counts[f] ?? 0}</Code>
-                </button>
-              </Badge>
-            ))}
+            {STATUSES.map(f => {
+              const isActive = filter === f
+              return (
+                <Button
+                  key={f}
+                  type="button"
+                  size="2"
+                  variant="soft"
+                  color={isActive ? 'blue' : 'gray'}
+                  onClick={() => { setFilter(f); setPage(0) }}
+                >
+                  <span style={{ textTransform: 'capitalize' }}>{f}</span>
+                  <Code variant="ghost" size="1" color="gray">{counts[f] ?? 0}</Code>
+                </Button>
+              )
+            })}
           </Flex>
           <Box flexGrow="1" />
           <Box width="260px">
             <TextInput
-              size="1"
+              size="2"
               placeholder="Filter by name or description..."
               value={query}
               onChange={e => { setQuery(e.target.value); setPage(0) }}
@@ -127,14 +141,8 @@ export default function AgentsScreen() {
             action={canCreate ? { label: 'Create an agent', href: '/agents/new' } : undefined}
           />
         ) : (
-          <div className="card" style={{ padding: 0 }}>
-            <div style={{
-              display: 'grid',
-              gridTemplateColumns: 'minmax(0, 1fr) 120px 130px 160px 120px 32px',
-              gap: 14, padding: '10px 16px', background: 'var(--gray-3)',
-              textTransform: 'uppercase', letterSpacing: '0.14em',
-              borderBottom: '1px solid var(--gray-6)',
-            }}>
+          <div className="card card--table">
+            <div className="table-head" style={{ gridTemplateColumns: 'minmax(0, 1fr) 120px 130px 160px 120px 32px' }}>
               <Text as="span" size="1" color="gray">name · description</Text>
               <Text as="span" size="1" color="gray">status</Text>
               <Text as="span" size="1" color="gray">active version</Text>
@@ -154,9 +162,6 @@ export default function AgentsScreen() {
                   {a.description && (
                     <Text as="div" size="1" color="gray" mt="1" className="truncate">{a.description}</Text>
                   )}
-                  <Text as="div" size="1" color="gray" mt="1">
-                    {a.id}
-                  </Text>
                 </div>
                 <Status status={a.status} />
                 <div>
@@ -173,10 +178,10 @@ export default function AgentsScreen() {
                 </div>
                 <div>
                   <Text as="div" size="1">
-                    {a.owner_user_id ?? '—'}
+                    {ownerName(a.owner_user_id)}
                   </Text>
                   <Text as="div" size="1" color="gray" mt="1">
-                    {a.domain_id ?? '—'}
+                    {humanDomain(a.domain_id)}
                   </Text>
                 </div>
                 <Text as="div" size="1" color="gray">

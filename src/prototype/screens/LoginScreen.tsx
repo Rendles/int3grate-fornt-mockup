@@ -90,9 +90,9 @@ export default function LoginScreen() {
       <div className="login__form-wrap">
         <form className="login__form" onSubmit={submit} noValidate>
           <div>
-            <Text as="div" size="1" color="gray" className="page__eyebrow" mb="2">SIGN IN</Text>
+            <Text as="div" size="1" className="page__eyebrow" mb="2" style={{ color: 'var(--gray-10)' }}>SIGN IN</Text>
             <Heading as="h2" size="8" weight="regular" className="login__form-heading">Welcome back.</Heading>
-            <Text as="p" size="2" color="gray" mt="1">
+            <Text as="p" size="2" mt="1" style={{ color: 'var(--gray-10)' }}>
               Authenticate with your workspace email to access the control plane.
             </Text>
           </div>
@@ -105,7 +105,7 @@ export default function LoginScreen() {
 
           <TextInput
             id="login-email"
-            label="Email"
+            size="3"
             type="email"
             value={email}
             onChange={e => updateEmail(e.target.value)}
@@ -120,7 +120,7 @@ export default function LoginScreen() {
 
           <PasswordField
             id="login-password"
-            label="Password"
+            size="3"
             value={password}
             onChange={e => updatePassword(e.target.value)}
             onBlur={() => {

@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from 'react'
-import { Badge, Box, Code, Flex, Text } from '@radix-ui/themes'
+import { Badge, Box, Button, Code, Flex, Text } from '@radix-ui/themes'
 
 import { AppShell } from '../components/shell'
 import { Caption, PageHeader, Status, InfoHint, Pagination } from '../components/common'
@@ -7,7 +7,7 @@ import { Banner, EmptyState, ErrorState, LoadingList } from '../components/state
 import { IconApproval, IconArrowRight, IconCheck, IconX } from '../components/icons'
 import { Link, useRouter } from '../router'
 import { api } from '../lib/api'
-import type { ApprovalRequest, ApprovalStatus } from '../lib/types'
+import type { ApprovalRequest, ApprovalStatus, User } from '../lib/types'
 import { ago } from '../lib/format'
 
 type StatusFilter = ApprovalStatus | 'all'
@@ -16,6 +16,7 @@ const STATUSES: StatusFilter[] = ['all', 'pending', 'approved', 'rejected', 'exp
 export default function ApprovalsScreen() {
   const { navigate } = useRouter()
   const [approvals, setApprovals] = useState<ApprovalRequest[] | null>(null)
+  const [users, setUsers] = useState<User[]>([])
   const [statusFilter, setStatusFilter] = useState<StatusFilter>('pending')
   const [error, setError] = useState<string | null>(null)
   const [reloadTick, setReloadTick] = useState(0)
@@ -24,10 +25,14 @@ export default function ApprovalsScreen() {
 
   useEffect(() => {
     let cancelled = false
-    api.listApprovals(statusFilter === 'all' ? undefined : { status: statusFilter })
-      .then(list => {
+    Promise.all([
+      api.listApprovals(statusFilter === 'all' ? undefined : { status: statusFilter }),
+      api.listUsers(),
+    ])
+      .then(([list, u]) => {
         if (cancelled) return
         setApprovals(list)
+        setUsers(u)
         setError(null)
       })
       .catch(e => {
@@ -36,6 +41,9 @@ export default function ApprovalsScreen() {
       })
     return () => { cancelled = true }
   }, [statusFilter, reloadTick])
+
+  const userName = (id: string | null) =>
+    (id && users.find(u => u.id === id)?.name) || null
 
   const counts = useMemo(() => {
     const c: Record<string, number> = { all: approvals?.length ?? 0 }
@@ -70,21 +78,23 @@ export default function ApprovalsScreen() {
 
         <Flex align="center" gap="2" mb="4" wrap="wrap">
           <Caption mr="1">status</Caption>
-          {STATUSES.map(f => (
-            <Badge
-              key={f}
-              asChild
-              color={statusFilter === f ? (f === 'pending' ? 'amber' : 'blue') : 'gray'}
-              variant={statusFilter === f ? 'soft' : 'outline'}
-              radius="full"
-              size="1"
-            >
-              <button type="button" onClick={() => { setStatusFilter(f); setPage(0) }}>
-                {f}{' '}
-                <Code variant="ghost" style={{ color: 'var(--gray-10)' }}>{counts[f] ?? 0}</Code>
-              </button>
-            </Badge>
-          ))}
+          {STATUSES.map(f => {
+            const isActive = statusFilter === f
+            const activeColor = f === 'pending' ? 'amber' : 'blue'
+            return (
+              <Button
+                key={f}
+                type="button"
+                size="2"
+                variant="soft"
+                color={isActive ? activeColor : 'gray'}
+                onClick={() => { setStatusFilter(f); setPage(0) }}
+              >
+                <span style={{ textTransform: 'capitalize' }}>{f}</span>
+                <Code variant="ghost" size="1" color="gray">{counts[f] ?? 0}</Code>
+              </Button>
+            )
+          })}
         </Flex>
 
         {error ? (
@@ -101,54 +111,39 @@ export default function ApprovalsScreen() {
             title={statusFilter === 'pending' ? 'All caught up' : `No ${statusFilter === 'all' ? '' : statusFilter} approvals`}
           />
         ) : (
-          <div className="card" style={{ padding: 0 }}>
-            <div style={{
-              padding: '10px 16px',
-              background: 'var(--gray-3)',
-              borderBottom: '1px solid var(--gray-6)',
-              display: 'grid',
-              gridTemplateColumns: '130px minmax(0, 1fr) 160px 130px 120px 120px 28px',
-              gap: 14,
-              textTransform: 'uppercase',
-              letterSpacing: '0.12em',
-            }}>
-              <Text as="span" size="1" color="gray">id · created</Text>
+          <div className="card card--table">
+            <div className="table-head" style={{ gridTemplateColumns: '110px minmax(0, 1fr) 160px 140px 130px 120px 28px' }}>
+              <Text as="span" size="1" color="gray">created</Text>
               <Text as="span" size="1" color="gray">requested action</Text>
               <Text as="span" size="1" color="gray">requested by</Text>
-              <Text as="span" size="1" color="gray">approver role</Text>
+              <Text as="span" size="1" color="gray">approver</Text>
               <Text as="span" size="1" color="gray">status · expires</Text>
               <Text as="span" size="1" color="gray">quick decide</Text>
               <span />
             </div>
             {pageItems.map(a => {
               const isPending = a.status === 'pending'
+              const approverName = userName(a.approver_user_id)
               return (
                 <Link
                   key={a.id}
                   to={`/approvals/${a.id}`}
                   className="agent-row"
                   style={{
-                    gridTemplateColumns: '130px minmax(0, 1fr) 160px 130px 120px 120px 28px',
+                    gridTemplateColumns: '110px minmax(0, 1fr) 160px 140px 130px 120px 28px',
                   }}
                 >
-                  <div>
-                    <Text as="div" size="1">{a.id}</Text>
-                    <Text as="div" size="1" color="gray" mt="1">{ago(a.created_at)}</Text>
-                  </div>
-                  <div style={{ minWidth: 0 }}>
-                    <Text as="div" size="2" className="truncate">{a.requested_action}</Text>
-                    <Text as="div" size="1" color="gray" mt="1">
-                      run {a.run_id} · {a.task_id ? `task ${a.task_id}` : 'standalone'}
-                    </Text>
-                  </div>
-                  <div>
-                    <Text as="div" size="1">{a.requested_by_name ?? '—'}</Text>
-                    <Text as="div" size="1" color="gray" mt="1">{a.requested_by ?? '—'}</Text>
-                  </div>
+                  <Text as="div" size="1" color="gray">{ago(a.created_at)}</Text>
+                  <Text as="div" size="2" className="truncate" style={{ minWidth: 0 }}>
+                    {a.requested_action}
+                  </Text>
+                  <Text as="div" size="1" className="truncate">
+                    {a.requested_by_name ?? userName(a.requested_by) ?? '—'}
+                  </Text>
                   <div>
                     <Badge color="gray" variant="soft" radius="full" size="1">{a.approver_role ?? '—'}</Badge>
-                    {a.approver_user_id && (
-                      <Text as="div" size="1" color="gray" mt="1">{a.approver_user_id}</Text>
+                    {approverName && (
+                      <Text as="div" size="1" color="gray" mt="1" className="truncate">{approverName}</Text>
                     )}
                   </div>
                   <div>

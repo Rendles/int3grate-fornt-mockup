@@ -96,6 +96,12 @@ export const api = {
     return u
   },
 
+  // ── GET /users (resolution helper for owner_user_id, requested_by, etc.)
+  async listUsers(): Promise<User[]> {
+    await delay()
+    return [...fxUsers]
+  },
+
   // ── GET /agents ────────────────────────────────────────────────────
   async listAgents(): Promise<Agent[]> {
     await delay()

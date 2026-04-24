@@ -83,7 +83,7 @@ function ThemedRoot() {
       grayColor="slate"
       panelBackground="solid"
       radius="small"
-      scaling="90%"
+      scaling="100%"
       hasBackground={false}
     >
       <div className="prototype-root">

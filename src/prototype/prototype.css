@@ -23,7 +23,7 @@
   line-height: 1.5;
   letter-spacing: -0.005em;
   color: var(--gray-12);
-  background: var(--gray-1);
+  background: var(--color-page-background);
   min-height: 100svh;
   -webkit-font-smoothing: antialiased;
   transition: background 180ms ease, color 180ms ease;
@@ -112,8 +112,7 @@
 
 .shell__sidebar {
   grid-area: sidebar;
-  border-right: 1px solid var(--gray-6);
-  background: var(--gray-2);
+  background: var(--color-panel-solid);
   display: flex;
   flex-direction: column;
   position: sticky;
@@ -133,7 +132,7 @@
   align-items: center;
   gap: 10px;
   padding: 14px 18px 16px;
-  border-bottom: 1px solid var(--gray-6);
+  border-bottom: 1px solid var(--gray-a2);
   min-height: 48px;
   box-sizing: border-box;
 }
@@ -160,42 +159,6 @@
   text-transform: uppercase;
 }
 
-.sb__tenant {
-  padding: 12px 16px;
-  border-bottom: 1px solid var(--gray-6);
-  background: var(--gray-3);
-}
-.sb__tenant-label {
-  letter-spacing: 0.14em;
-  text-transform: uppercase;
-  color: var(--gray-10);
-  margin-bottom: 6px;
-}
-.sb__tenant-body {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 8px;
-}
-.sb__tenant-name {
-  color: var(--gray-12);
-  line-height: 1.2;
-}
-.sb__tenant-domain {
-  color: var(--gray-11);
-}
-.sb__tenant-switch {
-  color: var(--gray-10);
-  padding: 2px 6px;
-  border: 1px solid var(--gray-7);
-  border-radius: 3px;
-  transition: border-color 120ms, color 120ms;
-}
-.sb__tenant-switch:hover {
-  border-color: var(--gray-8);
-  color: var(--gray-11);
-}
-
 .sb__nav {
   padding: 10px 8px;
   display: flex;
@@ -207,10 +170,9 @@
   align-items: center;
   gap: 10px;
   padding: 7px 10px;
-  border-radius: 4px;
+  border-radius: var(--radius-6);
   color: var(--gray-11);
-  border: 1px solid transparent;
-  transition: background 120ms, color 120ms, border-color 120ms;
+  transition: background 120ms, color 120ms;
   position: relative;
 }
 .sb__item:hover {
@@ -220,7 +182,6 @@
 .sb__item--active {
   background: var(--gray-4);
   color: var(--gray-12);
-  border-color: var(--gray-7);
 }
 .sb__item--active::before {
   content: '';
@@ -279,38 +240,325 @@
   color: var(--accent-9);
 }
 
-/* Pulse halo for status dots — inlined color via `currentColor`. */
-.status-pulse {
-  position: relative;
-}
-.status-pulse::after {
-  content: '';
-  position: absolute;
-  inset: -3px;
-  border-radius: 999px;
-  border: 1.5px solid currentColor;
-  opacity: 0.5;
-  animation: status-pulse 1.8s ease-in-out infinite;
-}
-@keyframes status-pulse {
-  0% { transform: scale(0.9); opacity: 0.7; }
-  70%, 100% { transform: scale(1.6); opacity: 0; }
-}
 
 /* ============================================================= CARDS */
 
 .card {
-  background: var(--gray-2);
-  border: 1px solid var(--gray-6);
-  border-radius: var(--radius);
+  background: var(--color-panel-solid);
+  border: 0;
+  border-radius: 16px;
+  display: flex;
+  flex-direction: column;
 }
 .card__head {
   padding: 14px 18px;
-  border-bottom: 1px solid var(--gray-6);
   display: flex;
   align-items: center;
   justify-content: space-between;
   gap: 12px;
+}
+
+/* Flush variant — HomeScreen uses this for list cards: header and each row
+   get a flat 16px padding on all sides, and inner dividers are removed. */
+.card--flush .card__head { padding: 16px; }
+.card--flush .agent-row {
+  padding: 16px;
+  border-bottom: 0;
+}
+.card--flush .agent-row:hover { background: var(--gray-a2); }
+
+/* Tile variant — inset clickable cards inside list cards (e.g. Pending
+   approvals rows). Subtle background, slightly darker on hover. */
+.card--tile {
+  position: relative;
+  background: var(--gray-a2);
+  transition: background-color 160ms ease;
+}
+.card--tile:hover { background: var(--gray-a4); }
+
+/* Table variant — full-page data tables (Tasks, Agents, Approvals, Spend).
+   Subtler dividers + hover than the global .agent-row defaults. */
+.card--table {
+  overflow: hidden;
+}
+.card--table .table-head {
+  padding: 10px 16px;
+  background: var(--gray-a2);
+  border-bottom: 1px solid var(--gray-a3);
+  display: grid;
+  gap: 14px;
+  text-transform: uppercase;
+  letter-spacing: 0.12em;
+}
+.card--table .agent-row,
+.card--table .spend-row {
+  border-bottom-color: var(--gray-a3);
+}
+.card--table .agent-row:hover,
+.card--table a.spend-row:hover,
+.card--table button.spend-row:hover {
+  background: var(--gray-a2);
+}
+.card--table .agent-row:last-of-type,
+.card--table .spend-row:last-of-type,
+.card--table .tool-row-wrap:last-of-type {
+  border-bottom: 0 !important;
+}
+
+.card--tile__arrow {
+  position: absolute;
+  right: 12px;
+  top: 50%;
+  color: var(--gray-11);
+  opacity: 0;
+  transform: translate(0, -50%);
+  transition: opacity 160ms ease, transform 160ms ease;
+  pointer-events: none;
+}
+.card--tile:hover .card--tile__arrow {
+  opacity: 1;
+  transform: translate(4px, -50%);
+}
+
+/* ============================================================= ACTIVITY HEATMAP */
+
+/* Full-width heatmap (7 days × 24 hours) used on HomeScreen. Cells tint from
+   --gray-a2 (empty) through --accent-a3/5/7/9/11 by run volume. */
+.heatmap {
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  gap: 4px;
+  padding: 0 14px 14px;
+  flex: 1;
+}
+.heatmap__hours,
+.heatmap__row {
+  display: grid;
+  grid-template-columns: 32px minmax(0, 1fr);
+  gap: 8px;
+}
+.heatmap__hours {
+  align-items: center;
+  margin-bottom: 2px;
+  flex: 0 0 auto;
+}
+.heatmap__row {
+  align-items: stretch;
+  flex: 1 1 0;
+  min-height: 18px;
+}
+.heatmap__hour-ticks {
+  display: grid;
+  grid-template-columns: repeat(24, minmax(0, 1fr));
+  column-gap: 2px;
+  font-size: 9px;
+  color: var(--gray-10);
+  letter-spacing: 0.04em;
+  line-height: 1;
+}
+.heatmap__hour-ticks span { grid-row: 1; }
+.heatmap__day {
+  font-size: 10px;
+  color: var(--gray-10);
+  text-align: right;
+  line-height: 1;
+  align-self: center;
+}
+.heatmap__cells {
+  display: grid;
+  grid-template-columns: repeat(24, minmax(0, 1fr));
+  grid-template-rows: 1fr;
+  gap: 2px;
+}
+.heatmap__cell {
+  border-radius: 3px;
+  background: var(--gray-a2);
+  transition: transform 120ms ease, filter 120ms ease;
+  cursor: default;
+}
+.heatmap__cell:hover {
+  transform: scale(1.4);
+  filter: brightness(1.15);
+}
+.heatmap__legend {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 11px;
+  color: var(--gray-10);
+}
+.heatmap__legend-scale {
+  display: inline-flex;
+  gap: 2px;
+}
+.heatmap__legend-scale span {
+  width: 10px;
+  height: 10px;
+  border-radius: 2px;
+}
+
+/* ============================================================= MINI CHARTS (home dashboard) */
+
+/* Horizontal bar row — used in SpendByAgentCard. */
+.hbar {
+  display: grid;
+  grid-template-columns: 130px minmax(0, 1fr) 64px;
+  gap: 12px;
+  align-items: center;
+}
+.hbar__label { color: var(--gray-12); }
+.hbar__track {
+  height: 8px;
+  background: var(--gray-a3);
+  border-radius: 4px;
+  overflow: hidden;
+}
+.hbar__fill {
+  height: 100%;
+  background: linear-gradient(90deg, var(--accent-9), var(--accent-10));
+  border-radius: 4px;
+}
+.hbar__value { text-align: right; font-variant-numeric: tabular-nums; }
+
+/* Donut + center label — used in TaskOutcomesCard. */
+.donut {
+  position: relative;
+  width: 96px;
+  height: 96px;
+  flex-shrink: 0;
+}
+.donut--lg {
+  width: 100%;
+  max-width: 120px;
+  height: auto;
+  aspect-ratio: 1;
+}
+.donut svg { display: block; width: 100%; height: 100%; }
+.donut__center {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 3px;
+  pointer-events: none;
+}
+
+/* Color swatch for legends. */
+.legend-dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 2px;
+  flex-shrink: 0;
+}
+
+/* ============================================================= SAVINGS BANNER */
+
+.sv-a {
+  position: relative;
+  height: 240px;
+  overflow: hidden;
+  padding: 0;
+}
+.sv-a__chart {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  display: block;
+}
+.sv-a__overlay {
+  position: absolute;
+  top: 22px;
+  left: 26px;
+  z-index: 2;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+.sv-a__label { font-size: 12px; color: var(--gray-10); line-height: 1; }
+.sv-a__value {
+  font-size: 46px;
+  font-weight: 500;
+  letter-spacing: -0.02em;
+  line-height: 1;
+  color: var(--gray-12);
+  margin-top: 2px;
+}
+
+.sv-a__y-axis {
+  position: absolute;
+  top: 0;
+  bottom: 22px;
+  right: 0;
+  width: 0;
+  pointer-events: none;
+  z-index: 2;
+}
+.sv-a__y-axis span {
+  position: absolute;
+  right: 8px;
+  transform: translateY(50%);
+  font-size: 10px;
+  line-height: 1;
+  color: var(--gray-10);
+  letter-spacing: 0.04em;
+  background: var(--color-panel-solid);
+  padding: 2px 4px;
+  border-radius: 2px;
+  white-space: nowrap;
+}
+.sv-a__x-axis {
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: 6px;
+  height: 12px;
+  pointer-events: none;
+  z-index: 2;
+}
+.sv-a__x-axis span {
+  position: absolute;
+  font-size: 10px;
+  line-height: 1;
+  color: var(--gray-10);
+  letter-spacing: 0.04em;
+  white-space: nowrap;
+  padding: 0 6px;
+}
+
+.sv-a__tooltip {
+  position: absolute;
+  top: 22px;
+  right: 26px;
+  z-index: 3;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 4px;
+  pointer-events: none;
+}
+.sv-a__tooltip-date {
+  font-size: 11px;
+  color: var(--gray-10);
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  line-height: 1;
+}
+.sv-a__tooltip-value {
+  font-size: 22px;
+  font-weight: 500;
+  letter-spacing: -0.01em;
+  line-height: 1;
+  color: var(--gray-12);
+}
+
+@media (max-width: 768px) {
+  .sv-a { height: 200px; }
+  .sv-a__value { font-size: 36px; }
+  .sv-a__tooltip-value { font-size: 18px; }
 }
 .card__title {
   display: flex;
@@ -320,10 +568,53 @@
 .card__body { padding: 18px; }
 .card__foot {
   padding: 12px 18px;
-  border-top: 1px solid var(--gray-6);
   display: flex;
   align-items: center;
   justify-content: space-between;
+}
+
+/* Radix <Card variant="surface"> paints its border via ::after (inset
+   box-shadow). Background already handled by --color-panel-* overrides. */
+.prototype-root .rt-Card::after { box-shadow: none; }
+.prototype-root .rt-Card { border-radius: 16px; }
+
+/* Interactive cards (MetricCard with href renders as <a class="rt-Card">).
+   Radix paints bg via ::before — override that, not the element's own bg. */
+.prototype-root a.rt-Card::before {
+  transition: background-color 160ms ease;
+}
+.prototype-root a.rt-Card:hover::before {
+  background-color: var(--gray-a3);
+}
+
+/* Honest px radii — Radix's --radius-* are scaled by --radius-factor and
+   --scaling, which clip values below nominal. Use literals to pin them. */
+.prototype-root .rt-Button,
+.prototype-root .rt-IconButton { border-radius: 12px; }
+.prototype-root .rt-Badge { border-radius: 12px; }
+
+/* ============================================================= INPUTS
+
+   Inputs (TextField, TextArea, Select.Trigger) wrapped by fields.tsx.
+   Override Radix surface variant: larger radius, very subtle border.
+   ============================================================= */
+
+.prototype-root .rt-TextFieldRoot {
+  --text-field-border-radius: var(--radius-5);
+}
+.prototype-root .rt-TextAreaRoot,
+.prototype-root .rt-SelectTrigger {
+  border-radius: var(--radius-5);
+}
+
+.prototype-root .rt-TextFieldRoot:where(.rt-variant-surface),
+.prototype-root .rt-TextAreaRoot:where(.rt-variant-surface),
+.prototype-root .rt-SelectTrigger:where(.rt-variant-surface) {
+  box-shadow: inset 0 0 0 1px var(--gray-a2);
+}
+.prototype-root .rt-SelectTrigger:where(.rt-variant-surface):where(:hover),
+.prototype-root .rt-SelectTrigger:where(.rt-variant-surface):where([data-state='open']) {
+  box-shadow: inset 0 0 0 1px var(--gray-a2);
 }
 /* ============================================================= STATES */
 
@@ -333,7 +624,7 @@
   height: 36px;
   display: grid;
   place-items: center;
-  border: 1px solid var(--gray-7);
+  border: 0;
   border-radius: 8px;
   background: var(--gray-3);
   color: var(--gray-11);
@@ -350,7 +641,6 @@
 .login__side {
   padding: 40px 48px;
   background: var(--gray-2);
-  border-right: 1px solid var(--gray-6);
   position: relative;
   display: flex;
   flex-direction: column;
@@ -531,7 +821,7 @@
 
 @media (max-width: 1100px) {
   .shell { grid-template-columns: 72px 1fr; }
-  .sb__brand-name, .sb__brand-sub, .sb__tenant,
+  .sb__brand-name, .sb__brand-sub,
   .sb__user-name, .sb__user-role, .sb__footer { display: none; }
   /* Hide only the text label; keep .sb__item-icon and .sb__item-badge spans. */
   .sb__item > span:not(.sb__item-icon):not(.sb__item-badge) { display: none; }
@@ -577,7 +867,7 @@
     z-index: 20;
     overflow: visible;
   }
-  .sb__brand, .sb__tenant, .sb__footer { display: none; }
+  .sb__brand, .sb__footer { display: none; }
   .sb__nav {
     flex: 1;
     display: flex;

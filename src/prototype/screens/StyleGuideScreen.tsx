@@ -208,8 +208,8 @@ export default function StyleGuideScreen() {
                 gridTemplateColumns: 'minmax(180px, 240px) minmax(200px, 260px) minmax(0, 1fr)',
                 gap: 14,
                 padding: '10px 16px',
-                borderBottom: '1px solid var(--gray-6)',
-                background: 'var(--gray-3)',
+                borderBottom: '1px solid var(--gray-a3)',
+                background: 'var(--gray-a2)',
                 textTransform: 'uppercase',
                 letterSpacing: '0.08em',
               }}
@@ -226,7 +226,7 @@ export default function StyleGuideScreen() {
                   gridTemplateColumns: 'minmax(180px, 240px) minmax(200px, 260px) minmax(0, 1fr)',
                   gap: 14,
                   padding: '12px 16px',
-                  borderBottom: '1px solid var(--gray-6)',
+                  borderBottom: '1px solid var(--gray-a3)',
                   alignItems: 'start',
                 }}
               >
@@ -403,8 +403,8 @@ export default function StyleGuideScreen() {
                 gridTemplateColumns: 'minmax(0, 1fr) 120px 140px 120px 32px',
                 gap: 14,
                 padding: '10px 16px',
-                background: 'var(--gray-3)',
-                borderBottom: '1px solid var(--gray-6)',
+                background: 'var(--gray-a2)',
+                borderBottom: '1px solid var(--gray-a3)',
                 textTransform: 'uppercase',
                 letterSpacing: '0.08em',
               }}

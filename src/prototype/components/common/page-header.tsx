@@ -19,9 +19,8 @@ export function PageHeader({
       align={{ initial: 'start', sm: 'end' }}
       direction={{ initial: 'column', sm: 'row' }}
       gap={{ initial: '3', sm: '5' }}
-      pb={{ initial: '3', sm: '5' }}
-      mb={{ initial: '4', sm: '5' }}
-      style={{ borderBottom: '1px solid var(--gray-6)' }}
+      pb="0"
+      mb="5"
     >
       <header>
         <Box minWidth="0" flexGrow="1">
@@ -44,9 +43,8 @@ export function PageHeader({
             <Text
               as="p"
               size="2"
-              color="gray"
               mt="2"
-              style={{ maxWidth: 640 }}
+              style={{ maxWidth: 640, color: 'var(--gray-10)' }}
             >
               {subtitle}
             </Text>
