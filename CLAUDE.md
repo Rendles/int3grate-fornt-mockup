@@ -41,6 +41,7 @@ Current route map:
 - `/approvals`, `/approvals/:approvalId`
 - `/audit` *(admin-only)*
 - `/tools`, `/spend`
+- `/learn` *(Learning Center — hub for guided tours; see "Guided tours" section)*
 
 > ⚠️ **`Link` props pass-through**: the `Link` component accepts the full `AnchorHTMLAttributes` surface (minus `href`/`onClick`, which it owns) and spreads it onto the inner `<a>`. This is what makes Radix Themes `asChild` composition work — e.g. `<Text size="1" asChild><Link to="…">…</Link></Text>` correctly forwards `data-accent-color` / class names onto the anchor so Radix-driven styles apply. Don't tighten the props back to a fixed list.
 
@@ -176,13 +177,41 @@ Three documented endpoints have *known gaps* on the backend side (used by the UI
 
 ### Guided tours (`src/prototype/tours/`)
 
-Game-style interactive walkthroughs: dim overlay, spotlight on a target element, floating tooltip with step copy. Composed of:
+Game-style interactive walkthroughs: dim overlay, spotlight on a target element, floating tooltip with step copy, optional Training mode that swaps real backend data for tour-specific fixtures. The engine is feature-complete; growing the tour catalog from here is purely data work — write a tour file, add `data-tour="…"` attributes to the screens it walks, register in `registry.ts`. See `TOURS_PLAN.md` (design / scenarios / what's left) and `TOURS_IMPLEMENTATION_PLAN.md` (build status per phase).
 
-- **`types.ts`** — `Tour` (`{ id, name, steps[] }`) and `TourStep` (`{ id, target, title, body, placement?, spotlightPadding? }`). `target` is a CSS selector — **prefer `[data-tour="…"]` attributes over class selectors** so refactors to `prototype.css` don't silently break tours.
-- **`TourProvider.tsx`** — context with `startTour`, `next`, `prev`, `endTour(markCompleted?)`, `isCompleted(tourId)`. Persists completed tour ids in `localStorage` under `proto.tours.v1`. Reaching the last step (`Done`) marks completed; `Skip tour` / `Esc` ends without marking, so the tour can be retried. Body scroll is locked while a tour is active.
-- **`TourOverlay.tsx`** — single mounted overlay, reads active step from context. Spotlight is a fixed-position rect with `box-shadow: 0 0 0 9999px rgba(0,0,0,.65)` (the shadow paints the dim outside — no SVG mask). Tooltip placement (`top` / `bottom` / `left` / `right`) is computed from `target.getBoundingClientRect()` and clamped to the viewport. Listens to window `resize` + capture-phase `scroll` (RAF-throttled) to keep both elements anchored. Hotkeys: `→`/`Enter` next, `←` back, `Esc` skip-tour. If the target selector doesn't resolve after ~500 ms of retries, the tooltip shows a fallback message instead of getting stuck.
-- **Tour data files** — one per tour (e.g. `sidebar-tour.tsx`). Pure data, kept separate from the engine.
+#### Engine pieces
 
-Mounted in `index.tsx` inside `RouterProvider` (so tours can navigate via `useRouter` if needed). Launched from the `?` IconButton in `Topbar`. To add a new tour: write the data file, add `data-tour="…"` attributes to the relevant DOM nodes, then trigger via `useTour().startTour(myTour)` from wherever (button, auto-launch effect on first login, etc.).
+- **`types.ts`** — `Tour` (`{ id, name, steps[] }`) and `TourStep` (`{ id, target, title, body, placement?, spotlightPadding?, navigateTo? }`). `target` is a CSS selector — **prefer `[data-tour="…"]` attributes over class selectors** so refactors to `prototype.css` don't silently break tours. `navigateTo` (optional) is a hash route the engine routes to before resolving the target; if absent, the engine inherits the most recent prior step's `navigateTo`, so Back / prev navigation always restores the right page.
+- **`TourProvider.tsx` + `tour-context.ts` + `useTour.ts`** — context with `startTour`, `next`, `prev`, `endTour(markCompleted?)`, `isCompleted`, plus the welcome-toast flag (`welcomePromptShown`, `markWelcomePromptShown`). Persists `completed: string[]` and `welcomePromptShown: boolean` in `localStorage["proto.tours.v1"]`. Reaching the last step (`Done`) marks completed; `Skip tour` / `Esc` ends without marking, so the tour can be retried. Body scroll is locked while a tour is active.
+- **`TourOverlay.tsx`** — single mounted overlay. Spotlight is a fixed-position rect with `box-shadow: 0 0 0 9999px rgba(0,0,0,.65)` (the shadow paints the dim outside — no SVG mask). Tooltip placement (`top` / `bottom` / `left` / `right`) is computed from `target.getBoundingClientRect()` and clamped to the viewport. The same DOM nodes for spotlight + tooltip persist across step changes (no `key={step.id}` on the inner view), so CSS transitions on `top` / `left` / `width` / `height` interpolate smoothly between steps. Listens to window `resize` + capture-phase `scroll` (RAF-throttled) and `ResizeObserver` on the tooltip. Hotkeys: `→`/`Enter` next, `←` back, `Esc` skip-tour. If the target selector doesn't resolve within the retry budget (~500 ms same-screen, ~1.5 s when `navigateTo` is set), the tooltip shows a fallback message instead of getting stuck.
+- **`registry.ts`** — `TOURS: TourEntry[]`, the single source of truth for "what tours exist". Each entry carries `audience` (`'all' | 'admin' | 'domain_admin'`), `group` (`'getting-started' | 'core-workflows' | 'admin-setup'`), `description`, `durationLabel`, and `scenarioId | null`.
+- **Tour data files** — one per tour (`sidebar-tour.tsx`, `approval-review-tour.tsx`, …). Pure data.
 
-CSS lives at the bottom of `prototype.css` under the `TOUR / GUIDED ONBOARDING` block (`.tour`, `.tour__spot`, `.tour__tooltip`, `.tour__backdrop`) with `prefers-reduced-motion` honoured.
+#### Training mode (data-dependent tours)
+
+A real new tenant has no agents / approvals / runs, so data-dependent tours seed their own fixtures via Training mode:
+
+- **`TrainingModeProvider.tsx` + `training-context.ts` + `useTrainingMode.ts`** — context with `{ active, scenarioId, enter, exit }`. On `enter(id)` it calls a private `__setTrainingMode(id)` setter on `lib/api.ts`; reads inside `api.*` consult `_trainingScenario()` and serve from the active scenario's fixtures instead of the real `fxAgents` / `fxApprovals` / etc. Mutations on training-mode entities (`api.decideApproval`) return synthetic queued responses without touching real fixtures. Auto-exits after 15 min idle.
+- **`training-fixtures.ts`** — `TRAINING_SCENARIOS: Record<string, TrainingScenario>`. One scenario per data-dependent tour, with stable IDs exported (e.g. `APPROVAL_REVIEW_IDS`) so tour data can write literal `navigateTo: '/approvals/${id}'`.
+- **`TrainingBanner.tsx`** — sticky amber bar pinned to the top of the viewport while training is active. Adds a `with-training-banner` class on `.prototype-root` so `.shell` reserves layout space via the `--training-banner-height` CSS variable.
+- **`TrainingAutoExit.tsx`** — invisible bridge inside `TourProvider`. Watches `activeTour`; when a tour transitions from active to inactive (Done / Skip / Esc / last-step completion) it calls `exit()` if training was active and navigates to `/learn` so the user lands back on the hub.
+
+The pilot data-dependent tour (`approval-review`) demonstrates the full pattern: scenario fixture, `data-tour=` attributes on `ApprovalsScreen` + `ApprovalDetailScreen`, cross-screen `navigateTo`, sandboxed `decideApproval`. Use it as the template when adding the rest from `TOURS_PLAN.md`.
+
+#### Discovery + entry points
+
+- **`/learn` route** (`screens/LearnScreen.tsx`) — single hub listing every tour from `TOURS`, grouped by `TourGroup`. Cards show audience, duration, status (read via `isCompleted`), Start / Restart button. Cards for tours the current user can't run (e.g. admin-only when user is `member`) render disabled with a tooltip.
+- **Topbar `?` button** repointed at `/learn` (used to launch the sidebar tour directly). Global `?` hotkey also opens `/learn`, ignored while a tour is active or focus is in an editable field.
+- **`WelcomeToast.tsx`** — bottom-right pinned, non-blocking; renders once per browser on the first authenticated mount where `welcomePromptShown !== true`. Click "Open Learning Center" or X dismisses, both flip the flag.
+
+Mounted in `index.tsx` as: `RouterProvider` → `TrainingModeProvider` → (`TrainingBanner`, `TourProvider` → (`Router`, `TourOverlay`, `WelcomeToast`, `TrainingAutoExit`)).
+
+CSS lives at the bottom of `prototype.css` under `TRAINING MODE BANNER`, `WELCOME TOAST`, and `TOUR / GUIDED ONBOARDING` blocks (`.tour`, `.tour__spot`, `.tour__tooltip`, `.tour__backdrop`, `.training-banner*`, `.welcome-toast`) with `prefers-reduced-motion` honoured.
+
+#### Adding a new tour
+
+1. If data-dependent: add a `TrainingScenario` to `training-fixtures.ts` with stable IDs. Wire any new `api.*` reads it depends on to consult `_trainingScenario()` (most are already wired from `approval-review`).
+2. Add `data-tour="…"` attributes to the screens the tour walks. Wrap composite components (e.g. `<PageHeader>`) in a `<div data-tour="…">` if you need to anchor on a region rather than a single leaf.
+3. Write the tour file (`tours/my-tour.tsx`) exporting a `Tour`. Steps that need a specific page declare `navigateTo`; subsequent same-page steps inherit it.
+4. Register in `registry.ts` `TOURS` with audience, group, description, durationLabel, and `scenarioId` (or `null`).
+5. Verify on `/learn`: card appears, Start launches it (with banner if scenario is set), Done returns to `/learn` and flips the card to Completed. `npm run lint && npm run build` clean.

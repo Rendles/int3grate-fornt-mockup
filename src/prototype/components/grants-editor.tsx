@@ -24,15 +24,18 @@ function InlineSelect({
   value,
   onChange,
   options,
+  tour,
 }: {
   value: string
   onChange: (v: string) => void
   options: { value: string; label: string }[]
+  tour?: string
 }) {
   return (
     <Select.Root value={value} onValueChange={onChange} size="2">
       <Select.Trigger
         variant="surface"
+        data-tour={tour}
         style={{ width: '100%', justifyContent: 'space-between' }}
       />
       <Select.Content position="popper" sideOffset={4}>
@@ -59,11 +62,13 @@ function CatalogPicker({
   onChange,
   catalog,
   granted,
+  tour,
 }: {
   value: string
   onChange: (v: string) => void
   catalog: ToolDefinition[]
   granted: string[]
+  tour?: string
 }) {
   const grantedSet = new Set(granted)
   const available = catalog.filter(t => !grantedSet.has(t.name))
@@ -79,6 +84,7 @@ function CatalogPicker({
       <Select.Trigger
         variant="surface"
         className="catalog-trigger"
+        data-tour={tour}
         placeholder={
           catalog.length === 0
             ? 'Loading tool catalog…'
@@ -214,7 +220,7 @@ export function GrantsEditor({
         </Caption>
         <Flex align="center" gap="2">
           {dirty && <Button variant="ghost" size="1" onClick={reset} disabled={saving}>Reset</Button>}
-          <Button size="1" onClick={save} disabled={!dirty || saving}>
+          <Button size="1" onClick={save} disabled={!dirty || saving} data-tour="grants-save">
             <IconCheck />
             {saving ? 'saving…' : 'Save grants'}
           </Button>
@@ -246,19 +252,21 @@ export function GrantsEditor({
               className="grants-row"
               style={{ gridTemplateColumns: GRID_COLS }}
             >
-              <Text size="2">{toolLabel(g.tool_name)}</Text>
+              <Text size="2" data-tour="grants-tool-cell">{toolLabel(g.tool_name)}</Text>
               <InlineSelect
                 value={g.scope_type}
                 onChange={v => updateGrant(g.id, { scope_type: v as ToolGrantScopeType })}
                 options={SCOPES.map(s => ({ value: s, label: s.charAt(0).toUpperCase() + s.slice(1) }))}
+                tour="grants-scope-type"
               />
               <InlineSelect
                 value={g.mode}
                 onChange={v => updateGrant(g.id, { mode: v as ToolGrantMode })}
                 options={MODES.map(m => ({ value: m, label: grantModeLabel(m) }))}
+                tour="grants-mode"
               />
               <Flex align="center" gap="2" asChild>
-                <label style={{ cursor: 'pointer' }}>
+                <label style={{ cursor: 'pointer' }} data-tour="grants-policy">
                   <Switch
                     size="2"
                     checked={g.approval_required}
@@ -287,8 +295,12 @@ export function GrantsEditor({
             onChange={setNewTool}
             catalog={catalog}
             granted={local.map(g => g.tool_name)}
+            tour="grants-catalog"
           />
-          <Button size="2" onClick={addGrant} disabled={!newTool.trim()}><IconPlus />Add grant</Button>
+          <Button size="2" onClick={addGrant} disabled={!newTool.trim()} data-tour="grants-add">
+            <IconPlus />
+            Add grant
+          </Button>
         </div>
       </div>
 

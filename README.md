@@ -45,3 +45,7 @@ There is no test runner configured.
   questions for the backend team.
 - **`GATEWAY_NEXT_PLAN.md`** — what's still needed to migrate from the
   in-memory mock to a real backend.
+- **`TOURS_PLAN.md`** — design and copy for the guided-tour catalog
+  (Training mode, Learning Center, planned tours).
+- **`TOURS_IMPLEMENTATION_PLAN.md`** — phased build plan for the tour
+  system; status per phase tracked inline.

@@ -1,6 +1,7 @@
 import { useEffect, useLayoutEffect, useRef, useState } from 'react'
 import { Button, Flex, IconButton, Text } from '@radix-ui/themes'
 import { useTour } from './useTour'
+import { useRouter } from '../router'
 import { IconX } from '../components/icons'
 import type { TourPlacement, TourStep } from './types'
 
@@ -84,14 +85,26 @@ export function TourOverlay() {
 
   if (!activeTour || !step) return null
 
-  // The per-step state (target rect / missing flag / tooltip height) lives in
-  // a child keyed by step.id so React unmounts/remounts on step change. That
-  // gives us a clean state reset without synchronous setState inside an
-  // effect (which trips react-hooks/set-state-in-effect).
+  // navigateTo inheritance: if the current step doesn't declare a route,
+  // fall back to the most recent prior step that did. This makes
+  // Back / prev navigation restore the right page automatically — every
+  // step ends up with an effective `navigateTo`, so the engine's mount
+  // effect always brings the user back to where the step expects to live,
+  // both forward and backward.
+  const effectiveStep: TourStep = step.navigateTo
+    ? step
+    : { ...step, navigateTo: inheritedNavigateTo(activeTour.steps, stepIndex) }
+
+  // No `key={step.id}` — the same TourStepView (and the same spotlight /
+  // tooltip DOM nodes) persists across step changes, so the CSS transitions
+  // on `.tour__spot` / `.tour__tooltip` (top / left / width / height) animate
+  // smoothly from the previous step's rect to the next one. State that
+  // shouldn't leak between steps (specifically the "target missing" flag) is
+  // derived inside TourStepView via a step-id-keyed sentinel rather than via
+  // a remount.
   return (
     <TourStepView
-      key={step.id}
-      step={step}
+      step={effectiveStep}
       stepIndex={stepIndex}
       total={activeTour.steps.length}
       onNext={next}
@@ -99,6 +112,13 @@ export function TourOverlay() {
       onSkipTour={() => endTour(false)}
     />
   )
+}
+
+function inheritedNavigateTo(steps: TourStep[], fromIdx: number): string | undefined {
+  for (let i = fromIdx - 1; i >= 0; i--) {
+    if (steps[i].navigateTo) return steps[i].navigateTo
+  }
+  return undefined
 }
 
 interface TourStepViewProps {
@@ -111,19 +131,50 @@ interface TourStepViewProps {
 }
 
 function TourStepView({ step, stepIndex, total, onNext, onPrev, onSkipTour }: TourStepViewProps) {
+  // rect / tooltipHeight intentionally persist across step changes — the
+  // overlay is no longer keyed, so the same DOM nodes for spotlight and
+  // tooltip stay in the tree and CSS transitions interpolate top/left/
+  // width/height from the previous step's rect to the new one.
   const [rect, setRect] = useState<Rect | null>(null)
   const [tooltipHeight, setTooltipHeight] = useState(0)
-  const [missing, setMissing] = useState(false)
+  // "Missing" is derived: which step.id (if any) exhausted its retry
+  // budget without finding a target. Storing the id rather than a boolean
+  // means the flag auto-resets when step.id changes — no synchronous
+  // setMissing(false) at the top of the resolution effect (which would
+  // trip react-hooks/set-state-in-effect).
+  const [exhaustedStepId, setExhaustedStepId] = useState<string | null>(null)
+  const missing = exhaustedStepId === step.id
   const tooltipRef = useRef<HTMLDivElement>(null)
   const targetElRef = useRef<Element | null>(null)
+  const { navigate } = useRouter()
 
-  // Resolve target. Retries briefly to handle async-mounted DOM. The cleanup
-  // cancels both the in-flight pending timeout and any state update from a
+  // Resolve target on step change. If `navigateTo` is set, route there
+  // first — the destination screen has to render before its target is
+  // queryable, so we widen the retry budget to ~1.5s. The cleanup cancels
+  // both the in-flight pending timeout and any state update from a
   // late-resolving query.
+  //
+  // We deliberately do NOT setRect(null) at the top of this effect: keeping
+  // the previous step's rect in state is what makes the spotlight slide
+  // smoothly from old position to new (CSS transition on the persistent
+  // `.tour__spot` element). Once the new target resolves, setRect overwrites
+  // and the transition fires.
+  //
+  // `navigate` is intentionally excluded from deps. RouterProvider rebuilds
+  // its memoised value on every hash change, so including it would re-fire
+  // the effect after our own navigate() resolved — leading to a redundant
+  // navigate() and tryFind() restart.
   useEffect(() => {
     let cancelled = false
     let timer: ReturnType<typeof setTimeout> | null = null
     let attempts = 0
+    const maxAttempts = step.navigateTo ? 50 : 20
+    const retryDelay = step.navigateTo ? 30 : 25
+
+    if (step.navigateTo) {
+      navigate(step.navigateTo)
+    }
+
     const tryFind = () => {
       if (cancelled) return
       const el = document.querySelector(step.target)
@@ -133,10 +184,10 @@ function TourStepView({ step, stepIndex, total, onNext, onPrev, onSkipTour }: To
         setRect(readRect(el))
         return
       }
-      if (attempts++ < 20) {
-        timer = setTimeout(tryFind, 25)
+      if (attempts++ < maxAttempts) {
+        timer = setTimeout(tryFind, retryDelay)
       } else {
-        setMissing(true)
+        setExhaustedStepId(step.id)
       }
     }
     tryFind()
@@ -144,7 +195,8 @@ function TourStepView({ step, stepIndex, total, onNext, onPrev, onSkipTour }: To
       cancelled = true
       if (timer) clearTimeout(timer)
     }
-  }, [step.target])
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [step.id, step.target, step.navigateTo])
 
   // Re-measure on resize / scroll while the target is locked.
   useEffect(() => {

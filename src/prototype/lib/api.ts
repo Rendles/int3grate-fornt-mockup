@@ -23,6 +23,7 @@ import type {
   AuditList,
   Chat,
   ChatList,
+  ChatMessage,
   ChatMessageList,
   ChatStreamFrame,
   CreateChatRequest,
@@ -47,6 +48,7 @@ import type {
   ToolPolicyMode,
   User,
 } from './types'
+import { TRAINING_SCENARIOS, type TrainingScenario } from '../tours/training-fixtures'
 
 // Slice an array per limit/offset envelope params. Defaults:
 // no slicing (returns the whole array) so existing client-side pagination
@@ -88,6 +90,82 @@ function userIdFromToken(token: string): string {
   // Backwards-compatible: accept raw userIds for sessions stored before the
   // login flow switched to LoginResponse.
   return token.startsWith(MOCK_TOKEN_PREFIX) ? token.slice(MOCK_TOKEN_PREFIX.length) : token
+}
+
+// ─────────────────────────────────────────────── Training-mode hook
+//
+// Module-level pointer to the currently-active training scenario. Set by
+// `TrainingModeProvider` via `__setTrainingMode(id)` on tour start, cleared
+// to null on exit. See TOURS_PLAN.md "Training mode" section.
+//
+// Reads inside `api.*` route through `_trainingScenario()` and replace
+// their underlying fixture array with the scenario's set when active.
+// Per-read plumbing is added per-tour as scenarios land — Phase 1 only
+// stands up the wiring (setter + helper); both are exported so they
+// don't trip `noUnusedLocals` until reads actually start consuming them.
+let __activeTrainingScenario: string | null = null
+let __trainingChats: Chat[] | null = null
+let __trainingChatMessages: Record<string, ChatMessage[]> | null = null
+let __trainingGrantsByAgent: Record<string, ToolGrant[]> | null = null
+
+export function __setTrainingMode(id: string | null) {
+  __activeTrainingScenario = id
+  const scenario = id ? TRAINING_SCENARIOS[id] : null
+  __trainingChats = scenario ? [...scenario.chats] : null
+  __trainingChatMessages = scenario
+    ? Object.fromEntries(scenario.chats.map(c => [c.id, [] as ChatMessage[]]))
+    : null
+  __trainingGrantsByAgent = scenario
+    ? Object.fromEntries(
+        Object.entries(scenario.grantsByAgent ?? {}).map(([agentId, grants]) => [
+          agentId,
+          grants.map(cloneGrant),
+        ]),
+      )
+    : null
+}
+
+export function _trainingScenario(): TrainingScenario | null {
+  if (!__activeTrainingScenario) return null
+  return TRAINING_SCENARIOS[__activeTrainingScenario] ?? null
+}
+
+function trainingChats(): Chat[] | null {
+  const scenario = _trainingScenario()
+  if (!scenario) return null
+  if (!__trainingChats) __trainingChats = [...scenario.chats]
+  return __trainingChats
+}
+
+function trainingChatMessages(chatId: string): ChatMessage[] | null {
+  if (!_trainingScenario()) return null
+  if (!__trainingChatMessages) __trainingChatMessages = {}
+  if (!__trainingChatMessages[chatId]) __trainingChatMessages[chatId] = []
+  return __trainingChatMessages[chatId]
+}
+
+function trainingAgentVersion(versionId: string): AgentVersion | undefined {
+  const scenario = _trainingScenario()
+  return scenario?.agents
+    .map(a => a.active_version)
+    .find((v): v is AgentVersion => v?.id === versionId)
+}
+
+function trainingGrants(agentId: string): ToolGrant[] | null {
+  const scenario = _trainingScenario()
+  if (!scenario) return null
+  if (!__trainingGrantsByAgent) __trainingGrantsByAgent = {}
+  if (!__trainingGrantsByAgent[agentId]) {
+    __trainingGrantsByAgent[agentId] = (scenario.grantsByAgent?.[agentId] ?? []).map(cloneGrant)
+  }
+  return __trainingGrantsByAgent[agentId]
+}
+
+function cloneGrant(grant: ToolGrant): ToolGrant {
+  return {
+    ...grant,
+    config: { ...grant.config },
+  }
 }
 
 export const api = {
@@ -155,7 +233,8 @@ export const api = {
   // ── GET /users (resolution helper for owner_user_id, requested_by, etc.)
   async listUsers(): Promise<User[]> {
     await delay()
-    return [...fxUsers]
+    const scenario = _trainingScenario()
+    return [...(scenario?.users ?? fxUsers)]
   },
 
   // ── GET /agents ────────────────────────────────────────────────────
@@ -163,7 +242,8 @@ export const api = {
   // fields (total_spend_usd, runs_count) are null on list views per spec.
   async listAgents(filter?: { limit?: number; offset?: number }): Promise<AgentList> {
     await delay()
-    return paginate(fxAgents, filter)
+    const scenario = _trainingScenario()
+    return paginate(scenario?.agents ?? fxAgents, filter)
   },
 
   // ── GET /agents/{id} ───────────────────────────────────────────────
@@ -171,8 +251,10 @@ export const api = {
   // (gateway (5).yaml). List view leaves these null.
   async getAgent(id: string): Promise<Agent | undefined> {
     await delay()
-    const a = fxAgents.find(a => a.id === id)
+    const scenario = _trainingScenario()
+    const a = (scenario?.agents ?? fxAgents).find(a => a.id === id)
     if (!a) return undefined
+    if (scenario) return { ...a }
     const stats = getAgentStats(id)
     return {
       ...a,
@@ -250,7 +332,8 @@ export const api = {
   // ── GET /agents/{id}/grants ───────────────────────────────────────
   async getGrants(agentId: string): Promise<ToolGrant[]> {
     await delay()
-    return grantsByAgent[agentId] ?? []
+    const training = trainingGrants(agentId)
+    return training ? training.map(cloneGrant) : grantsByAgent[agentId] ?? []
   },
 
   // ── PUT /agents/{id}/grants ───────────────────────────────────────
@@ -267,6 +350,14 @@ export const api = {
       approval_required: g.approval_required ?? false,
       config: g.config ?? {},
     }))
+    const training = trainingGrants(agentId)
+    if (training) {
+      __trainingGrantsByAgent = {
+        ...(__trainingGrantsByAgent ?? {}),
+        [agentId]: next.map(cloneGrant),
+      }
+      return next
+    }
     grantsByAgent[agentId] = next
     const a = fxAgents.find(a => a.id === agentId)
     if (a) a.updated_at = new Date().toISOString()
@@ -323,6 +414,8 @@ export const api = {
   // Returns RunDetail (gateway (5).yaml schema name).
   async getRun(id: string): Promise<RunDetail | undefined> {
     await delay()
+    const scenario = _trainingScenario()
+    if (scenario) return scenario.runs.find(r => r.id === id)
     return fxRuns[id]
   },
 
@@ -458,7 +551,8 @@ export const api = {
   // Returns ApprovalList envelope (gateway (5).yaml).
   async listApprovals(filter?: { status?: ApprovalRequest['status']; limit?: number; offset?: number }): Promise<ApprovalList> {
     await delay()
-    let list = [...fxApprovals]
+    const scenario = _trainingScenario()
+    let list = [...(scenario?.approvals ?? fxApprovals)]
     if (filter?.status) list = list.filter(a => a.status === filter.status)
     list.sort((a, b) => b.created_at.localeCompare(a.created_at))
     return paginate(list, filter)
@@ -466,6 +560,8 @@ export const api = {
 
   async getApproval(id: string): Promise<ApprovalRequest | undefined> {
     await delay()
+    const scenario = _trainingScenario()
+    if (scenario) return scenario.approvals.find(a => a.id === id)
     return fxApprovals.find(a => a.id === id)
   },
 
@@ -480,6 +576,17 @@ export const api = {
     byUserId: string,
   ): Promise<ApprovalDecisionAccepted> {
     await delay()
+    // Mutations are sandboxed in training mode — return a synthetic queued
+    // response so the optimistic UI keeps moving but no real fixture is
+    // touched. Phase 6+ may add real per-scenario sandbox handling here.
+    if (__activeTrainingScenario) {
+      void reason; void byUserId
+      return {
+        approval_id: id,
+        decision: decision === 'approved' ? 'approve' : 'reject',
+        status: 'queued',
+      }
+    }
     const a = fxApprovals.find(a => a.id === id)
     if (!a) throw new Error('no approval')
     if (a.status !== 'pending') {
@@ -572,7 +679,8 @@ export const api = {
     const limit = filter?.limit ?? 20
     const offset = filter?.offset ?? 0
     const isAdmin = viewer.role === 'admin' || viewer.role === 'domain_admin'
-    const all = fxChats
+    const source = trainingChats() ?? fxChats
+    const all = source
       .filter(c => (isAdmin ? true : c.created_by === viewer.id))
       .filter(c => (filter?.agent_id ? c.agent_id === filter.agent_id : true))
       .sort((a, b) => b.updated_at.localeCompare(a.updated_at))
@@ -587,6 +695,8 @@ export const api = {
   // GET /chat/{chatId}
   async getChat(id: string): Promise<Chat | undefined> {
     await delay()
+    const training = trainingChats()
+    if (training) return training.find(c => c.id === id)
     return fxChats.find(c => c.id === id)
   },
 
@@ -595,9 +705,14 @@ export const api = {
   // takes them as explicit args.
   async createChat(req: CreateChatRequest, viewer: User): Promise<Chat> {
     await delay()
-    const version = fxVersions.find(v => v.id === req.agent_version_id)
+    const training = trainingChats()
+    const version = training
+      ? trainingAgentVersion(req.agent_version_id)
+      : fxVersions.find(v => v.id === req.agent_version_id)
     if (!version) throw new Error('agent version not found')
-    const id = `cht_${Math.floor(3000 + Math.random() * 6999)}`
+    const id = training
+      ? `cht_train_${Date.now().toString(36)}`
+      : `cht_${Math.floor(3000 + Math.random() * 6999)}`
     const now = new Date().toISOString()
     const chat: Chat = {
       id,
@@ -615,6 +730,12 @@ export const api = {
       total_tokens_in: 0,
       total_tokens_out: 0,
     }
+    if (training) {
+      training.unshift(chat)
+      if (!__trainingChatMessages) __trainingChatMessages = {}
+      __trainingChatMessages[id] = []
+      return chat
+    }
     fxChats.unshift(chat)
     fxChatMessages[id] = []
     return chat
@@ -623,7 +744,8 @@ export const api = {
   // DELETE /chat/{chatId} — sets status=closed, stamps ended_at. Idempotent.
   async closeChat(id: string): Promise<void> {
     await delay()
-    const chat = fxChats.find(c => c.id === id)
+    const training = trainingChats()
+    const chat = training ? training.find(c => c.id === id) : fxChats.find(c => c.id === id)
     if (!chat) throw new Error('chat not found')
     if (chat.status === 'closed') return
     chat.status = 'closed'
@@ -639,7 +761,8 @@ export const api = {
     await delay()
     const limit = filter?.limit ?? 50
     const offset = filter?.offset ?? 0
-    const all = (fxChatMessages[chatId] ?? [])
+    const source = trainingChatMessages(chatId) ?? fxChatMessages[chatId] ?? []
+    const all = source
       .slice()
       .sort((a, b) => b.created_at.localeCompare(a.created_at))
     return {
@@ -670,9 +793,10 @@ export const api = {
   // ── GET /internal/agents/{id}/grants/snapshot (gateway v0.2.0) ────
   async getGrantsSnapshot(agentId: string): Promise<GrantsSnapshot> {
     await delay()
-    const agent = fxAgents.find(a => a.id === agentId)
+    const scenario = _trainingScenario()
+    const agent = (scenario?.agents ?? fxAgents).find(a => a.id === agentId)
     if (!agent) throw new Error('agent not found')
-    const grants = grantsByAgent[agentId] ?? []
+    const grants = trainingGrants(agentId) ?? grantsByAgent[agentId] ?? []
     const catalogByName = new Map(fxTools.map(t => [t.name, t] as const))
 
     const entries: GrantsSnapshotEntry[] = grants.map(g => ({
@@ -749,7 +873,9 @@ async function* streamMockTurn(
   chatId: string,
   req: SendMessageRequest,
 ): AsyncIterable<ChatStreamFrame> {
-  const chat = fxChats.find(c => c.id === chatId)
+  const training = trainingChats()
+  const trainingMessages = training ? trainingChatMessages(chatId) : null
+  const chat = training ? training.find(c => c.id === chatId) : fxChats.find(c => c.id === chatId)
   if (!chat) throw new Error('chat not found')
   if (chat.status !== 'active') {
     yield { event: 'error', kind: 'llm_error', message: 'Chat is closed.' }
@@ -759,7 +885,7 @@ async function* streamMockTurn(
   // Persist the user message immediately so listChatMessages reflects it.
   const userMsgId = `msg_${chatId}_${Date.now()}_u`
   const userCreatedAt = new Date().toISOString()
-  const list = fxChatMessages[chatId] ?? []
+  const list = trainingMessages ?? fxChatMessages[chatId] ?? []
   list.push({
     id: userMsgId,
     chat_id: chatId,
@@ -773,7 +899,8 @@ async function* streamMockTurn(
     tokens_out: null,
     created_at: userCreatedAt,
   })
-  fxChatMessages[chatId] = list
+  if (trainingMessages) __trainingChatMessages = { ...(__trainingChatMessages ?? {}), [chatId]: list }
+  else fxChatMessages[chatId] = list
 
   await sleep(180)
 
@@ -873,7 +1000,8 @@ async function* streamMockTurn(
       })
     }
   }
-  fxChatMessages[chatId] = list
+  if (trainingMessages) __trainingChatMessages = { ...(__trainingChatMessages ?? {}), [chatId]: list }
+  else fxChatMessages[chatId] = list
 
   chat.total_cost_usd = Math.round((chat.total_cost_usd + cost_usd) * 1000) / 1000
   chat.total_tokens_in += tokens_in

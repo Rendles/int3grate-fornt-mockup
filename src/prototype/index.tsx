@@ -6,6 +6,10 @@ import { RouterProvider, matchRoute, useRouter } from './router'
 import { ThemeProvider, useTheme } from './theme'
 import { TourProvider } from './tours/TourProvider'
 import { TourOverlay } from './tours/TourOverlay'
+import { TrainingModeProvider } from './tours/TrainingModeProvider'
+import { TrainingBanner } from './tours/TrainingBanner'
+import { TrainingAutoExit } from './tours/TrainingAutoExit'
+import { WelcomeToast } from './tours/WelcomeToast'
 import LoginScreen from './screens/LoginScreen'
 import RegisterScreen from './screens/RegisterScreen'
 import HomeScreen from './screens/HomeScreen'
@@ -27,6 +31,7 @@ import ApprovalDetailScreen from './screens/ApprovalDetailScreen'
 import ToolsScreen from './screens/ToolsScreen'
 import SpendScreen from './screens/SpendScreen'
 import ProfileScreen from './screens/ProfileScreen'
+import LearnScreen from './screens/LearnScreen'
 import NotFoundScreen from './screens/NotFoundScreen'
 
 function Router() {
@@ -73,6 +78,7 @@ function Router() {
     { pattern: '/spend', render: () => <SpendScreen /> },
     { pattern: '/audit', render: () => <AuditScreen /> },
     { pattern: '/profile', render: () => <ProfileScreen /> },
+    { pattern: '/learn', render: () => <LearnScreen /> },
   ]
 
   for (const r of routes) {
@@ -99,10 +105,15 @@ function ThemedRoot() {
       <div className="prototype-root">
         <AuthProvider>
           <RouterProvider>
-            <TourProvider>
-              <Router />
-              <TourOverlay />
-            </TourProvider>
+            <TrainingModeProvider>
+              <TrainingBanner />
+              <TourProvider>
+                <Router />
+                <TourOverlay />
+                <WelcomeToast />
+                <TrainingAutoExit />
+              </TourProvider>
+            </TrainingModeProvider>
           </RouterProvider>
         </AuthProvider>
         {import.meta.env.DEV && <ThemePanel defaultOpen={false} />}

@@ -9,6 +9,10 @@ export interface TourContextValue {
   next: () => void
   prev: () => void
   isCompleted: (tourId: string) => boolean
+  // First-login welcome toast state. `welcomePromptShown` is reactive so
+  // dismissing the toast in one place removes it everywhere.
+  welcomePromptShown: boolean
+  markWelcomePromptShown: () => void
 }
 
 export const TourContext = createContext<TourContextValue | null>(null)

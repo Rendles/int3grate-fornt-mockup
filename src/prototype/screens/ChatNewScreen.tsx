@@ -88,7 +88,7 @@ export default function ChatNewScreen() {
           actions={
             <>
               <Button asChild variant="soft" disabled={busy} color='gray'><a href="#/chats">Cancel</a></Button>
-              <Button onClick={submit} disabled={busy || !runnable}>
+              <Button onClick={submit} disabled={busy || !runnable} data-tour="chat-submit">
                 <IconChat />
                 {busy ? 'opening…' : 'Open chat'}
               </Button>
@@ -107,7 +107,7 @@ export default function ChatNewScreen() {
         ) : (
           <>
             {/* AGENT PICKER */}
-            <div className="card">
+            <div className="card" data-tour="chat-agent-picker">
               <div className="card__head">
                 <Text as="div" size="2" weight="medium" className="card__title">Agent</Text>
                 {agent && !runnable && (
@@ -143,7 +143,10 @@ export default function ChatNewScreen() {
                             <Text as="div" size="1" color="gray" mt="1" className="truncate">{a.description}</Text>
                           )}
                         </div>
-                        <div style={{ textAlign: 'right' }}>
+                        <div
+                          data-tour={on && a.active_version ? 'chat-agent-version' : undefined}
+                          style={{ textAlign: 'right' }}
+                        >
                           <Status status={a.status} />
                           {a.active_version && (
                             <Text as="div" size="1" color="gray" mt="1">v{a.active_version.version}</Text>
@@ -172,7 +175,7 @@ export default function ChatNewScreen() {
                     <Text as="div" size="2" weight="medium">Title</Text>
                     <Text as="div" size="1" color="gray" mt="1">Optional. Shown in the chat list.</Text>
                   </Box>
-                  <Box>
+                  <Box data-tour="chat-title">
                     <TextInput
                       value={title}
                       onChange={e => setTitle(e.target.value)}
@@ -188,7 +191,7 @@ export default function ChatNewScreen() {
                       Defaults to the agent version's primary model. Fixed once the chat opens.
                     </Text>
                   </Box>
-                  <Box>
+                  <Box data-tour="chat-model">
                     <SelectField
                       value={model || undefined}
                       onChange={setUserModel}

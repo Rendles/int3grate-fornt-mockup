@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
+import { useCallback, useEffect, useMemo, useState } from 'react'
 import type { ReactNode } from 'react'
 import { TourContext } from './tour-context'
 import type { TourContextValue } from './tour-context'
@@ -11,7 +11,10 @@ function readPersisted(): ToursPersistedState {
     const raw = localStorage.getItem(STORAGE_KEY)
     if (!raw) return { completed: [] }
     const parsed = JSON.parse(raw) as ToursPersistedState
-    return { completed: Array.isArray(parsed.completed) ? parsed.completed : [] }
+    return {
+      completed: Array.isArray(parsed.completed) ? parsed.completed : [],
+      welcomePromptShown: parsed.welcomePromptShown === true ? true : undefined,
+    }
   } catch {
     return { completed: [] }
   }
@@ -28,14 +31,29 @@ function writePersisted(state: ToursPersistedState) {
 export function TourProvider({ children }: { children: ReactNode }) {
   const [activeTour, setActiveTour] = useState<Tour | null>(null)
   const [stepIndex, setStepIndex] = useState(0)
-  const persistedRef = useRef<ToursPersistedState>(readPersisted())
+  // Persisted state held as React state (rather than a ref) so completion
+  // and welcome-flag flips re-render subscribers (e.g. /learn cards picking
+  // up "Completed" status, or WelcomeToast disappearing on dismiss).
+  // `writePersisted` is called outside the updater to avoid Strict Mode
+  // double-invocation — even if it ran twice, the write is idempotent.
+  const [persisted, setPersisted] = useState<ToursPersistedState>(() => readPersisted())
 
   const markCompleted = useCallback((tourId: string) => {
-    const cur = persistedRef.current
-    if (cur.completed.includes(tourId)) return
-    const next: ToursPersistedState = { completed: [...cur.completed, tourId] }
-    persistedRef.current = next
-    writePersisted(next)
+    setPersisted(prev => {
+      if (prev.completed.includes(tourId)) return prev
+      const next = { ...prev, completed: [...prev.completed, tourId] }
+      writePersisted(next)
+      return next
+    })
+  }, [])
+
+  const markWelcomePromptShown = useCallback(() => {
+    setPersisted(prev => {
+      if (prev.welcomePromptShown === true) return prev
+      const next = { ...prev, welcomePromptShown: true }
+      writePersisted(next)
+      return next
+    })
   }, [])
 
   const startTour = useCallback((tour: Tour) => {
@@ -67,9 +85,10 @@ export function TourProvider({ children }: { children: ReactNode }) {
     setStepIndex(idx => Math.max(0, idx - 1))
   }, [])
 
-  const isCompleted = useCallback((tourId: string) => {
-    return persistedRef.current.completed.includes(tourId)
-  }, [])
+  const isCompleted = useCallback(
+    (tourId: string) => persisted.completed.includes(tourId),
+    [persisted],
+  )
 
   // Lock body scroll while a tour is active so the spotlight stays anchored.
   useEffect(() => {
@@ -81,9 +100,21 @@ export function TourProvider({ children }: { children: ReactNode }) {
     }
   }, [activeTour])
 
+  const welcomePromptShown = persisted.welcomePromptShown === true
+
   const value = useMemo<TourContextValue>(
-    () => ({ activeTour, stepIndex, startTour, endTour, next, prev, isCompleted }),
-    [activeTour, stepIndex, startTour, endTour, next, prev, isCompleted],
+    () => ({
+      activeTour,
+      stepIndex,
+      startTour,
+      endTour,
+      next,
+      prev,
+      isCompleted,
+      welcomePromptShown,
+      markWelcomePromptShown,
+    }),
+    [activeTour, stepIndex, startTour, endTour, next, prev, isCompleted, welcomePromptShown, markWelcomePromptShown],
   )
 
   return <TourContext.Provider value={value}>{children}</TourContext.Provider>

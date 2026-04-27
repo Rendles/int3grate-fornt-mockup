@@ -182,6 +182,7 @@ export default function ApprovalDetailScreen({ approvalId }: { approvalId: strin
       ]}
     >
       <div className="page page--narrow">
+        <div data-tour="approval-action">
         <PageHeader
           eyebrow={
             <>
@@ -213,6 +214,7 @@ export default function ApprovalDetailScreen({ approvalId }: { approvalId: strin
             </>
           }
         />
+        </div>
 
         <CommandBar
           parts={[
@@ -228,13 +230,15 @@ export default function ApprovalDetailScreen({ approvalId }: { approvalId: strin
 
         <div style={{ height: 20 }} />
 
-        <ApprovalContextCard
-          approval={approval}
-          run={runContext}
-          task={taskContext}
-          agents={agents}
-          requestedByName={approval.requested_by_name ?? userName(approval.requested_by) ?? null}
-        />
+        <div data-tour="approval-evidence">
+          <ApprovalContextCard
+            approval={approval}
+            run={runContext}
+            task={taskContext}
+            agents={agents}
+            requestedByName={approval.requested_by_name ?? userName(approval.requested_by) ?? null}
+          />
+        </div>
 
         <div style={{ height: 20 }} />
 
@@ -263,10 +267,12 @@ export default function ApprovalDetailScreen({ approvalId }: { approvalId: strin
 
         {/* Pending · decision panel */}
         {approval.status === 'pending' && userCanDecide && !decision && !resume && (
+          <div data-tour="approval-decision">
           <DecisionIntroCard
             onApprove={() => setDecision('approved')}
             onReject={() => setDecision('rejected')}
           />
+          </div>
         )}
 
         {/* Pending · confirm panel */}

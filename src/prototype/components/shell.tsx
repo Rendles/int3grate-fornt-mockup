@@ -12,6 +12,7 @@ import {
   IconApproval,
   IconAudit,
   IconChat,
+  IconHelp,
   IconHome,
   IconLogout,
   IconMoon,
@@ -24,8 +25,6 @@ import {
 import { Avatar, MockBadge } from './common'
 import { roleLabel } from '../lib/format'
 import { useTour } from '../tours/useTour'
-import { sidebarTour } from '../tours/sidebar-tour'
-import { IconHelp } from './icons'
 
 interface NavItem {
   key: string
@@ -156,7 +155,29 @@ export function Topbar({
 }) {
   const { user, logout } = useAuth()
   const { theme, toggle } = useTheme()
-  const { startTour } = useTour()
+  const { navigate } = useRouter()
+  const { activeTour } = useTour()
+
+  // Global "?" hotkey opens the Learning Center. Skipped when a tour is
+  // already running (the tour engine owns the keyboard) and when the focus
+  // is inside an editable field.
+  useEffect(() => {
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key !== '?') return
+      if (activeTour) return
+      const target = e.target as HTMLElement | null
+      if (target && (
+        target.tagName === 'INPUT'
+        || target.tagName === 'TEXTAREA'
+        || target.isContentEditable
+      )) return
+      e.preventDefault()
+      navigate('/learn')
+    }
+    window.addEventListener('keydown', onKey)
+    return () => window.removeEventListener('keydown', onKey)
+  }, [activeTour, navigate])
+
   return (
     <Flex
       asChild
@@ -209,9 +230,9 @@ export function Topbar({
         <IconButton
           variant="ghost"
           size="1"
-          onClick={() => startTour(sidebarTour)}
-          title="Start sidebar tour"
-          aria-label="Start sidebar tour"
+          onClick={() => navigate('/learn')}
+          title="Open Learning Center (?)"
+          aria-label="Open Learning Center"
         >
           <IconHelp size={14} />
         </IconButton>

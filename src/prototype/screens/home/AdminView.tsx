@@ -62,6 +62,10 @@ export function AdminView({
         />
       </Grid>
 
+            <Box mb="5">
+        <SavingsBanner />
+      </Box>
+
       <Grid columns={{ initial: '1', lg: '1fr 2fr' }} gap="4" mb="5">
         <div className="card card--flush" style={{ borderColor: pendingApprovals.length > 0 ? 'var(--amber-a6)' : undefined }}>
           <div className="card__head">
@@ -155,9 +159,9 @@ export function AdminView({
         <TaskOutcomesCard tasks={tasks} />
       </Grid>
 
-      <Box>
+      {/* <Box>
         <SavingsBanner />
-      </Box>
+      </Box> */}
     </>
   )
 }

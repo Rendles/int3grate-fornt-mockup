@@ -75,7 +75,7 @@ export default function ApprovalsScreen() {
 
         <PolicyBanner />
 
-        <Flex align="center" gap="2" mb="4" wrap="wrap">
+        <Flex align="center" gap="2" mb="4" wrap="wrap" data-tour="approvals-filter">
           <Caption mr="1">status</Caption>
           {APPROVAL_STATUS_FILTERS.map(f => {
             const isActive = statusFilter === f
@@ -127,6 +127,7 @@ export default function ApprovalsScreen() {
                 <Link
                   key={a.id}
                   to={`/approvals/${a.id}`}
+                  data-tour="approval-row"
                   className="agent-row"
                   style={{
                     gridTemplateColumns: '110px minmax(0, 1fr) 160px 140px 130px 120px 28px',
