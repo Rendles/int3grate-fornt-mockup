@@ -1,13 +1,13 @@
 import { useEffect, useState } from 'react'
 import { Badge, Button, Code, DataList, Text } from '@radix-ui/themes'
 import { AppShell } from '../components/shell'
-import { PageHeader, MetaRow, MockBadge, Status, CommandBar, InfoHint } from '../components/common'
+import { PageHeader, MetaRow, MockBadge, Status, CommandBar, InfoHint, statusLabel } from '../components/common'
 import { Banner, LoadingList, NoAccessState } from '../components/states'
 import { IconPlay } from '../components/icons'
 import { Link } from '../router'
 import { api } from '../lib/api'
 import type { Agent, Task, User } from '../lib/types'
-import { absTime, ago, domainLabel } from '../lib/format'
+import { absTime, ago, domainLabel, humanKey } from '../lib/format'
 
 export default function TaskDetailScreen({ taskId }: { taskId: string }) {
   const [task, setTask] = useState<Task | null | undefined>(undefined)
@@ -74,8 +74,8 @@ export default function TaskDetailScreen({ taskId }: { taskId: string }) {
 
         <CommandBar
           parts={[
-            { label: 'TYPE', value: task.type.replace('_', ' ') },
-            { label: 'STATUS', value: task.status },
+            { label: 'TYPE', value: humanKey(task.type) },
+            { label: 'STATUS', value: statusLabel(task.status) },
             { label: 'AGENT', value: agentName(task.assigned_agent_id) },
             { label: 'CREATED BY', value: userName(task.created_by) },
             { label: 'DOMAIN', value: domainLabel(task.domain_id) },
@@ -101,7 +101,7 @@ export default function TaskDetailScreen({ taskId }: { taskId: string }) {
           <div className="card__body">
             <DataList.Root size="2">
               <MetaRow label="domain" value={domainLabel(task.domain_id)} />
-              <MetaRow label="type" value={<Badge color="gray" variant="soft" radius="full" size="1">{task.type.replace('_', ' ')}</Badge>} />
+              <MetaRow label="type" value={<Badge color="gray" variant="soft" radius="full" size="1">{humanKey(task.type)}</Badge>} />
               <MetaRow label="status" value={<Status status={task.status} />} />
               <MetaRow
                 label="agent"

@@ -2,7 +2,7 @@ import { useEffect, useMemo, useRef, useState } from 'react'
 import { Badge, Box, Button, Code, Flex, Text } from '@radix-ui/themes'
 
 import { AppShell } from '../components/shell'
-import { PageHeader, Status, CommandBar, InfoHint, Caption } from '../components/common'
+import { PageHeader, Status, CommandBar, InfoHint, Caption, statusLabel } from '../components/common'
 import { TextAreaField } from '../components/fields'
 import { Banner, LoadingList, NoAccessState } from '../components/states'
 import { IconChat, IconCheck, IconPlay, IconStop, IconX } from '../components/icons'
@@ -186,7 +186,7 @@ export default function ChatDetailScreen({ chatId }: { chatId: string }) {
             parts={[
               { label: 'AGENT', value: agent?.name ?? '—' },
               { label: 'MODEL', value: chat.model, tone: 'accent' },
-              { label: 'STATUS', value: chat.status, tone: chat.status === 'active' ? 'accent' : chat.status === 'failed' ? 'warn' : undefined },
+              { label: 'STATUS', value: statusLabel(chat.status), tone: chat.status === 'active' ? 'accent' : chat.status === 'failed' ? 'warn' : undefined },
               { label: 'STARTED', value: ago(chat.started_at) },
               { label: 'COST', value: money(chat.total_cost_usd, { cents: chat.total_cost_usd < 100 }) },
               { label: 'TOKENS', value: `${num(chat.total_tokens_in)} in · ${num(chat.total_tokens_out)} out` },

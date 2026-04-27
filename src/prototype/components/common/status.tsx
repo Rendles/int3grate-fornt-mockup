@@ -1,5 +1,6 @@
 import type { ComponentProps } from 'react'
 import { Badge, Flex, Text } from '@radix-ui/themes'
+import { humanKey } from '../../lib/format'
 
 type BadgeColor = NonNullable<ComponentProps<typeof Badge>['color']>
 type Tone = 'accent' | 'warn' | 'success' | 'danger' | 'info' | 'ghost'
@@ -29,6 +30,13 @@ const STATUS_MAP: Record<string, { tone: Tone; label: string; pulse?: boolean; d
   rejected: { tone: 'danger', label: 'Rejected' },
   expired: { tone: 'ghost', label: 'Expired' },
   closed: { tone: 'ghost', label: 'Closed' },
+}
+
+// Friendly label-only accessor for the same map. Use when you need a string
+// (e.g. CommandBar `value`) rather than the full <Status> pill JSX. Falls
+// back to humanKey() for statuses outside the canonical entity set.
+export function statusLabel(s: string): string {
+  return STATUS_MAP[s]?.label ?? humanKey(s)
 }
 
 export function Status({

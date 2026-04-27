@@ -8,7 +8,7 @@ import { IconArrowRight, IconPlus, IconTask } from '../components/icons'
 import { Link } from '../router'
 import { api } from '../lib/api'
 import type { Agent, Task, TaskStatus, User } from '../lib/types'
-import { ago } from '../lib/format'
+import { ago, humanKey } from '../lib/format'
 
 const STATUSES: Array<TaskStatus | 'all'> = ['all', 'pending', 'running', 'completed', 'failed', 'cancelled']
 
@@ -143,7 +143,7 @@ export default function TasksScreen() {
                   radius="full"
                   size="1"
                 >
-                  {t.type.replace('_', ' ')}
+                  {humanKey(t.type)}
                 </Badge>
                 <Status status={t.status} />
                 <Text as="div" size="1" className="truncate">

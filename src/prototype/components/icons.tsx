@@ -3,6 +3,7 @@ import { HugeiconsIcon } from '@hugeicons/react'
 import type { IconSvgElement } from '@hugeicons/react'
 import {
   Alert02Icon,
+  ArrowLeft01Icon,
   ArrowRight01Icon,
   Audit01Icon,
   BubbleChatIcon,
@@ -57,6 +58,7 @@ export const IconSpend = make(DollarCircleIcon)
 export const IconAudit = make(Audit01Icon)
 
 export const IconPlus = make(PlusSignIcon)
+export const IconArrowLeft = make(ArrowLeft01Icon)
 export const IconArrowRight = make(ArrowRight01Icon)
 export const IconCheck = make(Tick02Icon)
 export const IconX = make(Cancel01Icon)

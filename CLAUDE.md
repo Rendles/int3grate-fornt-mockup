@@ -42,6 +42,8 @@ Current route map:
 - `/audit` *(admin-only)*
 - `/tools`, `/spend`
 
+> ⚠️ **`Link` props pass-through**: the `Link` component accepts the full `AnchorHTMLAttributes` surface (minus `href`/`onClick`, which it owns) and spreads it onto the inner `<a>`. This is what makes Radix Themes `asChild` composition work — e.g. `<Text size="1" asChild><Link to="…">…</Link></Text>` correctly forwards `data-accent-color` / class names onto the anchor so Radix-driven styles apply. Don't tighten the props back to a fixed list.
+
 #### Auth (`auth.tsx`)
 
 `AuthProvider` + three seeded users in `lib/fixtures.ts` (`admin`, `domain_admin`, `member`). Demo logins:
@@ -113,12 +115,21 @@ All exported through the `components/common.tsx` barrel:
 - **`Tabs`** — Radix `TabNav` wrapper. Has a built-in bottom border; pair with ~24px breathing space before content (see `AgentDetailScreen`).
 - **`MetaRow`** — DataList row. **Must be wrapped in `<DataList.Root size="2">`** by the caller (without it the grid template breaks). The label automatically gets first-letter-capitalized via CSS, so call sites can write `label="created by"` and it renders as `Created by`.
 - **`MetricCard`** — KPI tile with label / value / unit / delta / icon, optional `href` to make it clickable.
-- **`Status`** — coloured pill mapping enum status → friendly label. Accepts the union of all status enums (Agent / Run / Task / Approval / Chat / etc.).
+- **`Status`** — coloured pill mapping enum status → friendly label. Accepts the union of all status enums (Agent / Run / Task / Approval / Chat / etc.). For places that need a string instead of the pill (e.g. `CommandBar` `value` field, inline banner copy), use the sibling **`statusLabel(s)`** export from the same module — it shares the underlying map and falls back to `humanKey()` for unknown values.
 - **`Pagination`** — page + pageSize controls. Used at the bottom of `card--table` lists.
 - **`InfoHint`** — info ⓘ tooltip for technical / API hints inline in copy.
 - **`Caption`** — small uppercase tracked label (UI section labels).
 - **`Avatar`** — initials avatar.
 - **`MockBadge`** — small dashed pill marking surfaces unbacked by the real backend. Two kinds: `kind="design"` (no endpoint exists in spec at all — pure mock) and `kind="deferred"` (endpoint exists but `x-mvp-deferred`). Hover shows full explanation. Use whenever a screen, widget, or sidebar item shows synthesized data.
+
+### Icons (`components/icon.tsx` + `components/icons.tsx`)
+
+Two-tier wrapper over `@hugeicons/react` + `@hugeicons/core-free-icons`:
+
+- **`<Icon icon={SomeIcon} />`** (`components/icon.tsx`) — preferred for new code. Pair with a direct named import from `@hugeicons/core-free-icons`.
+- **Legacy named exports** (`components/icons.tsx`) — `IconHome`, `IconAgent`, `IconChat`, `IconTask`, `IconApproval`, `IconRun`, `IconTool`, `IconSpend`, `IconAudit`, `IconPlus`, `IconArrowLeft`, `IconArrowRight`, `IconCheck`, `IconX`, `IconAlert`, `IconInfo`, `IconPlay`, `IconPause`, `IconStop`, `IconLock`, `IconEye`, `IconEyeOff`, `IconLogout`, `IconSun`, `IconMoon`, `IconHelp`. These are now thin wrappers over the same Hugeicons set, kept so existing call-sites still work; new code should prefer `<Icon>`.
+
+Both wrappers default `className="ic"`. Sizing comes from the `.ic` class in `prototype.css` (14px default; `.ic--sm` 12px, `.ic--lg` 18px). All icons inherit `currentColor`, so colour them via the surrounding `<Text color="…">` / Radix Theme tokens — don't pass `primaryColor` props.
 
 ### Form fields (`components/fields.tsx`)
 
@@ -138,7 +149,7 @@ Numbers / dates: `money`, `num`, `pct`, `ago`, `absTime`, `shortDate`, `duration
 ID / reference: `shortRef` (entity_id → `#<tail>` for breadcrumbs/refs), `humanKey` (`snake_case` → `Sentence case`).
 Domain labels: `roleLabel`, `domainLabel`, `tenantLabel`, `approverRoleLabel`.
 Tool catalog: `TOOL_LABELS`, `toolLabel(name)`, `prettifyRequestedAction(s)` (parses `service.action` prefix from `requested_action` strings and replaces with friendly tool label).
-Enum → friendly: `grantModeLabel` (`read_write` → "Read & write"), `policyModeLabel` (`requires_approval` → "Requires approval"), `errorKindLabel` (`tool_error` → "Tool error"), `toolErrorStatusLabel`, `stageLabel` (run.suspended_stage parser), `stepKindLabel`.
+Enum → friendly: `grantModeLabel` (`read_write` → "Read & write"), `policyModeLabel` (`requires_approval` → "Requires approval"), `errorKindLabel` (`tool_error` → "Tool error"), `toolErrorStatusLabel`, `stageLabel` (run.suspended_stage parser), `stepKindLabel`, `runStepStatusLabel` (`ok` → "OK", others via `humanKey`).
 
 Rule of thumb: never display raw enums (`requires_approval`, `domain_admin`, `tool_error`) or raw IDs (`agt_xxx`, `usr_xxx`) directly in the UI — always go through one of the helpers above.
 
@@ -160,3 +171,16 @@ Whenever a UI surface displays data that isn't backed by a real endpoint, mark i
 - **Activity heatmap** + **Savings banner** on the Home dashboard — synthesized client-side, no backend aggregates.
 
 Three documented endpoints have *known gaps* on the backend side (used by the UI but missing from the spec): `GET /users`, `GET /approvals/{id}`, `POST /auth/register`. These are tracked in `BACKEND_DATA_SOURCES.md` as open questions; don't try to "fix" them from the frontend.
+
+### Guided tours (`src/prototype/tours/`)
+
+Game-style interactive walkthroughs: dim overlay, spotlight on a target element, floating tooltip with step copy. Composed of:
+
+- **`types.ts`** — `Tour` (`{ id, name, steps[] }`) and `TourStep` (`{ id, target, title, body, placement?, spotlightPadding? }`). `target` is a CSS selector — **prefer `[data-tour="…"]` attributes over class selectors** so refactors to `prototype.css` don't silently break tours.
+- **`TourProvider.tsx`** — context with `startTour`, `next`, `prev`, `endTour(markCompleted?)`, `isCompleted(tourId)`. Persists completed tour ids in `localStorage` under `proto.tours.v1`. Reaching the last step (`Done`) marks completed; `Skip tour` / `Esc` ends without marking, so the tour can be retried. Body scroll is locked while a tour is active.
+- **`TourOverlay.tsx`** — single mounted overlay, reads active step from context. Spotlight is a fixed-position rect with `box-shadow: 0 0 0 9999px rgba(0,0,0,.65)` (the shadow paints the dim outside — no SVG mask). Tooltip placement (`top` / `bottom` / `left` / `right`) is computed from `target.getBoundingClientRect()` and clamped to the viewport. Listens to window `resize` + capture-phase `scroll` (RAF-throttled) to keep both elements anchored. Hotkeys: `→`/`Enter` next, `←` back, `Esc` skip-tour. If the target selector doesn't resolve after ~500 ms of retries, the tooltip shows a fallback message instead of getting stuck.
+- **Tour data files** — one per tour (e.g. `sidebar-tour.tsx`). Pure data, kept separate from the engine.
+
+Mounted in `index.tsx` inside `RouterProvider` (so tours can navigate via `useRouter` if needed). Launched from the `?` IconButton in `Topbar`. To add a new tour: write the data file, add `data-tour="…"` attributes to the relevant DOM nodes, then trigger via `useTour().startTour(myTour)` from wherever (button, auto-launch effect on first login, etc.).
+
+CSS lives at the bottom of `prototype.css` under the `TOUR / GUIDED ONBOARDING` block (`.tour`, `.tour__spot`, `.tour__tooltip`, `.tour__backdrop`) with `prefers-reduced-motion` honoured.

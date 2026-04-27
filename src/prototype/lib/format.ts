@@ -186,6 +186,14 @@ export function stepKindLabel(kind: string): string {
   return STEP_KIND_LABELS[kind] ?? kind.replace(/_/g, ' ')
 }
 
+// Run step execution result. Different vocabulary from entity-level statuses:
+// `ok / failed / blocked / pending / running`. `humanKey('ok')` would give
+// `Ok` which reads awkwardly, so handle that case explicitly.
+export function runStepStatusLabel(s: string): string {
+  if (s === 'ok') return 'OK'
+  return humanKey(s)
+}
+
 // Tool key → human label. Format: "Service · Action".
 // Falls back to the raw key if unmapped (so new fixtures don't crash the UI).
 export const TOOL_LABELS: Record<string, string> = {

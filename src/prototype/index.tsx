@@ -4,6 +4,8 @@ import { Text, Theme as RadixTheme, ThemePanel } from '@radix-ui/themes'
 import { AuthProvider, useAuth } from './auth'
 import { RouterProvider, matchRoute, useRouter } from './router'
 import { ThemeProvider, useTheme } from './theme'
+import { TourProvider } from './tours/TourProvider'
+import { TourOverlay } from './tours/TourOverlay'
 import LoginScreen from './screens/LoginScreen'
 import RegisterScreen from './screens/RegisterScreen'
 import HomeScreen from './screens/HomeScreen'
@@ -97,7 +99,10 @@ function ThemedRoot() {
       <div className="prototype-root">
         <AuthProvider>
           <RouterProvider>
-            <Router />
+            <TourProvider>
+              <Router />
+              <TourOverlay />
+            </TourProvider>
           </RouterProvider>
         </AuthProvider>
         {import.meta.env.DEV && <ThemePanel defaultOpen={false} />}

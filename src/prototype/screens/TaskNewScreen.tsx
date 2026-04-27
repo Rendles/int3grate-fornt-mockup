@@ -7,7 +7,7 @@ import { Banner, LoadingList } from '../components/states'
 import { IconAlert, IconArrowRight, IconCheck, IconPlay } from '../components/icons'
 import { Link, useRouter } from '../router'
 import { api } from '../lib/api'
-import { domainLabel } from '../lib/format'
+import { domainLabel, humanKey } from '../lib/format'
 import type { Agent, Task, TaskType } from '../lib/types'
 
 // Chat-type interactions live on /chats now (gateway (5).yaml). The picker
@@ -246,7 +246,7 @@ export default function TaskNewScreen() {
                         onClick={() => setType(t)}
                       >
                         <Text as="div" size="4" mb="2">
-                          {t.replace('_', ' ')}
+                          {humanKey(t)}
                         </Text>
                         <Text as="div" size="1" color="gray" style={{ lineHeight: 1.5 }}>{TYPE_DESC[t]}</Text>
                       </button>
@@ -347,7 +347,7 @@ function SuccessPanel({ task, agentName }: { task: Task; agentName: string }) {
           <DataList.Root size="2">
             <MetaRow label="title" value={task.title ?? <Text color="gray">— untitled —</Text>} />
             <MetaRow label="agent" value={<Link to={`/agents/${task.assigned_agent_id}`}>{agentName}</Link>} />
-            <MetaRow label="type" value={<Badge color="gray" variant="soft" radius="full" size="1">{task.type.replace('_', ' ')}</Badge>} />
+            <MetaRow label="type" value={<Badge color="gray" variant="soft" radius="full" size="1">{humanKey(task.type)}</Badge>} />
             <MetaRow label="domain" value={domainLabel(task.domain_id)} />
           </DataList.Root>
         </div>

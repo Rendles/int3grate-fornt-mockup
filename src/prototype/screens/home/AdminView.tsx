@@ -9,7 +9,7 @@ import {
   IconTask,
 } from '../../components/icons'
 import type { Agent, ApprovalRequest, SpendDashboard, Task } from '../../lib/types'
-import { ago, approverRoleLabel, money, num, prettifyRequestedAction } from '../../lib/format'
+import { ago, approverRoleLabel, humanKey, money, num, prettifyRequestedAction } from '../../lib/format'
 import { SpendByAgentCard } from './SpendByAgentCard'
 import { TaskOutcomesCard } from './TaskOutcomesCard'
 import { ActivityHeatmap } from './ActivityHeatmap'
@@ -140,7 +140,7 @@ export function AdminView({
                   <Text as="div" size="1" color="gray" className="truncate">
                     {agentName(t.assigned_agent_id)}
                   </Text>
-                  <Badge color="gray" variant="soft" radius="full" size="1">{t.type.replace('_', ' ')}</Badge>
+                  <Badge color="gray" variant="soft" radius="full" size="1">{humanKey(t.type)}</Badge>
                   <IconArrowRight className="ic" />
                 </Link>
               ))}

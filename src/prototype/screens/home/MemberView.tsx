@@ -3,7 +3,7 @@ import { Link } from '../../router'
 import { MockBadge, Status } from '../../components/common'
 import { IconArrowRight } from '../../components/icons'
 import type { Agent, ApprovalRequest, Task } from '../../lib/types'
-import { ago } from '../../lib/format'
+import { ago, humanKey, prettifyRequestedAction } from '../../lib/format'
 
 export function MemberView({
   myTasks, myApprovals, agents,
@@ -43,7 +43,7 @@ export function MemberView({
                   </Text>
                 </div>
                 <Status status={t.status} />
-                <Badge color="gray" variant="soft" radius="full" size="1">{t.type.replace('_', ' ')}</Badge>
+                <Badge color="gray" variant="soft" radius="full" size="1">{humanKey(t.type)}</Badge>
                 <IconArrowRight className="ic" />
               </Link>
             ))}
@@ -65,7 +65,7 @@ export function MemberView({
               <Link key={a.id} to={`/approvals/${a.id}`} className="card card--tile">
                 <div style={{ padding: '10px 28px 10px 12px' }}>
                   <Flex align="center" justify="between" gap="3" mb="1">
-                    <Text size="1" weight="medium" className="truncate" style={{ minWidth: 0 }}>{a.requested_action}</Text>
+                    <Text size="1" weight="medium" className="truncate" style={{ minWidth: 0 }}>{prettifyRequestedAction(a.requested_action)}</Text>
                     <Status status={a.status} />
                   </Flex>
                   <Text as="div" size="1" color="gray" mt="1">

@@ -2,16 +2,16 @@ import { useEffect, useState } from 'react'
 import { Badge, Box, Button, Code, Flex, Grid, Separator, Text } from '@radix-ui/themes'
 
 import { AppShell } from '../components/shell'
-import { Caption, PageHeader, Status, CommandBar, InfoHint } from '../components/common'
+import { Caption, PageHeader, Status, CommandBar, InfoHint, statusLabel } from '../components/common'
 import { TextAreaField } from '../components/fields'
 import { Banner, LoadingList, NoAccessState } from '../components/states'
 import {
   IconAlert,
   IconApproval,
+  IconArrowLeft,
   IconArrowRight,
   IconCheck,
   IconLock,
-  IconPause,
   IconPlay,
   IconStop,
   IconX,
@@ -21,16 +21,6 @@ import { useAuth } from '../auth'
 import { api } from '../lib/api'
 import type { Agent, ApprovalDecisionAccepted, ApprovalRequest, Run, RunDetail, RunStatus, RunStep, Task, User } from '../lib/types'
 import { absTime, ago, approverRoleLabel, humanKey, prettifyRequestedAction, shortRef, toolLabel } from '../lib/format'
-
-// Friendly title for ApprovalStatus — used inline in banners / messages.
-function approvalStatusLabel(status: ApprovalRequest['status']): string {
-  return status.charAt(0).toUpperCase() + status.slice(1)
-}
-
-// Friendly title for RunStatus — used inline in banners.
-function runStatusLabel(status: RunStatus): string {
-  return status.replace(/_/g, ' ').replace(/^./, c => c.toUpperCase())
-}
 
 type Decision = 'approved' | 'rejected'
 
@@ -544,7 +534,7 @@ function DecisionConfirmCard({
 
       <div className="card__foot">
         <Button variant="ghost" onClick={onCancel} disabled={busy}>
-          <IconPause className="ic ic--sm" /> Back
+          <IconArrowLeft className="ic ic--sm" /> Back
         </Button>
         <Button
           color={isApprove ? undefined : 'red'}
@@ -592,7 +582,7 @@ function ResolvedCard({ approval, approverName }: { approval: ApprovalRequest; a
           </span>
           <Box flexGrow="1">
             <Text as="div" size="6" style={{ color: toneColor }}>
-              {approval.status[0].toUpperCase() + approval.status.slice(1)}
+              {statusLabel(approval.status)}
             </Text>
             {approverName && (
               <Text as="div" size="1" color="gray" mt="1">
@@ -663,7 +653,7 @@ function ResumeBanner({
       <Banner
         tone="info"
         icon={<IconPlay className="ic" />}
-        title={`Approval ${approvalStatusLabel(approval.status).toLowerCase()} · run resuming`}
+        title={`Approval ${statusLabel(approval.status).toLowerCase()} · run resuming`}
         action={<Badge color="blue" variant="soft" radius="small" size="1">running</Badge>}
       >
         The orchestrator picked up the decision. Waiting for the run to finish…
@@ -687,7 +677,7 @@ function ResumeBanner({
     <Banner
       tone={tone}
       icon={icon}
-      title={`Run ${runStatusLabel(run.status).toLowerCase()}`}
+      title={`Run ${statusLabel(run.status).toLowerCase()}`}
       action={
         <Button asChild variant="ghost" size="1">
           <a href={`#/runs/${run.id}`}>
@@ -700,7 +690,7 @@ function ResumeBanner({
       {run.error_message ?? (
         run.status === 'completed'
           ? 'The run finished after the decision was applied.'
-          : `The run finished as ${runStatusLabel(run.status).toLowerCase()}.`
+          : `The run finished as ${statusLabel(run.status).toLowerCase()}.`
       )}
     </Banner>
   )

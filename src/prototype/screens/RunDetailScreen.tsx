@@ -2,13 +2,13 @@ import { useEffect, useState } from 'react'
 import { Badge, Button, Code, Flex, Grid, Text } from '@radix-ui/themes'
 
 import { AppShell } from '../components/shell'
-import { Caption, PageHeader, Status, CommandBar, InfoHint } from '../components/common'
+import { Caption, PageHeader, Status, CommandBar, InfoHint, statusLabel } from '../components/common'
 import { LoadingList, NoAccessState, Banner } from '../components/states'
 import { IconAlert, IconArrowRight } from '../components/icons'
 import { Link } from '../router'
 import { api } from '../lib/api'
 import type { Run, RunStep, RunStepType, RunToolError } from '../lib/types'
-import { absTime, domainLabel, durationMs, errorKindLabel, money, num, shortRef, stageLabel, toolErrorStatusLabel, toolLabel } from '../lib/format'
+import { absTime, domainLabel, durationMs, errorKindLabel, money, num, runStepStatusLabel, shortRef, stageLabel, toolErrorStatusLabel, toolLabel } from '../lib/format'
 
 const STEP_KIND_LABEL: Record<RunStepType, string> = {
   llm_call: 'LLM call',
@@ -96,7 +96,7 @@ export default function RunDetailScreen({ runId }: { runId: string }) {
         <CommandBar
           parts={[
             { label: 'TASK', value: run.task_id ? shortRef(run.task_id) : 'standalone' },
-            { label: 'STATUS', value: run.status, tone: run.status === 'failed' || run.status === 'suspended' || run.status === 'completed_with_errors' ? 'warn' : undefined },
+            { label: 'STATUS', value: statusLabel(run.status), tone: run.status === 'failed' || run.status === 'suspended' || run.status === 'completed_with_errors' ? 'warn' : undefined },
             ...(run.error_kind && run.error_kind !== 'none'
               ? [{ label: 'ERROR', value: errorKindLabel(run.error_kind), tone: 'warn' as const }]
               : []),
@@ -261,7 +261,7 @@ function StepRow({ step, expanded, onToggle }: { step: RunStep; expanded: boolea
         <Text as="span" size="1" color="gray">
           {STEP_KIND_LABEL[step.step_type]}
         </Text>
-        <Badge color={tone.color} variant={tone.variant} radius="full" size="1">{step.status}</Badge>
+        <Badge color={tone.color} variant={tone.variant} radius="full" size="1">{runStepStatusLabel(step.status)}</Badge>
         <Text as="div" size="1" className="truncate">
           {step.model_name ?? (step.tool_name ? toolLabel(step.tool_name) : <Text color="gray">—</Text>)}
         </Text>

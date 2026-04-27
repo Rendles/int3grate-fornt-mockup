@@ -55,7 +55,9 @@
       "Bash(npm view *)",
       "Bash(npm install *)",
       "Bash(git stash *)",
-      "Bash(grep -n \"--text-area-border-radius\\\\|--select-trigger-height\\\\|rt-SelectTrigger {\" \"D:\\\\Work\\\\int3grate-fornt-mockup\\\\node_modules\\\\@radix-ui\\\\themes\\\\styles.css\")"
+      "Bash(grep -n \"--text-area-border-radius\\\\|--select-trigger-height\\\\|rt-SelectTrigger {\" \"D:\\\\Work\\\\int3grate-fornt-mockup\\\\node_modules\\\\@radix-ui\\\\themes\\\\styles.css\")",
+      "Bash(grep -B 5 -A 5 \"navigate\\(\\\\`/chats\" ChatNewScreen.tsx)",
+      "Bash(xargs grep *)"
     ]
   }
 }

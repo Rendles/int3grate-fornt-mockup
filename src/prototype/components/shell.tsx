@@ -23,6 +23,9 @@ import {
 } from './icons'
 import { Avatar, MockBadge } from './common'
 import { roleLabel } from '../lib/format'
+import { useTour } from '../tours/TourProvider'
+import { sidebarTour } from '../tours/sidebar-tour'
+import { IconHelp } from './icons'
 
 interface NavItem {
   key: string
@@ -93,7 +96,7 @@ export function Sidebar() {
 
   return (
     <nav className="shell__sidebar" aria-label="Main">
-      <div className="sb__brand">
+      <div className="sb__brand" data-tour="sb-brand">
         <div className="sb__brand-mark">
           <img src={logo} alt="" />
         </div>
@@ -108,6 +111,7 @@ export function Sidebar() {
           <Link
             key={item.key}
             to={item.to}
+            data-tour={`nav-${item.key}`}
             className={`sb__item${isActive(item.to) ? ' sb__item--active' : ''}`}
           >
             <span className="sb__item-icon">{item.icon}</span>
@@ -129,7 +133,7 @@ export function Sidebar() {
       </div>
 
       {user && (
-        <div className="sb__footer">
+        <div className="sb__footer" data-tour="sb-footer">
           <Link to="/profile" className="sb__user">
             <Avatar initials={user.name.slice(0, 2).toUpperCase()} size={30} />
             <Box flexGrow="1" minWidth="0">
@@ -152,6 +156,7 @@ export function Topbar({
 }) {
   const { user, logout } = useAuth()
   const { theme, toggle } = useTheme()
+  const { startTour } = useTour()
   return (
     <Flex
       asChild
@@ -200,6 +205,16 @@ export function Topbar({
             </Code>
           </Box>
         )}
+
+        <IconButton
+          variant="ghost"
+          size="1"
+          onClick={() => startTour(sidebarTour)}
+          title="Start sidebar tour"
+          aria-label="Start sidebar tour"
+        >
+          <IconHelp size={14} />
+        </IconButton>
 
         <IconButton
           variant="ghost"

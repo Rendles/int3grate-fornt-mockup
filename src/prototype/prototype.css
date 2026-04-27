@@ -11,6 +11,15 @@
      via <Theme appearance>. */
   --radius: 6px;
 
+  /* Elevate "panel" surfaces (cards, sidebar, sticky topbar, chat messages
+     scroller) one step above the page background. Radix Themes' default
+     `--color-panel-solid` (with `panelBackground="solid"` + `grayColor="slate"`)
+     resolves to `--gray-1` in the light theme — i.e. the same as
+     `--color-page-background`, which makes all card surfaces invisible. We
+     override to `--gray-2` so light theme gets a faint grey tint while dark
+     theme stays visually identical to the previous behaviour. */
+  --color-panel-solid: var(--gray-2);
+
   /* Radix Themes font overrides — use Inter everywhere, including headings and code. */
   --default-font-family: 'Inter', -apple-system, BlinkMacSystemFont, system-ui, sans-serif;
   --heading-font-family: var(--default-font-family);
@@ -1059,6 +1068,15 @@
   line-height: 1.4;
   white-space: normal;
 }
+/* When Radix highlights an item (keyboard focus / hover), it paints the row
+   with a saturated `--accent-9` background. Our hardcoded `--gray-12` /
+   `--gray-11` text colors above survive that and end up dark-on-dark in both
+   themes (worst in light theme). Switch to `--accent-contrast` — Radix's
+   designated "readable text on accent fill" token — for the active row. */
+.catalog-item[data-highlighted] .catalog-item__name,
+.catalog-item[data-highlighted] .catalog-item__desc {
+  color: var(--accent-contrast);
+}
 
 /* Trigger for the catalog Select. When an option is selected, Radix portals
    the option's children (our two name+desc spans) into the trigger's
@@ -1106,4 +1124,55 @@
 }
 @media (prefers-reduced-motion: reduce) {
   .prototype-root .status-pulse { animation: none; }
+}
+
+/* ============================================================= TOUR / GUIDED ONBOARDING
+
+   Lives inside .prototype-root. The spotlight uses the box-shadow trick:
+   one fixed-position rect anchored over the target, with an outsized
+   box-shadow painting the dim outside. No SVG masks, animates cheaply via
+   CSS transitions on top/left/width/height.
+
+   The tooltip is a separately positioned floating panel — coords are
+   computed in TourOverlay.tsx based on the target rect + placement.
+*/
+.prototype-root .tour {
+  position: fixed;
+  inset: 0;
+  z-index: 1000;
+  pointer-events: auto;
+}
+
+/* Fallback backdrop when target hasn't been resolved yet (or is missing). */
+.prototype-root .tour__backdrop {
+  position: absolute;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.65);
+}
+
+/* The spotlight rect — visible chrome is the shadow that fills the rest of
+   the viewport. The rect itself is transparent so the target shows through. */
+.prototype-root .tour__spot {
+  position: fixed;
+  border-radius: 10px;
+  box-shadow:
+    0 0 0 9999px rgba(0, 0, 0, 0.65),
+    0 0 0 1px var(--accent-a8) inset;
+  pointer-events: none;
+  transition: top 220ms ease, left 220ms ease, width 220ms ease, height 220ms ease;
+}
+
+.prototype-root .tour__tooltip {
+  position: fixed;
+  background: var(--color-panel-solid);
+  border: 1px solid var(--gray-a5);
+  border-radius: 12px;
+  padding: 16px;
+  box-shadow: 0 18px 40px -12px rgba(0, 0, 0, 0.45), 0 4px 12px -2px rgba(0, 0, 0, 0.35);
+  transition: top 220ms ease, left 220ms ease;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .prototype-root .tour__spot,
+  .prototype-root .tour__tooltip { transition: none; }
 }
