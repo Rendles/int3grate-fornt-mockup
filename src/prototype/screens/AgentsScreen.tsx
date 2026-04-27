@@ -9,10 +9,10 @@ import { IconAgent, IconArrowRight, IconLock, IconPlus, IconSearch } from '../co
 import { Link } from '../router'
 import { useAuth } from '../auth'
 import { api } from '../lib/api'
-import type { Agent, AgentStatus, User } from '../lib/types'
+import { AGENT_STATUS_FILTERS } from '../lib/filters'
+import type { AgentStatusFilter } from '../lib/filters'
+import type { Agent, User } from '../lib/types'
 import { ago, domainLabel } from '../lib/format'
-
-const STATUSES: Array<AgentStatus | 'all'> = ['all', 'active', 'paused', 'draft', 'archived']
 
 export default function AgentsScreen() {
   const { user } = useAuth()
@@ -20,7 +20,7 @@ export default function AgentsScreen() {
   const [users, setUsers] = useState<User[]>([])
   const [error, setError] = useState<string | null>(null)
   const [reloadTick, setReloadTick] = useState(0)
-  const [filter, setFilter] = useState<AgentStatus | 'all'>('all')
+  const [filter, setFilter] = useState<AgentStatusFilter>('all')
   const [query, setQuery] = useState('')
   const [page, setPage] = useState(0)
   const [pageSize, setPageSize] = useState(10)
@@ -90,7 +90,7 @@ export default function AgentsScreen() {
 
         <Flex align="center" gap="2" mb="4" wrap="wrap">
           <Flex align="center" gap="2">
-            {STATUSES.map(f => {
+            {AGENT_STATUS_FILTERS.map(f => {
               const isActive = filter === f
               return (
                 <Button

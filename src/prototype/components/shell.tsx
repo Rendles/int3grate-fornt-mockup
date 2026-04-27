@@ -23,7 +23,7 @@ import {
 } from './icons'
 import { Avatar, MockBadge } from './common'
 import { roleLabel } from '../lib/format'
-import { useTour } from '../tours/TourProvider'
+import { useTour } from '../tours/useTour'
 import { sidebarTour } from '../tours/sidebar-tour'
 import { IconHelp } from './icons'
 

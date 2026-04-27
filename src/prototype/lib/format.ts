@@ -173,19 +173,6 @@ export function stageLabel(stage: string | null | undefined): string {
     .join(' · ')
 }
 
-const STEP_KIND_LABELS: Record<string, string> = {
-  llm_call: 'LLM call',
-  tool_call: 'Tool call',
-  memory_read: 'Memory read',
-  memory_write: 'Memory write',
-  approval_gate: 'Approval gate',
-  validation: 'Validation',
-}
-
-export function stepKindLabel(kind: string): string {
-  return STEP_KIND_LABELS[kind] ?? kind.replace(/_/g, ' ')
-}
-
 // Run step execution result. Different vocabulary from entity-level statuses:
 // `ok / failed / blocked / pending / running`. `humanKey('ok')` would give
 // `Ok` which reads awkwardly, so handle that case explicitly.

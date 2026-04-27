@@ -57,7 +57,10 @@
       "Bash(git stash *)",
       "Bash(grep -n \"--text-area-border-radius\\\\|--select-trigger-height\\\\|rt-SelectTrigger {\" \"D:\\\\Work\\\\int3grate-fornt-mockup\\\\node_modules\\\\@radix-ui\\\\themes\\\\styles.css\")",
       "Bash(grep -B 5 -A 5 \"navigate\\(\\\\`/chats\" ChatNewScreen.tsx)",
-      "Bash(xargs grep *)"
+      "Bash(xargs grep *)",
+      "Bash(xargs -I {} basename {})",
+      "Bash(grep \"\\\\.tsx$\")",
+      "Bash(find src/prototype/screens -name \"*.tsx\" -exec grep -l \"function.*Label\\\\|const.*Label\" {} \\\\;)"
     ]
   }
 }

@@ -17,7 +17,6 @@ import {
   LockIcon,
   Logout03Icon,
   Moon02Icon,
-  PauseIcon,
   PlayIcon,
   PlusSignIcon,
   Robot02Icon,
@@ -67,7 +66,6 @@ export const IconAlert = make(Alert02Icon)
 export const IconInfo = make(InformationCircleIcon)
 
 export const IconPlay = make(PlayIcon)
-export const IconPause = make(PauseIcon)
 export const IconStop = make(StopCircleIcon)
 
 export const IconSearch = make(Search01Icon)

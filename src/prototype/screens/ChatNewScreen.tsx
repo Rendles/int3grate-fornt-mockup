@@ -23,7 +23,10 @@ export default function ChatNewScreen() {
 
   const [agents, setAgents] = useState<Agent[] | null>(null)
   const [agentId, setAgentId] = useState<string>(search.get('agent') ?? '')
-  const [model, setModel] = useState<string>('')
+  // `userModel` holds an explicit user choice from the dropdown. When null we
+  // derive the displayed model from the agent version's primary — no need to
+  // mirror it into state via an effect (which trips react-hooks/set-state-in-effect).
+  const [userModel, setUserModel] = useState<string | null>(null)
   const [title, setTitle] = useState<string>('')
   const [submitted, setSubmitted] = useState(false)
   const [busy, setBusy] = useState(false)
@@ -43,12 +46,8 @@ export default function ChatNewScreen() {
   const version = agent?.active_version ?? null
   const runnable = agent?.status === 'active' && !!version
 
-  // Default the model dropdown to the version's primary model when version changes.
-  useEffect(() => {
-    if (!version) return
-    const primary = (version.model_chain_config as { primary?: string })?.primary
-    if (primary) setModel(primary)
-  }, [version])
+  const defaultModel = (version?.model_chain_config as { primary?: string })?.primary ?? ''
+  const model = userModel ?? defaultModel
 
   const submit = async () => {
     setSubmitted(true)
@@ -192,7 +191,7 @@ export default function ChatNewScreen() {
                   <Box>
                     <SelectField
                       value={model || undefined}
-                      onChange={setModel}
+                      onChange={setUserModel}
                       options={MODELS}
                       placeholder="Use agent default"
                     />

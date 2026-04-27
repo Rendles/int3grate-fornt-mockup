@@ -8,10 +8,11 @@ import { IconArrowRight, IconChat, IconPlus } from '../components/icons'
 import { Link } from '../router'
 import { useAuth } from '../auth'
 import { api } from '../lib/api'
-import type { Agent, Chat, ChatStatus } from '../lib/types'
+import { CHAT_STATUS_FILTERS } from '../lib/filters'
+import type { ChatStatusFilter } from '../lib/filters'
+import type { Agent, Chat } from '../lib/types'
 import { ago, money } from '../lib/format'
 
-const STATUSES: Array<ChatStatus | 'all'> = ['all', 'active', 'closed', 'failed']
 const PAGE_SIZE_DEFAULT = 10
 const TABLE_COLS = 'minmax(0, 1fr) 160px 130px 120px 110px 110px 32px'
 
@@ -20,7 +21,7 @@ export default function ChatsScreen() {
   const [items, setItems] = useState<Chat[] | null>(null)
   const [total, setTotal] = useState(0)
   const [agents, setAgents] = useState<Agent[]>([])
-  const [statusFilter, setStatusFilter] = useState<ChatStatus | 'all'>('all')
+  const [statusFilter, setStatusFilter] = useState<ChatStatusFilter>('all')
   const [error, setError] = useState<string | null>(null)
   const [reloadTick, setReloadTick] = useState(0)
   const [page, setPage] = useState(0)
@@ -85,7 +86,7 @@ export default function ChatsScreen() {
 
         <Flex align="center" gap="2" mb="4" wrap="wrap">
           <Caption mr="1">status</Caption>
-          {STATUSES.map(s => {
+          {CHAT_STATUS_FILTERS.map(s => {
             const isActive = statusFilter === s
             return (
               <Button

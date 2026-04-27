@@ -7,19 +7,10 @@ import { EmptyState, ErrorState, LoadingList } from '../components/states'
 import { IconArrowRight, IconRun } from '../components/icons'
 import { Link } from '../router'
 import { api } from '../lib/api'
-import type { Agent, RunListItem, RunStatus } from '../lib/types'
+import { RUN_STATUS_FILTERS } from '../lib/filters'
+import type { RunStatusFilter } from '../lib/filters'
+import type { Agent, RunListItem } from '../lib/types'
 import { ago, domainLabel, durationMs, money, num, shortRef, stageLabel } from '../lib/format'
-
-const STATUSES: Array<RunStatus | 'all'> = [
-  'all',
-  'pending',
-  'running',
-  'suspended',
-  'completed',
-  'completed_with_errors',
-  'failed',
-  'cancelled',
-]
 
 const PAGE_SIZE_DEFAULT = 10
 const TABLE_COLS = '110px minmax(0, 1fr) 150px 130px 110px 110px 32px'
@@ -28,11 +19,15 @@ export default function RunsScreen() {
   const [items, setItems] = useState<RunListItem[] | null>(null)
   const [total, setTotal] = useState(0)
   const [agents, setAgents] = useState<Agent[]>([])
-  const [status, setStatus] = useState<RunStatus | 'all'>('all')
+  const [status, setStatus] = useState<RunStatusFilter>('all')
   const [error, setError] = useState<string | null>(null)
   const [reloadTick, setReloadTick] = useState(0)
   const [page, setPage] = useState(0)
   const [pageSize, setPageSize] = useState(PAGE_SIZE_DEFAULT)
+  // Frozen "now" used to compute durations of in-flight runs without calling
+  // Date.now() during render (which the react-hooks/purity rule flags). Updated
+  // each time the run list reloads.
+  const [loadedAt, setLoadedAt] = useState<number>(() => Date.now())
 
   useEffect(() => {
     let cancelled = false
@@ -51,6 +46,7 @@ export default function RunsScreen() {
         setItems(list.items)
         setTotal(list.total)
         setAgents(ags.items)
+        setLoadedAt(Date.now())
         setError(null)
       })
       .catch(e => {
@@ -71,7 +67,7 @@ export default function RunsScreen() {
 
   const runDuration = (r: RunListItem) => {
     if (!r.started_at) return null
-    const end = r.ended_at ? new Date(r.ended_at).getTime() : Date.now()
+    const end = r.ended_at ? new Date(r.ended_at).getTime() : loadedAt
     return end - new Date(r.started_at).getTime()
   }
 
@@ -93,7 +89,7 @@ export default function RunsScreen() {
 
         <Flex align="center" gap="2" mb="4" wrap="wrap">
           <Caption mr="1">status</Caption>
-          {STATUSES.map(s => {
+          {RUN_STATUS_FILTERS.map(s => {
             const isActive = status === s
             const tone = s === 'failed' || s === 'suspended' || s === 'completed_with_errors' ? 'amber' : 'blue'
             return (

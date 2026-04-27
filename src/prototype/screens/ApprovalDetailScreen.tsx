@@ -2,7 +2,8 @@ import { useEffect, useState } from 'react'
 import { Badge, Box, Button, Code, Flex, Grid, Separator, Text } from '@radix-ui/themes'
 
 import { AppShell } from '../components/shell'
-import { Caption, PageHeader, Status, CommandBar, InfoHint, statusLabel } from '../components/common'
+import { Caption, PageHeader, Status, CommandBar, InfoHint } from '../components/common'
+import { statusLabel } from '../components/common/status-label'
 import { TextAreaField } from '../components/fields'
 import { Banner, LoadingList, NoAccessState } from '../components/states'
 import {

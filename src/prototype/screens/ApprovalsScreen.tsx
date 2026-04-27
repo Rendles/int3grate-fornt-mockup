@@ -7,17 +7,16 @@ import { Banner, EmptyState, ErrorState, LoadingList } from '../components/state
 import { IconApproval, IconArrowRight, IconCheck, IconX } from '../components/icons'
 import { Link, useRouter } from '../router'
 import { api } from '../lib/api'
-import type { ApprovalRequest, ApprovalStatus, User } from '../lib/types'
+import { APPROVAL_STATUS_FILTERS } from '../lib/filters'
+import type { ApprovalStatusFilter } from '../lib/filters'
+import type { ApprovalRequest, User } from '../lib/types'
 import { ago, approverRoleLabel, prettifyRequestedAction } from '../lib/format'
-
-type StatusFilter = ApprovalStatus | 'all'
-const STATUSES: StatusFilter[] = ['all', 'pending', 'approved', 'rejected', 'expired', 'cancelled']
 
 export default function ApprovalsScreen() {
   const { navigate } = useRouter()
   const [approvals, setApprovals] = useState<ApprovalRequest[] | null>(null)
   const [users, setUsers] = useState<User[]>([])
-  const [statusFilter, setStatusFilter] = useState<StatusFilter>('pending')
+  const [statusFilter, setStatusFilter] = useState<ApprovalStatusFilter>('pending')
   const [error, setError] = useState<string | null>(null)
   const [reloadTick, setReloadTick] = useState(0)
   const [page, setPage] = useState(0)
@@ -78,7 +77,7 @@ export default function ApprovalsScreen() {
 
         <Flex align="center" gap="2" mb="4" wrap="wrap">
           <Caption mr="1">status</Caption>
-          {STATUSES.map(f => {
+          {APPROVAL_STATUS_FILTERS.map(f => {
             const isActive = statusFilter === f
             const activeColor = f === 'pending' ? 'amber' : 'blue'
             return (

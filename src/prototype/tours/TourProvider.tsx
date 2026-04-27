@@ -1,20 +1,10 @@
-import { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState } from 'react'
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import type { ReactNode } from 'react'
+import { TourContext } from './tour-context'
+import type { TourContextValue } from './tour-context'
 import type { Tour, ToursPersistedState } from './types'
 
 const STORAGE_KEY = 'proto.tours.v1'
-
-interface TourContextValue {
-  activeTour: Tour | null
-  stepIndex: number
-  startTour: (tour: Tour) => void
-  endTour: (markCompleted?: boolean) => void
-  next: () => void
-  prev: () => void
-  isCompleted: (tourId: string) => boolean
-}
-
-const TourContext = createContext<TourContextValue | null>(null)
 
 function readPersisted(): ToursPersistedState {
   try {
@@ -97,10 +87,4 @@ export function TourProvider({ children }: { children: ReactNode }) {
   )
 
   return <TourContext.Provider value={value}>{children}</TourContext.Provider>
-}
-
-export function useTour() {
-  const ctx = useContext(TourContext)
-  if (!ctx) throw new Error('useTour must be used inside <TourProvider>')
-  return ctx
 }

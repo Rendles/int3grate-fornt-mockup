@@ -16,13 +16,6 @@ export interface LoginResponse {
   expires_at: string
 }
 
-// ─────────────────────────────────────────────── Health
-
-export interface HealthResponse {
-  status: 'ok'
-  schema_version?: string
-}
-
 // ─────────────────────────────────────────────── User
 
 export interface User {

@@ -1,4 +1,16 @@
-﻿# План обновления прототипа под gateway v0.2.0
+﻿> **Archived.** This plan tracked the v0.1 → v0.2.0 migration of the
+> prototype against `gateway.yaml` → `gateway_new.yaml`, and is fully
+> executed: `lib/types.ts`, `lib/fixtures.ts`, `lib/api.ts` and every
+> screen now speak v0.2.0. The endpoint-level diff itself lives in
+> `GATEWAY_DIFF.md`.
+>
+> The current backend contract is `gateway (5).yaml` (a further
+> revision past v0.2.0). The active migration plan toward it lives in
+> `GATEWAY_NEXT_PLAN.md`.
+>
+> This document is kept for reference only.
+
+# План обновления прототипа под gateway v0.2.0
 
 _Что именно меняем во фронте (`src/prototype/`) с учётом диффа `gateway.yaml → gateway_new.yaml` (см. `GATEWAY_DIFF.md`)._
 

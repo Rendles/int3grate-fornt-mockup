@@ -7,16 +7,16 @@ import { Banner, EmptyState, ErrorState, LoadingList } from '../components/state
 import { IconArrowRight, IconPlus, IconTask } from '../components/icons'
 import { Link } from '../router'
 import { api } from '../lib/api'
-import type { Agent, Task, TaskStatus, User } from '../lib/types'
+import { TASK_STATUS_FILTERS } from '../lib/filters'
+import type { TaskStatusFilter } from '../lib/filters'
+import type { Agent, Task, User } from '../lib/types'
 import { ago, humanKey } from '../lib/format'
-
-const STATUSES: Array<TaskStatus | 'all'> = ['all', 'pending', 'running', 'completed', 'failed', 'cancelled']
 
 export default function TasksScreen() {
   const [tasks, setTasks] = useState<Task[] | null>(null)
   const [agents, setAgents] = useState<Agent[]>([])
   const [users, setUsers] = useState<User[]>([])
-  const [status, setStatus] = useState<TaskStatus | 'all'>('all')
+  const [status, setStatus] = useState<TaskStatusFilter>('all')
   const [error, setError] = useState<string | null>(null)
   const [reloadTick, setReloadTick] = useState(0)
   const [page, setPage] = useState(0)
@@ -84,7 +84,7 @@ export default function TasksScreen() {
 
         <Flex align="center" gap="2" mb="4" wrap="wrap">
           <Caption mr="1">status</Caption>
-          {STATUSES.map(s => {
+          {TASK_STATUS_FILTERS.map(s => {
             const isActive = status === s
             return (
               <Button

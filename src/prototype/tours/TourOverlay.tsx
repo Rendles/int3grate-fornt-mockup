@@ -1,6 +1,6 @@
 import { useEffect, useLayoutEffect, useRef, useState } from 'react'
 import { Button, Flex, IconButton, Text } from '@radix-ui/themes'
-import { useTour } from './TourProvider'
+import { useTour } from './useTour'
 import { IconX } from '../components/icons'
 import type { TourPlacement, TourStep } from './types'
 
@@ -62,74 +62,8 @@ export function TourOverlay() {
   const { activeTour, stepIndex, next, prev, endTour } = useTour()
   const step: TourStep | undefined = activeTour?.steps[stepIndex]
 
-  const [rect, setRect] = useState<Rect | null>(null)
-  const [tooltipHeight, setTooltipHeight] = useState(0)
-  const [missing, setMissing] = useState(false)
-  const tooltipRef = useRef<HTMLDivElement>(null)
-  const targetElRef = useRef<Element | null>(null)
-
-  // Resolve target on step change. Retry briefly to handle async-mounted DOM.
-  useEffect(() => {
-    if (!step) {
-      targetElRef.current = null
-      setRect(null)
-      setMissing(false)
-      return
-    }
-    let cancelled = false
-    let attempts = 0
-    const tryFind = () => {
-      if (cancelled) return
-      const el = document.querySelector(step.target)
-      if (el) {
-        targetElRef.current = el
-        el.scrollIntoView({ block: 'center', inline: 'center', behavior: 'smooth' })
-        setRect(readRect(el))
-        setMissing(false)
-        return
-      }
-      if (attempts++ < 20) {
-        setTimeout(tryFind, 25)
-      } else {
-        targetElRef.current = null
-        setMissing(true)
-      }
-    }
-    tryFind()
-    return () => {
-      cancelled = true
-    }
-  }, [step])
-
-  // Re-measure on resize / scroll while a target is locked.
-  useEffect(() => {
-    if (!step || !targetElRef.current) return
-    let raf = 0
-    const update = () => {
-      raf = 0
-      if (targetElRef.current) setRect(readRect(targetElRef.current))
-    }
-    const schedule = () => {
-      if (raf) return
-      raf = requestAnimationFrame(update)
-    }
-    window.addEventListener('resize', schedule)
-    window.addEventListener('scroll', schedule, true)
-    return () => {
-      window.removeEventListener('resize', schedule)
-      window.removeEventListener('scroll', schedule, true)
-      if (raf) cancelAnimationFrame(raf)
-    }
-  }, [step])
-
-  // Measure tooltip height after render so we can vertically center against target.
-  useLayoutEffect(() => {
-    if (!tooltipRef.current) return
-    const h = tooltipRef.current.getBoundingClientRect().height
-    if (h && Math.abs(h - tooltipHeight) > 1) setTooltipHeight(h)
-  })
-
-  // Hotkeys.
+  // Hotkeys live on the parent so they attach/detach with the whole tour
+  // lifecycle, independent of which step is currently mounted.
   useEffect(() => {
     if (!activeTour) return
     const onKey = (e: KeyboardEvent) => {
@@ -150,7 +84,105 @@ export function TourOverlay() {
 
   if (!activeTour || !step) return null
 
-  const total = activeTour.steps.length
+  // The per-step state (target rect / missing flag / tooltip height) lives in
+  // a child keyed by step.id so React unmounts/remounts on step change. That
+  // gives us a clean state reset without synchronous setState inside an
+  // effect (which trips react-hooks/set-state-in-effect).
+  return (
+    <TourStepView
+      key={step.id}
+      step={step}
+      stepIndex={stepIndex}
+      total={activeTour.steps.length}
+      onNext={next}
+      onPrev={prev}
+      onSkipTour={() => endTour(false)}
+    />
+  )
+}
+
+interface TourStepViewProps {
+  step: TourStep
+  stepIndex: number
+  total: number
+  onNext: () => void
+  onPrev: () => void
+  onSkipTour: () => void
+}
+
+function TourStepView({ step, stepIndex, total, onNext, onPrev, onSkipTour }: TourStepViewProps) {
+  const [rect, setRect] = useState<Rect | null>(null)
+  const [tooltipHeight, setTooltipHeight] = useState(0)
+  const [missing, setMissing] = useState(false)
+  const tooltipRef = useRef<HTMLDivElement>(null)
+  const targetElRef = useRef<Element | null>(null)
+
+  // Resolve target. Retries briefly to handle async-mounted DOM. The cleanup
+  // cancels both the in-flight pending timeout and any state update from a
+  // late-resolving query.
+  useEffect(() => {
+    let cancelled = false
+    let timer: ReturnType<typeof setTimeout> | null = null
+    let attempts = 0
+    const tryFind = () => {
+      if (cancelled) return
+      const el = document.querySelector(step.target)
+      if (el) {
+        targetElRef.current = el
+        el.scrollIntoView({ block: 'center', inline: 'center', behavior: 'smooth' })
+        setRect(readRect(el))
+        return
+      }
+      if (attempts++ < 20) {
+        timer = setTimeout(tryFind, 25)
+      } else {
+        setMissing(true)
+      }
+    }
+    tryFind()
+    return () => {
+      cancelled = true
+      if (timer) clearTimeout(timer)
+    }
+  }, [step.target])
+
+  // Re-measure on resize / scroll while the target is locked.
+  useEffect(() => {
+    let raf = 0
+    const update = () => {
+      raf = 0
+      if (targetElRef.current) setRect(readRect(targetElRef.current))
+    }
+    const schedule = () => {
+      if (raf) return
+      raf = requestAnimationFrame(update)
+    }
+    window.addEventListener('resize', schedule)
+    window.addEventListener('scroll', schedule, true)
+    return () => {
+      window.removeEventListener('resize', schedule)
+      window.removeEventListener('scroll', schedule, true)
+      if (raf) cancelAnimationFrame(raf)
+    }
+  }, [])
+
+  // Track tooltip height via ResizeObserver. useLayoutEffect ensures the
+  // first measurement lands before paint, avoiding a flicker from the
+  // viewport-centred fallback to the anchored position. Functional
+  // setTooltipHeight skips the need for tooltipHeight in deps, so the empty
+  // deps array satisfies react-hooks/exhaustive-deps.
+  useLayoutEffect(() => {
+    const el = tooltipRef.current
+    if (!el) return
+    const ro = new ResizeObserver(() => {
+      const h = el.getBoundingClientRect().height
+      if (!h) return
+      setTooltipHeight(prev => (Math.abs(h - prev) > 1 ? h : prev))
+    })
+    ro.observe(el)
+    return () => ro.disconnect()
+  }, [])
+
   const isFirst = stepIndex === 0
   const isLast = stepIndex === total - 1
   const padding = step.spotlightPadding ?? 6
@@ -195,7 +227,7 @@ export function TourOverlay() {
             variant="ghost"
             color="gray"
             size="1"
-            onClick={() => endTour(false)}
+            onClick={onSkipTour}
             aria-label="Close tour"
             title="Skip tour (Esc)"
           >
@@ -214,7 +246,7 @@ export function TourOverlay() {
               variant="ghost"
               color="gray"
               size="1"
-              onClick={prev}
+              onClick={onPrev}
               disabled={isFirst}
               style={{ margin: 0 }}
             >
@@ -224,7 +256,7 @@ export function TourOverlay() {
               variant="ghost"
               color="gray"
               size="1"
-              onClick={() => endTour(false)}
+              onClick={onSkipTour}
               style={{ margin: 0 }}
             >
               Skip tour
@@ -232,11 +264,11 @@ export function TourOverlay() {
           </Flex>
           <Flex gap="2" align="center">
             {!isLast && (
-              <Button variant="soft" color="gray" size="1" onClick={next}>
+              <Button variant="soft" color="gray" size="1" onClick={onNext}>
                 Skip step
               </Button>
             )}
-            <Button size="1" onClick={next}>
+            <Button size="1" onClick={onNext}>
               {isLast ? 'Done' : 'Next →'}
             </Button>
           </Flex>

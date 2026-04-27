@@ -1,73 +1,47 @@
-# React + TypeScript + Vite
+# int3grate-front-mockup
 
-This template provides a minimal setup to get React working in Vite with HMR and some ESLint rules.
+Front-end mockup for the **Int3grate.ai control plane** — a multi-tenant
+operator UI for managing AI agents, chats, runs, approvals, tools and
+spend. The repo ships *two* UIs from a single Vite bundle, switched by
+URL hash:
 
-Currently, two official plugins are available:
+- `/` — public landing page (`src/App.tsx`, the Vite/React starter).
+- `/#/app` (and any deeper `/#/app/...`) — the control-plane prototype
+  (`src/prototype/`). Self-contained, no backend; everything is mocked
+  in-memory against the gateway OpenAPI spec.
 
-- [@vitejs/plugin-react](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react) uses [Oxc](https://oxc.rs)
-- [@vitejs/plugin-react-swc](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react-swc) uses [SWC](https://swc.rs/)
+## Quick start
 
-## React Compiler
-
-The React Compiler is not enabled on this template because of its impact on dev & build performances. To add it, see [this documentation](https://react.dev/learn/react-compiler/installation).
-
-## Expanding the ESLint configuration
-
-If you are developing a production application, we recommend updating the configuration to enable type-aware lint rules:
-
-```js
-export default defineConfig([
-  globalIgnores(['dist']),
-  {
-    files: ['**/*.{ts,tsx}'],
-    extends: [
-      // Other configs...
-
-      // Remove tseslint.configs.recommended and replace with this
-      tseslint.configs.recommendedTypeChecked,
-      // Alternatively, use this for stricter rules
-      tseslint.configs.strictTypeChecked,
-      // Optionally, add this for stylistic rules
-      tseslint.configs.stylisticTypeChecked,
-
-      // Other configs...
-    ],
-    languageOptions: {
-      parserOptions: {
-        project: ['./tsconfig.node.json', './tsconfig.app.json'],
-        tsconfigRootDir: import.meta.dirname,
-      },
-      // other options...
-    },
-  },
-])
+```bash
+npm install
+npm run dev
 ```
 
-You can also install [eslint-plugin-react-x](https://github.com/Rel1cx/eslint-react/tree/main/packages/plugins/eslint-plugin-react-x) and [eslint-plugin-react-dom](https://github.com/Rel1cx/eslint-react/tree/main/packages/plugins/eslint-plugin-react-dom) for React-specific lint rules:
+Then open the prototype at `http://localhost:5173/#/app`.
 
-```js
-// eslint.config.js
-import reactX from 'eslint-plugin-react-x'
-import reactDom from 'eslint-plugin-react-dom'
+Demo logins (any password works; the form pre-fills `demo`):
 
-export default defineConfig([
-  globalIgnores(['dist']),
-  {
-    files: ['**/*.{ts,tsx}'],
-    extends: [
-      // Other configs...
-      // Enable lint rules for React
-      reactX.configs['recommended-typescript'],
-      // Enable lint rules for React DOM
-      reactDom.configs.recommended,
-    ],
-    languageOptions: {
-      parserOptions: {
-        project: ['./tsconfig.node.json', './tsconfig.app.json'],
-        tsconfigRootDir: import.meta.dirname,
-      },
-      // other options...
-    },
-  },
-])
-```
+- `frontend@int3grate.ai` — admin
+- `domain@int3grate.ai` — domain admin
+- `member@int3grate.ai` — member
+
+## Scripts
+
+- `npm run dev` — Vite dev server with HMR.
+- `npm run build` — `tsc -b` then `vite build`.
+- `npm run lint` — flat-config ESLint.
+- `npm run preview` — serve the production build.
+
+There is no test runner configured.
+
+## Where to read next
+
+- **`CLAUDE.md`** — full architecture overview, conventions, primitives,
+  format helpers, the tour system, and the prototype's design constraints.
+  Start here if you're going to touch code.
+- **`gateway (5).yaml`** — the canonical backend contract the mock is
+  shaped against.
+- **`BACKEND_DATA_SOURCES.md`** — UI surface → endpoint map; lists open
+  questions for the backend team.
+- **`GATEWAY_NEXT_PLAN.md`** — what's still needed to migrate from the
+  in-memory mock to a real backend.

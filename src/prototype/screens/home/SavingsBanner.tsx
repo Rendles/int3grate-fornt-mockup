@@ -39,11 +39,11 @@ const fmtDate = (d: Date) =>
 
 export function SavingsBanner() {
   const chartData = useMemo<ChartPoint[]>(() => {
-    let acc = 0
-    return buildSavings(30).map(d => {
-      acc += d.value
-      return { date: d.date, value: acc }
-    })
+    return buildSavings(30).reduce<ChartPoint[]>((acc, d) => {
+      const prev = acc.length ? acc[acc.length - 1].value : 0
+      acc.push({ date: d.date, value: prev + d.value })
+      return acc
+    }, [])
   }, [])
 
   const n = chartData.length

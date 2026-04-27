@@ -33,25 +33,28 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   useEffect(() => {
     let cancelled = false
-    try {
-      const raw = localStorage.getItem(STORAGE_KEY)
-      if (raw) {
+    // Wrap session-init in an async function so every code path (no-stored
+    // session, missing credential, fetch success, fetch error) flows through
+    // the same `finally` and only flips `loading` once. Synchronous
+    // setLoading() calls inside an effect body trip react-hooks/set-state-in-effect.
+    const init = async () => {
+      try {
+        const raw = localStorage.getItem(STORAGE_KEY)
+        if (!raw) return
         const { token, userId } = JSON.parse(raw) as StoredSession
         // Prefer token (post-migration sessions); fall back to userId if a
         // legacy session is still in storage. Mock api.me accepts both.
         const credential = token ?? userId
-        if (credential) {
-          api.me(credential)
-            .then(u => { if (!cancelled) setUser(u) })
-            .catch(() => {})
-            .finally(() => { if (!cancelled) setLoading(false) })
-        } else {
-          setLoading(false)
-        }
+        if (!credential) return
+        const u = await api.me(credential).catch(() => null)
+        if (!cancelled && u) setUser(u)
+      } catch {
+        /* no session */
+      } finally {
+        if (!cancelled) setLoading(false)
       }
-    } catch {
-      /* no session */
     }
+    init()
     return () => { cancelled = true }
   }, [])
 

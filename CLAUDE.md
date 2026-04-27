@@ -99,6 +99,8 @@ Two layout escape hatches:
 
 > ⚠️ **Portaled Radix content** (`Select.Content`, dropdowns, popovers) renders **outside `.prototype-root`** via `<body>` portals. Selectors targeting popup contents (e.g. `.catalog-item` for the grants catalog Select) must NOT be prefixed with `.prototype-root` or they won't match. There's a comment block at the top of those rules in `prototype.css`.
 
+> ⚠️ **`--color-panel-solid` override**: at the top of `.prototype-root` we redefine `--color-panel-solid: var(--gray-2)`. Radix Themes' default resolution (with `panelBackground="solid"` + `grayColor="slate"` in light mode) collapses to `--gray-1` — i.e. the same as `--color-page-background` — so all card / sidebar / sticky-topbar / chat-message surfaces became invisible against the page in the light theme. The `--gray-2` override gives a faint tint in light mode and is visually identical to the previous behaviour in dark mode. Don't remove it without a replacement strategy.
+
 ### Adding a screen
 
 1. Create `src/prototype/screens/MyScreen.tsx` exporting a default component.
@@ -115,7 +117,7 @@ All exported through the `components/common.tsx` barrel:
 - **`Tabs`** — Radix `TabNav` wrapper. Has a built-in bottom border; pair with ~24px breathing space before content (see `AgentDetailScreen`).
 - **`MetaRow`** — DataList row. **Must be wrapped in `<DataList.Root size="2">`** by the caller (without it the grid template breaks). The label automatically gets first-letter-capitalized via CSS, so call sites can write `label="created by"` and it renders as `Created by`.
 - **`MetricCard`** — KPI tile with label / value / unit / delta / icon, optional `href` to make it clickable.
-- **`Status`** — coloured pill mapping enum status → friendly label. Accepts the union of all status enums (Agent / Run / Task / Approval / Chat / etc.). For places that need a string instead of the pill (e.g. `CommandBar` `value` field, inline banner copy), use the sibling **`statusLabel(s)`** export from the same module — it shares the underlying map and falls back to `humanKey()` for unknown values.
+- **`Status`** — coloured pill mapping enum status → friendly label. Accepts the union of all status enums (Agent / Run / Task / Approval / Chat / etc.). For places that need a string instead of the pill (e.g. `CommandBar` `value` field, inline banner copy), import **`statusLabel(s)`** from `components/common/status-label` — it shares the underlying map and falls back to `humanKey()` for unknown values.
 - **`Pagination`** — page + pageSize controls. Used at the bottom of `card--table` lists.
 - **`InfoHint`** — info ⓘ tooltip for technical / API hints inline in copy.
 - **`Caption`** — small uppercase tracked label (UI section labels).
@@ -127,7 +129,7 @@ All exported through the `components/common.tsx` barrel:
 Two-tier wrapper over `@hugeicons/react` + `@hugeicons/core-free-icons`:
 
 - **`<Icon icon={SomeIcon} />`** (`components/icon.tsx`) — preferred for new code. Pair with a direct named import from `@hugeicons/core-free-icons`.
-- **Legacy named exports** (`components/icons.tsx`) — `IconHome`, `IconAgent`, `IconChat`, `IconTask`, `IconApproval`, `IconRun`, `IconTool`, `IconSpend`, `IconAudit`, `IconPlus`, `IconArrowLeft`, `IconArrowRight`, `IconCheck`, `IconX`, `IconAlert`, `IconInfo`, `IconPlay`, `IconPause`, `IconStop`, `IconLock`, `IconEye`, `IconEyeOff`, `IconLogout`, `IconSun`, `IconMoon`, `IconHelp`. These are now thin wrappers over the same Hugeicons set, kept so existing call-sites still work; new code should prefer `<Icon>`.
+- **Legacy named exports** (`components/icons.tsx`) — `IconHome`, `IconAgent`, `IconChat`, `IconTask`, `IconApproval`, `IconRun`, `IconTool`, `IconSpend`, `IconAudit`, `IconPlus`, `IconArrowLeft`, `IconArrowRight`, `IconCheck`, `IconX`, `IconAlert`, `IconInfo`, `IconPlay`, `IconStop`, `IconSearch`, `IconLock`, `IconEye`, `IconEyeOff`, `IconLogout`, `IconSun`, `IconMoon`, `IconHelp`. These are now thin wrappers over the same Hugeicons set, kept so existing call-sites still work; new code should prefer `<Icon>`.
 
 Both wrappers default `className="ic"`. Sizing comes from the `.ic` class in `prototype.css` (14px default; `.ic--sm` 12px, `.ic--lg` 18px). All icons inherit `currentColor`, so colour them via the surrounding `<Text color="…">` / Radix Theme tokens — don't pass `primaryColor` props.
 
@@ -149,7 +151,7 @@ Numbers / dates: `money`, `num`, `pct`, `ago`, `absTime`, `shortDate`, `duration
 ID / reference: `shortRef` (entity_id → `#<tail>` for breadcrumbs/refs), `humanKey` (`snake_case` → `Sentence case`).
 Domain labels: `roleLabel`, `domainLabel`, `tenantLabel`, `approverRoleLabel`.
 Tool catalog: `TOOL_LABELS`, `toolLabel(name)`, `prettifyRequestedAction(s)` (parses `service.action` prefix from `requested_action` strings and replaces with friendly tool label).
-Enum → friendly: `grantModeLabel` (`read_write` → "Read & write"), `policyModeLabel` (`requires_approval` → "Requires approval"), `errorKindLabel` (`tool_error` → "Tool error"), `toolErrorStatusLabel`, `stageLabel` (run.suspended_stage parser), `stepKindLabel`, `runStepStatusLabel` (`ok` → "OK", others via `humanKey`).
+Enum → friendly: `grantModeLabel` (`read_write` → "Read & write"), `policyModeLabel` (`requires_approval` → "Requires approval"), `errorKindLabel` (`tool_error` → "Tool error"), `toolErrorStatusLabel`, `stageLabel` (run.suspended_stage parser), `runStepStatusLabel` (`ok` → "OK", others via `humanKey`).
 
 Rule of thumb: never display raw enums (`requires_approval`, `domain_admin`, `tool_error`) or raw IDs (`agt_xxx`, `usr_xxx`) directly in the UI — always go through one of the helpers above.
 

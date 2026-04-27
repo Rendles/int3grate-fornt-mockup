@@ -141,7 +141,7 @@ export default function VersionNewScreen({ agentId }: { agentId: string }) {
             : 'This is the first version for this agent.'}
           actions={
             <>
-              <Button asChild variant="ghost" disabled={busy}><a href={`#/agents/${agent.id}`}>Cancel</a></Button>
+              <Button asChild variant="soft" color="gray" disabled={busy}><a href={`#/agents/${agent.id}`}>Cancel</a></Button>
               <Button onClick={submit} disabled={busy}>
                 {busy ? 'creating…' : activateImmediately ? `Create & activate v${nextVer}` : `Create v${nextVer}`}
               </Button>
