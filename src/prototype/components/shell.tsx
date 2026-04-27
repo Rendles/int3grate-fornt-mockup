@@ -10,16 +10,18 @@ import logo from '../../assets/logo.svg'
 import {
   IconAgent,
   IconApproval,
+  IconAudit,
+  IconChat,
   IconHome,
-  IconIntegration,
   IconLogout,
   IconMoon,
+  IconRun,
   IconSpend,
   IconSun,
   IconTask,
   IconTool,
 } from './icons'
-import { Avatar } from './common'
+import { Avatar, MockBadge } from './common'
 import { roleLabel } from '../lib/format'
 
 interface NavItem {
@@ -28,7 +30,7 @@ interface NavItem {
   to: string
   icon: ReactNode
   badge?: { count: number | string; tone?: 'accent' | 'warn' | 'muted' }
-  note?: string
+  mockKind?: 'design' | 'deferred'
 }
 
 export function Sidebar() {
@@ -36,24 +38,38 @@ export function Sidebar() {
   const { path } = useRouter()
   const [pendingApprovals, setPendingApprovals] = useState<number>(0)
   const [activeTasks, setActiveTasks] = useState<number>(0)
+  const [activeChats, setActiveChats] = useState<number>(0)
 
   useEffect(() => {
-    api.listApprovals({ status: 'pending' }).then(list => setPendingApprovals(list.length))
+    api.listApprovals({ status: 'pending' }).then(list => setPendingApprovals(list.total))
     api.listTasks().then(list =>
-      setActiveTasks(list.filter(t => t.status === 'pending' || t.status === 'running').length)
+      setActiveTasks(list.items.filter(t => t.status === 'pending' || t.status === 'running').length)
     )
-  }, [])
+    if (user) {
+      api.listChats({ id: user.id, role: user.role }, { limit: 100 }).then(list =>
+        setActiveChats(list.items.filter(c => c.status === 'active').length)
+      )
+    }
+  }, [user])
 
+  const isAdmin = user?.role === 'admin' || user?.role === 'domain_admin'
   const items: NavItem[] = [
     { key: 'dashboard', label: 'Dashboard', to: '/', icon: <IconHome /> },
     { key: 'agents', label: 'Agents', to: '/agents', icon: <IconAgent /> },
+    {
+      key: 'chats',
+      label: 'Chats',
+      to: '/chats',
+      icon: <IconChat />,
+      badge: activeChats > 0 ? { count: activeChats, tone: 'accent' } : undefined,
+    },
     {
       key: 'tasks',
       label: 'Tasks',
       to: '/tasks',
       icon: <IconTask />,
       badge: activeTasks > 0 ? { count: activeTasks, tone: 'muted' } : undefined,
-      note: 'deferred',
+      mockKind: 'deferred',
     },
     {
       key: 'approvals',
@@ -62,9 +78,12 @@ export function Sidebar() {
       icon: <IconApproval />,
       badge: pendingApprovals > 0 ? { count: pendingApprovals, tone: 'warn' } : undefined,
     },
+    { key: 'runs', label: 'Runs', to: '/runs', icon: <IconRun /> },
     { key: 'tools', label: 'Tools', to: '/tools', icon: <IconTool /> },
     { key: 'spend', label: 'Spend', to: '/spend', icon: <IconSpend /> },
-    { key: 'components', label: 'Components', to: '/components', icon: <IconIntegration /> },
+    ...(isAdmin
+      ? [{ key: 'audit', label: 'Audit', to: '/audit', icon: <IconAudit /> } as NavItem]
+      : []),
   ]
 
   const isActive = (to: string) => {
@@ -93,18 +112,7 @@ export function Sidebar() {
           >
             <span className="sb__item-icon">{item.icon}</span>
             <Text as="span" size="2">{item.label}</Text>
-            {item.note && (
-              <Badge
-                color="gray"
-                variant="outline"
-                radius="small"
-                size="1"
-                title="MVP-deferred per ADR-0003"
-                style={{ letterSpacing: '0.14em', textTransform: 'uppercase', borderStyle: 'dashed' }}
-              >
-                {item.note}
-              </Badge>
-            )}
+            {item.mockKind && <MockBadge kind={item.mockKind} />}
             {item.badge && (
               <Badge
                 color={item.badge.tone === 'warn' ? 'amber' : item.badge.tone === 'muted' ? 'gray' : 'blue'}
@@ -127,7 +135,7 @@ export function Sidebar() {
             <Box flexGrow="1" minWidth="0">
               <Text as="div" size="1" className="truncate">{user.name}</Text>
               <Text as="div" size="1" color="gray" style={{ textTransform: 'uppercase', letterSpacing: '0.04em' }}>
-                {roleLabel(user.role)} · L{user.approval_level}
+                {roleLabel(user.role)}{user.approval_level != null ? ` · L${user.approval_level}` : ''}
               </Text>
             </Box>
           </Link>

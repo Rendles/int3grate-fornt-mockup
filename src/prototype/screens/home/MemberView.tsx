@@ -1,6 +1,6 @@
 import { Badge, Button, Flex, Grid, Text } from '@radix-ui/themes'
 import { Link } from '../../router'
-import { Status } from '../../components/common'
+import { MockBadge, Status } from '../../components/common'
 import { IconArrowRight } from '../../components/icons'
 import type { Agent, ApprovalRequest, Task } from '../../lib/types'
 import { ago } from '../../lib/format'
@@ -18,7 +18,10 @@ export function MemberView({
     <Grid columns={{ initial: '1', lg: '1fr 1fr' }} gap="4">
       <div className="card">
         <div className="card__head">
-          <Text as="div" size="2" weight="medium" className="card__title">My tasks</Text>
+          <Flex align="center" gap="2">
+            <Text as="div" size="2" weight="medium" className="card__title">My tasks</Text>
+            <MockBadge kind="deferred" />
+          </Flex>
           <Button asChild variant="ghost" size="1"><a href="#/tasks"><IconArrowRight className="ic ic--sm" />All tasks</a></Button>
         </div>
         {myTasks.length === 0 ? (

@@ -61,7 +61,14 @@
   color: var(--gray-12);
   letter-spacing: -0.01em;
 }
-.prototype-root a {
+/* `:where(.prototype-root)` zero-specificity wrapper. Without it, this rule
+   has specificity (0,1,1) and clobbers Radix Themes component CSS like
+   `.rt-BaseButton:where(.rt-variant-soft) { color: var(--accent-a11) }`
+   (specificity 0,1,0) — which means `<Button asChild color="gray">` wrapping a
+   <Link> would lose its grey color and inherit ambient instead. With :where()
+   the rule becomes effectively `a { ... }` (0,0,1), so component styles win
+   while we still beat the browser default <a> color/underline. */
+:where(.prototype-root) a {
   color: inherit;
   text-decoration: none;
 }
@@ -912,4 +919,191 @@
   /* Login */
   .login__side { padding: 24px 20px; }
   .login__form-wrap { padding: 24px 20px 40px; }
+}
+
+/* ─── Chat detail — fixed-height layout ─────────────────────────────
+   Pin the header (PageHeader + CommandBar + status banners) at the top and
+   the composer at the bottom; only the messages list scrolls.
+   Constraints:
+     * The shell row containing main is `1fr` of `100svh - 48px (topbar)` —
+       `.chat-detail` claims `height: 100%` of that cell.
+     * `min-height: 0` on the body is required — without it, flex children
+       refuse to shrink below their intrinsic size and the whole layout
+       grows past the cell.
+     * Padding mirrors `.page` (28px 32px) on the sides and top, with no
+       bottom — the composer brings its own bottom breathing room. */
+.chat-detail {
+  /* Viewport minus the 48px topbar in `.shell` — using the viewport-unit
+     directly avoids needing `.shell__main` to publish an explicit height. */
+  height: calc(100svh - 48px);
+  display: flex;
+  flex-direction: column;
+  padding: 28px 32px 0;
+  box-sizing: border-box;
+  min-height: 0;
+}
+.chat-detail__head {
+  flex-shrink: 0;
+}
+.chat-detail__body {
+  flex: 1 1 auto;
+  min-height: 0;
+  margin-top: 20px;
+  display: flex;
+  flex-direction: column;
+}
+.chat-detail__messages {
+  flex: 1 1 auto;
+  min-height: 0;
+  overflow-y: auto;
+  background: var(--color-panel-solid);
+  border-radius: 16px;
+  padding: 16px;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+.chat-detail__composer {
+  flex-shrink: 0;
+  padding: 16px 0 24px;
+}
+.chat-detail__composer--readonly {
+  padding: 12px 0 24px;
+}
+@media (max-width: 1024px) {
+  .chat-detail { padding: 24px 20px 0; }
+}
+@media (max-width: 768px) {
+  /* On mobile the sidebar drops to a 56px bottom nav, so subtract that too. */
+  .chat-detail {
+    height: calc(100svh - 48px - 56px);
+    padding: 16px 14px 0;
+  }
+  .chat-detail__composer { padding-bottom: 16px; }
+}
+
+/* MetaRow labels — capitalize the first letter of each label so callers can
+   keep writing sentence-case strings ("created by", "tokens in", "domain")
+   and still render them with a capital letter.
+   `::first-letter` requires the element to be a block / inline-block. */
+.prototype-root .meta-row__label {
+  display: inline-block;
+}
+.prototype-root .meta-row__label::first-letter {
+  text-transform: uppercase;
+}
+
+/* ─── Grants editor (Agent → Tool grants tab) ─── */
+.prototype-root .grants-row {
+  display: grid;
+  gap: 14px;
+  padding: 12px 16px;
+  align-items: center;
+  border-bottom: 1px solid var(--gray-a3);
+}
+.prototype-root .grants-row--readonly {
+  /* Read-only view doesn't need the editor row's hover affordance. */
+}
+.prototype-root .card--table .grants-row:last-of-type {
+  border-bottom: 0;
+}
+/* Inline add-row sits at the bottom of the grants table. Subtle background so
+   it reads as a footer rather than another data row. */
+.prototype-root .grants-add {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: 10px;
+  padding: 14px 16px;
+  background: var(--gray-a2);
+  border-top: 1px solid var(--gray-a3);
+  align-items: center;
+}
+
+/* Two-line catalog Select item.
+   IMPORTANT: these rules are NOT prefixed with `.prototype-root`. Radix Select
+   renders its Content into a Portal attached to <body>, so the item lives
+   outside the prototype-root subtree and any prefix breaks the match.
+
+   What we override:
+     1. `.rt-SelectItem.catalog-item` — drop the fixed height and align top so
+         the item grows to fit two lines.
+     2. The first <span> child — Radix Primitives' SelectItemText wrapper,
+         rendered as an inline <span> — promote it to a flex column so the
+         name and description stack instead of becoming inline runs. */
+.catalog-item {
+  display: flex !important;
+  align-items: flex-start;
+  height: auto !important;
+  min-height: 0;
+  padding: 10px 12px 10px 28px; /* 28px left for the Radix check-indicator */
+  line-height: 1.35;
+  white-space: normal;
+}
+.catalog-item > span:not(.rt-SelectItemIndicator) {
+  display: flex !important;
+  flex-direction: column;
+  gap: 2px;
+  flex: 1 1 auto;
+  min-width: 0;
+}
+.catalog-item__name {
+  display: block;
+  font-size: 14px;
+  color: var(--gray-12);
+  line-height: 1.3;
+}
+.catalog-item__desc {
+  display: block;
+  font-size: 12px;
+  color: var(--gray-11);
+  line-height: 1.4;
+  white-space: normal;
+}
+
+/* Trigger for the catalog Select. When an option is selected, Radix portals
+   the option's children (our two name+desc spans) into the trigger's
+   `.rt-SelectTriggerInner`. By default that inner is `white-space: nowrap` +
+   `text-overflow: ellipsis` (single line), and the trigger itself is fixed
+   height `var(--select-trigger-height)` (~32px). We:
+     1. Drop the trigger's fixed height — let it grow when a 2-line value is
+        rendered. Keep min-height = standard so placeholder state still looks
+        like a normal-sized field.
+     2. Promote `.rt-SelectTriggerInner` to a vertical flex column with
+        `white-space: normal` so name + description stack and don't truncate. */
+.catalog-trigger {
+  height: auto !important;
+  min-height: var(--select-trigger-height);
+  padding-top: 6px !important;
+  padding-bottom: 6px !important;
+  align-items: center;
+  line-height: 1.3;
+}
+.catalog-trigger .rt-SelectTriggerInner {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 2px;
+  flex: 1 1 auto;
+  min-width: 0;
+  white-space: normal;
+  overflow: visible;
+  text-overflow: clip;
+  text-align: left;
+  line-height: 1.3;
+}
+
+/* ─── Pulse / streaming cues ─── */
+.prototype-root .status-pulse {
+  animation: proto-pulse 1.6s ease-in-out infinite;
+}
+@keyframes proto-pulse {
+  0%, 100% { opacity: 1; }
+  50%      { opacity: 0.55; }
+}
+@keyframes caret-blink {
+  0%, 100% { opacity: 1; }
+  50%      { opacity: 0; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .prototype-root .status-pulse { animation: none; }
 }

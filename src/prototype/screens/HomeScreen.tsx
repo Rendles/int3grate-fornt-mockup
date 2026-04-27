@@ -4,7 +4,7 @@ import { Box, Button, Code } from '@radix-ui/themes'
 import { AppShell } from '../components/shell'
 import { PageHeader, InfoHint } from '../components/common'
 import { ErrorState, LoadingList } from '../components/states'
-import { IconPlay } from '../components/icons'
+import { IconChat } from '../components/icons'
 import { useAuth } from '../auth'
 import { api } from '../lib/api'
 import type { Agent, ApprovalRequest, SpendDashboard, Task } from '../lib/types'
@@ -34,9 +34,9 @@ export default function HomeScreen() {
       ])
       if (cancelled) return
       setErrored(false)
-      setTasks(t)
-      setApprovals(a)
-      setAgents(ag)
+      setTasks(t.items)
+      setApprovals(a.items)
+      setAgents(ag.items)
       setSpend(s)
     }
     run().catch(() => { if (!cancelled) setErrored(true) })
@@ -93,7 +93,6 @@ export default function HomeScreen() {
           eyebrow={
             <>
               {nowDate.toLocaleDateString('en-US', { weekday: 'long', month: 'short', day: 'numeric' }).toUpperCase()}
-              {' · TENANT '}{user?.tenant_id ?? '—'}
               {!isMember && (
                 <>
                   {' '}
@@ -115,7 +114,7 @@ export default function HomeScreen() {
           actions={
             <>
               <Button asChild variant="soft" color="gray"><a href="#/approvals">Approvals</a></Button>
-              <Button asChild><a href="#/tasks/new"><IconPlay />Start a task</a></Button>
+              <Button asChild><a href="#/chats/new"><IconChat />Start a chat</a></Button>
             </>
           }
         />

@@ -10,7 +10,7 @@ import { useAuth } from '../auth'
 import { api } from '../lib/api'
 import type { Agent } from '../lib/types'
 
-const MODELS = ['claude-opus-4-7', 'claude-sonnet-4-6', 'claude-haiku-4-5', 'gpt-5-mini', 'gpt-5']
+const MODELS = ['claude-opus-4-7', 'claude-sonnet-4-6', 'claude-haiku-4-5']
 
 const STARTER_PROMPT = `You are {AGENT_NAME}.
 

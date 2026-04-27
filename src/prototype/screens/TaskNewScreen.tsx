@@ -1,16 +1,21 @@
 import { useEffect, useMemo, useState } from 'react'
 import { Badge, Box, Button, Code, DataList, Flex, Grid, Separator, Text } from '@radix-ui/themes'
 import { AppShell } from '../components/shell'
-import { PageHeader, MetaRow, Status, InfoHint } from '../components/common'
+import { PageHeader, MetaRow, MockBadge, Status, InfoHint } from '../components/common'
 import { TextAreaField, TextInput } from '../components/fields'
 import { Banner, LoadingList } from '../components/states'
 import { IconAlert, IconArrowRight, IconCheck, IconPlay } from '../components/icons'
 import { Link, useRouter } from '../router'
 import { api } from '../lib/api'
+import { domainLabel } from '../lib/format'
 import type { Agent, Task, TaskType } from '../lib/types'
 
-const TYPE_DESC: Record<TaskType, string> = {
-  chat: 'Conversational back-and-forth. The agent waits for your replies.',
+// Chat-type interactions live on /chats now (gateway (5).yaml). The picker
+// here only surfaces non-chat types; visiting `?type=chat` redirects to the
+// chat surface.
+type DispatchableTaskType = Exclude<TaskType, 'chat'>
+const DISPATCHABLE_TYPES: DispatchableTaskType[] = ['one_time', 'schedule']
+const TYPE_DESC: Record<DispatchableTaskType, string> = {
   one_time: 'Fire-and-forget. Run once, return a result, end.',
   schedule: 'Recurring. Run on a cron / interval.',
 }
@@ -21,23 +26,36 @@ interface FieldErrors {
 }
 
 export default function TaskNewScreen() {
-  const { search } = useRouter()
+  const { search, navigate } = useRouter()
 
   const initialType = search.get('type')
   const [agents, setAgents] = useState<Agent[] | null>(null)
   const [agentId, setAgentId] = useState<string>(search.get('agent') ?? '')
   const [title, setTitle] = useState<string>(search.get('title') ?? '')
   const [input, setInput] = useState<string>(search.get('input') ?? '')
-  const [type, setType] = useState<TaskType>(
-    initialType === 'chat' || initialType === 'one_time' || initialType === 'schedule' ? initialType : 'chat',
+  const [type, setType] = useState<DispatchableTaskType>(
+    initialType === 'one_time' || initialType === 'schedule' ? initialType : 'one_time',
   )
   const [submitted, setSubmitted] = useState(false)
   const [busy, setBusy] = useState(false)
   const [saveError, setSaveError] = useState<string | null>(null)
   const [created, setCreated] = useState<Task | null>(null)
 
+  // Old links still arrive with `?type=chat` — bounce them to the chat surface.
   useEffect(() => {
-    api.listAgents().then(list => {
+    if (initialType !== 'chat') return
+    const params = new URLSearchParams()
+    const agentParam = search.get('agent')
+    if (agentParam) params.set('agent', agentParam)
+    const titleParam = search.get('title')
+    if (titleParam) params.set('title', titleParam)
+    const qs = params.toString()
+    navigate(qs ? `/chats/new?${qs}` : '/chats/new')
+  }, [initialType, navigate, search])
+
+  useEffect(() => {
+    api.listAgents().then(res => {
+      const list = res.items
       setAgents(list)
       if (!agentId && list.length) {
         setAgentId(list.find(a => a.status === 'active')?.id ?? list[0].id)
@@ -85,6 +103,7 @@ export default function TaskNewScreen() {
           eyebrow={
             <>
               DISPATCH TASK{' '}
+              <MockBadge kind="deferred" />{' '}
               <InfoHint>
                 Creates a task via <Code variant="ghost">POST /tasks</Code>. Requires an agent and user_input. The orchestrator attaches a run asynchronously — the task response doesn't include a run_id.
               </InfoHint>
@@ -101,7 +120,7 @@ export default function TaskNewScreen() {
               <Button asChild variant="ghost"><a href="#/tasks">Back to tasks</a></Button>
             ) : (
               <>
-                <Button asChild variant="ghost" disabled={busy}><a href="#/tasks">Cancel</a></Button>
+                <Button asChild variant="soft" color="gray" disabled={busy} size="2"><a href="#/tasks">Cancel</a></Button>
                 <Button
                   onClick={submit}
                   disabled={busy || !agentRunnable}
@@ -123,7 +142,7 @@ export default function TaskNewScreen() {
         {!agents ? (
           <LoadingList rows={4} />
         ) : created ? (
-          <SuccessPanel task={created} />
+          <SuccessPanel task={created} agentName={agent?.name ?? '—'} />
         ) : (
           <>
             {saveError && (
@@ -169,9 +188,11 @@ export default function TaskNewScreen() {
                       >
                         <div style={{ minWidth: 0, textAlign: 'left' }}>
                           <Text as="div" size="2">{a.name}</Text>
-                          <Text as="div" size="1" color="gray" mt="1" className="truncate">
-                            {a.id}
-                          </Text>
+                          {a.description && (
+                            <Text as="div" size="1" color="gray" mt="1" className="truncate">
+                              {a.description}
+                            </Text>
+                          )}
                         </div>
                         <div style={{ textAlign: 'right' }}>
                           <Status status={a.status} />
@@ -199,10 +220,18 @@ export default function TaskNewScreen() {
 
             {/* TYPE PICKER */}
             <div className="card">
-              <div className="card__head"><Text as="div" size="2" weight="medium" className="card__title">Type</Text></div>
+              <div className="card__head">
+                <Text as="div" size="2" weight="medium" className="card__title">Type</Text>
+                <Text size="1" color="gray">
+                  Need a chat? Use{' '}
+                  <Link to={`/chats/new${agentId ? `?agent=${agentId}` : ''}`}>
+                    <Text size="1" color="blue">Chats →</Text>
+                  </Link>
+                </Text>
+              </div>
               <div className="card__body">
-                <Grid columns="3" gap="4">
-                  {(['chat', 'one_time', 'schedule'] as TaskType[]).map(t => {
+                <Grid columns="2" gap="4">
+                  {DISPATCHABLE_TYPES.map(t => {
                     const on = type === t
                     return (
                       <button
@@ -274,7 +303,7 @@ export default function TaskNewScreen() {
   )
 }
 
-function SuccessPanel({ task }: { task: Task }) {
+function SuccessPanel({ task, agentName }: { task: Task; agentName: string }) {
   return (
     <Flex direction="column" gap="4">
       <div
@@ -311,17 +340,15 @@ function SuccessPanel({ task }: { task: Task }) {
 
       <div className="card">
         <div className="card__head">
-          <Text as="div" size="2" weight="medium" className="card__title">Response</Text>
+          <Text as="div" size="2" weight="medium" className="card__title">Summary</Text>
           <Status status={task.status} />
         </div>
         <div className="card__body">
           <DataList.Root size="2">
-            <MetaRow label="task id" value={<Code variant="ghost">{task.id}</Code>} />
-            <MetaRow label="agent_id" value={<Link to={`/agents/${task.assigned_agent_id}`}><Code variant="ghost">{task.assigned_agent_id}</Code></Link>} />
-            <MetaRow label="version_id" value={<Code variant="ghost">{task.assigned_agent_version_id ?? '—'}</Code>} />
+            <MetaRow label="title" value={task.title ?? <Text color="gray">— untitled —</Text>} />
+            <MetaRow label="agent" value={<Link to={`/agents/${task.assigned_agent_id}`}>{agentName}</Link>} />
             <MetaRow label="type" value={<Badge color="gray" variant="soft" radius="full" size="1">{task.type.replace('_', ' ')}</Badge>} />
-            <MetaRow label="tenant_id" value={<Code variant="ghost">{task.tenant_id}</Code>} />
-            <MetaRow label="domain_id" value={<Code variant="ghost">{task.domain_id ?? '—'}</Code>} />
+            <MetaRow label="domain" value={domainLabel(task.domain_id)} />
           </DataList.Root>
         </div>
       </div>

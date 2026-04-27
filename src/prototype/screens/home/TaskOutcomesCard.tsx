@@ -1,6 +1,7 @@
 import { useMemo } from 'react'
 import { Flex, Text } from '@radix-ui/themes'
 import { IconTask } from '../../components/icons'
+import { MockBadge } from '../../components/common'
 import type { Task, TaskStatus } from '../../lib/types'
 
 const TASK_OUTCOME_COLORS: Record<TaskStatus, string> = {
@@ -33,10 +34,13 @@ export function TaskOutcomesCard({ tasks }: { tasks: Task[] }) {
   return (
     <div className="card">
       <div className="card__head">
-        <Text as="div" size="2" weight="medium" className="card__title">
-          <IconTask className="ic" />
-          Task outcomes
-        </Text>
+        <Flex align="center" gap="2">
+          <Text as="div" size="2" weight="medium" className="card__title">
+            <IconTask className="ic" />
+            Task outcomes
+          </Text>
+          <MockBadge kind="deferred" />
+        </Flex>
         <Text size="1" color="gray">{total} total</Text>
       </div>
       <div

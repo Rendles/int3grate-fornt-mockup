@@ -32,7 +32,8 @@ export interface User {
   email: string
   name: string
   role: Role
-  approval_level: ApprovalLevel
+  // Optional per gateway (5).yaml — only required: [id, tenant_id, email, name, role].
+  approval_level?: ApprovalLevel
   created_at: string
 }
 
@@ -49,6 +50,10 @@ export interface Agent {
   description: string | null
   status: AgentStatus
   active_version: AgentVersion | null
+  // Detail-only enrichment fields (gateway (5).yaml). Populated only on
+  // GET /agents/{id}; null on list views or when orchestrator lookup fails.
+  total_spend_usd?: number | null
+  runs_count?: number | null
   created_at: string
   updated_at: string
 }
@@ -57,6 +62,13 @@ export interface CreateAgentRequest {
   name: string
   description?: string
   domain_id?: string
+}
+
+export interface AgentList {
+  items: Agent[]
+  total: number
+  limit?: number
+  offset?: number
 }
 
 // ─────────────────────────────────────────────── AgentVersion
@@ -128,8 +140,9 @@ export interface ToolDefinition {
 }
 
 export interface GrantsSnapshotEntry {
-  tool: string
+  tool_name: string
   mode: ToolPolicyMode
+  approval_required?: boolean
   scopes?: string[]
 }
 
@@ -169,6 +182,13 @@ export interface CreateTaskRequest {
   domain_id?: string
 }
 
+export interface TaskList {
+  items: Task[]
+  total: number
+  limit?: number
+  offset?: number
+}
+
 // ─────────────────────────────────────────────── Run
 
 export type RunStatus =
@@ -195,7 +215,9 @@ export interface RunToolError {
   tool_call_id?: string | null
 }
 
-export interface Run {
+// gateway (5).yaml schema name is `RunDetail` (response of GET /runs/{runId}).
+// `Run` is kept as a backward-compatible alias so existing imports keep working.
+export interface RunDetail {
   id: string
   tenant_id: string
   domain_id: string | null
@@ -214,6 +236,8 @@ export interface Run {
   steps: RunStep[]
   created_at: string
 }
+
+export type Run = RunDetail
 
 // ─────────────────────────────────────────────── RunStep
 
@@ -239,6 +263,153 @@ export interface RunStep {
   duration_ms: number | null
   created_at: string
   completed_at: string | null
+}
+
+// ─────────────────────────────────────────────── Runs list (gateway (5).yaml)
+// Lightweight projection of Run for /dashboard/runs — no `steps[]`, includes a
+// denormalized `agent_id` so list views don't need to resolve agent_version_id.
+
+export interface RunListItem {
+  id: string
+  tenant_id: string
+  domain_id: string | null
+  task_id: string | null
+  agent_id: string | null
+  agent_version_id: string | null
+  status: RunStatus
+  suspended_stage: string | null
+  started_at: string | null
+  ended_at: string | null
+  total_cost_usd: number
+  total_tokens_in: number
+  total_tokens_out: number
+  created_at: string
+}
+
+export interface RunsList {
+  items: RunListItem[]
+  total: number
+  limit: number
+  offset: number
+}
+
+// ─────────────────────────────────────────────── Chat (gateway (5).yaml)
+
+export type ChatStatus = 'active' | 'closed' | 'failed'
+export type ChatMessageRole = 'user' | 'assistant' | 'tool' | 'system'
+
+export interface Chat {
+  id: string
+  tenant_id: string
+  agent_id: string
+  agent_version_id: string
+  created_by: string
+  model: string
+  title: string | null
+  status: ChatStatus
+  started_at: string
+  updated_at: string
+  ended_at: string | null
+  total_cost_usd: number
+  total_tokens_in: number
+  total_tokens_out: number
+}
+
+export interface ChatList {
+  items: Chat[]
+  total: number
+  limit: number
+  offset: number
+}
+
+export interface ChatToolCall {
+  id: string
+  name: string
+  args: Record<string, unknown>
+}
+
+export interface ChatMessage {
+  id: string
+  chat_id: string
+  role: ChatMessageRole
+  content: string | null
+  tool_calls: ChatToolCall[] | null
+  tool_call_id: string | null
+  tool_name: string | null
+  cost_usd: number | null
+  tokens_in: number | null
+  tokens_out: number | null
+  created_at: string
+}
+
+export interface ChatMessageList {
+  items: ChatMessage[]
+  total: number
+  limit: number
+  offset: number
+}
+
+export interface CreateChatRequest {
+  agent_version_id: string
+  model?: string | null
+  title?: string | null
+}
+
+export interface SendMessageRequest {
+  content: string
+}
+
+// SSE frames for POST /chat/{chatId}/message. The wire format is `data: <json>`
+// per gateway (5).yaml; the mock yields these as a typed AsyncIterable.
+export type ChatStreamFrame =
+  | { event: 'turn_start'; message_id: string }
+  | { event: 'text_delta'; delta: string }
+  | { event: 'tool_call'; tool: string; args: Record<string, unknown>; tool_call_id: string }
+  | { event: 'tool_result'; tool_call_id: string; status: 'ok' | 'error'; output_ref: Record<string, unknown> | null }
+  | { event: 'turn_end'; message_id: string; cost_usd: number; tokens_in: number; tokens_out: number }
+  | { event: 'done' }
+  | { event: 'error'; kind: 'approval_required' | 'tool_error' | 'llm_error'; message: string }
+
+// ─────────────────────────────────────────────── Audit (gateway (5).yaml)
+// Tenant-scoped step-level events unified across runs and chats.
+// Each event carries exactly one of run_id / chat_id (the other is null).
+// Chat-sourced events also populate message_id.
+
+// step_type is intentionally a free-form string in the contract because
+// historical run-side values are inconsistent. Canonical run values: 'llm',
+// 'tool_call', 'approval_wait', 'system'. Canonical chat values:
+// 'chat_message', 'chat_tool_call'.
+export type AuditStepType =
+  | 'llm'
+  | 'tool_call'
+  | 'approval_wait'
+  | 'system'
+  | 'chat_message'
+  | 'chat_tool_call'
+
+export interface AuditEvent {
+  id: string
+  run_id: string | null
+  chat_id: string | null
+  message_id: string | null
+  agent_id: string
+  step_type: string
+  status: string
+  tool_name: string | null
+  model_name: string | null
+  cost_usd: number | null
+  tokens_in: number | null
+  tokens_out: number | null
+  duration_ms: number | null
+  created_at: string
+  completed_at: string | null
+}
+
+export interface AuditList {
+  items: AuditEvent[]
+  total: number
+  limit: number
+  offset: number
 }
 
 // ─────────────────────────────────────────────── ApprovalRequest
@@ -274,6 +445,13 @@ export interface ApprovalDecisionAccepted {
   approval_id: string
   decision: 'approve' | 'reject'
   status: 'queued'
+}
+
+export interface ApprovalList {
+  items: ApprovalRequest[]
+  total: number
+  limit?: number
+  offset?: number
 }
 
 // ─────────────────────────────────────────────── SpendDashboard / SpendRow

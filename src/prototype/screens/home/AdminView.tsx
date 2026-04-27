@@ -1,6 +1,6 @@
 import { Badge, Box, Button, Flex, Grid, Text } from '@radix-ui/themes'
 import { Link } from '../../router'
-import { MetricCard, Status } from '../../components/common'
+import { MetricCard, MockBadge, Status } from '../../components/common'
 import {
   IconAgent,
   IconApproval,
@@ -89,7 +89,7 @@ export function AdminView({
                       <Badge color="gray" variant="soft" radius="full" size="1">{a.approver_role ?? '—'}</Badge>
                     </Flex>
                     <Text as="div" size="1" color="gray">
-                      {a.requested_by_name ?? a.requested_by ?? '—'} · {ago(a.created_at)}
+                      {a.requested_by_name ?? '—'} · {ago(a.created_at)}
                     </Text>
                   </div>
                   <IconArrowRight className="ic ic--sm card--tile__arrow" />
@@ -102,10 +102,13 @@ export function AdminView({
 
         <div className="card card--flush">
           <div className="card__head">
-            <Text as="div" size="2" weight="medium" className="card__title">
-              <IconTask className="ic" />
-              Recent tasks
-            </Text>
+            <Flex align="center" gap="2">
+              <Text as="div" size="2" weight="medium" className="card__title">
+                <IconTask className="ic" />
+                Recent tasks
+              </Text>
+              <MockBadge kind="deferred" />
+            </Flex>
             <Button asChild variant="ghost" color='gray' size="1">
               <a href="#/tasks"><IconArrowRight className="ic ic--sm" />All tasks</a>
             </Button>

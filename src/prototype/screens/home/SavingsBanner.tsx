@@ -1,5 +1,6 @@
 import { useMemo, useRef, useState } from 'react'
 import { Area, AreaChart, CartesianGrid, ResponsiveContainer, Tooltip, XAxis, YAxis } from 'recharts'
+import { MockBadge } from '../../components/common'
 import { money } from '../../lib/format'
 
 // SAVINGS BANNER — cumulative value generated over 30 days.
@@ -112,7 +113,10 @@ export function SavingsBanner() {
       </div>
 
       <div className="sv-a__overlay">
-        <div className="sv-a__label">Savings · 30 days</div>
+        <div className="sv-a__label" style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
+          <span>Savings · 30 days</span>
+          <MockBadge kind="design" hint="Savings = synthesized client-side from a fictional baseline (38 min/task at $75/hr). Backend doesn't expose Agent.baseline_human_minutes / Tenant.hourly_rate_usd yet." />
+        </div>
         <div className="sv-a__value">{money(totalValue, { compact: false })}</div>
       </div>
 

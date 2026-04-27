@@ -3,7 +3,7 @@ import { Badge, Box, Button, Code, Flex, Grid, Text } from '@radix-ui/themes'
 
 import { Caption, PageHeader, Avatar, InfoHint } from '../components/common'
 import { useAuth } from '../auth'
-import { roleLabel, absTime } from '../lib/format'
+import { roleLabel, absTime, domainLabel, tenantLabel } from '../lib/format'
 
 export default function ProfileScreen() {
   const { user, logout } = useAuth()
@@ -41,12 +41,10 @@ export default function ProfileScreen() {
                 <Text as="div" size="1" color="gray" mt="1">{user.email}</Text>
                 <Flex align="center" gap="2" mt="2">
                   <Badge color="blue" variant="soft" radius="full" size="1">{roleLabel(user.role)}</Badge>
-                  <Badge color="cyan" variant="soft" radius="full" size="1">approval · L{user.approval_level}</Badge>
+                  {user.approval_level != null && (
+                    <Badge color="cyan" variant="soft" radius="full" size="1">approval · L{user.approval_level}</Badge>
+                  )}
                 </Flex>
-              </Box>
-              <Box style={{ textAlign: 'right' }}>
-                <Caption as="div" mb="1">User ID</Caption>
-                <Text as="div" size="1">{user.id}</Text>
               </Box>
             </Flex>
           </div>
@@ -59,12 +57,12 @@ export default function ProfileScreen() {
           <div className="card__body">
             <Grid columns="2" gap="4">
               <Box>
-                <Caption as="div" mb="1">Tenant ID</Caption>
-                <Text as="div" size="1">{user.tenant_id}</Text>
+                <Caption as="div" mb="1">Workspace</Caption>
+                <Text as="div" size="1">{tenantLabel(user.tenant_id)}</Text>
               </Box>
               <Box>
-                <Caption as="div" mb="1">Domain ID</Caption>
-                <Text as="div" size="1">{user.domain_id ?? '—'}</Text>
+                <Caption as="div" mb="1">Domain</Caption>
+                <Text as="div" size="1">{domainLabel(user.domain_id)}</Text>
               </Box>
               <Box>
                 <Caption as="div" mb="1">Created</Caption>
@@ -80,33 +78,35 @@ export default function ProfileScreen() {
 
         <div style={{ height: 16 }} />
 
-        <div className="card">
-          <div className="card__head"><Text as="div" size="2" weight="medium" className="card__title">Approval authority</Text></div>
-          <div className="card__body">
-            <Text as="p" size="1" color="gray" mb="4">
-              Your <Code variant="ghost">approval_level</Code> is <Code variant="ghost">{user.approval_level}</Code>.
-              Rules attached to agent versions route requests to whichever level they need.
-            </Text>
-            <Grid columns="4" gap="2">
-              {[1, 2, 3, 4].map(lvl => {
-                const on = user.approval_level >= lvl
-                return (
-                  <Box key={lvl} p="3" style={{
-                    border: `1px solid ${on ? 'var(--accent-a7)' : 'var(--gray-7)'}`,
-                    borderRadius: 4,
-                    background: on ? 'var(--accent-a3)' : 'var(--gray-3)',
-                    textAlign: 'center',
-                  }}>
-                    <Text as="div" size="6" style={{ color: on ? 'var(--accent-9)' : 'var(--gray-10)' }}>L{lvl}</Text>
-                    <Text as="div" size="1" color="gray" mt="1" style={{ letterSpacing: '0.1em', textTransform: 'uppercase' }}>
-                      {on ? 'can decide' : 'above you'}
-                    </Text>
-                  </Box>
-                )
-              })}
-            </Grid>
+        {user.approval_level != null && (
+          <div className="card">
+            <div className="card__head"><Text as="div" size="2" weight="medium" className="card__title">Approval authority</Text></div>
+            <div className="card__body">
+              <Text as="p" size="1" color="gray" mb="4">
+                Your <Code variant="ghost">approval_level</Code> is <Code variant="ghost">{user.approval_level}</Code>.
+                Rules attached to agent versions route requests to whichever level they need.
+              </Text>
+              <Grid columns="4" gap="2">
+                {[1, 2, 3, 4].map(lvl => {
+                  const on = (user.approval_level ?? 0) >= lvl
+                  return (
+                    <Box key={lvl} p="3" style={{
+                      border: `1px solid ${on ? 'var(--accent-a7)' : 'var(--gray-7)'}`,
+                      borderRadius: 4,
+                      background: on ? 'var(--accent-a3)' : 'var(--gray-3)',
+                      textAlign: 'center',
+                    }}>
+                      <Text as="div" size="6" style={{ color: on ? 'var(--accent-9)' : 'var(--gray-10)' }}>L{lvl}</Text>
+                      <Text as="div" size="1" color="gray" mt="1" style={{ letterSpacing: '0.1em', textTransform: 'uppercase' }}>
+                        {on ? 'can decide' : 'above you'}
+                      </Text>
+                    </Box>
+                  )
+                })}
+              </Grid>
+            </div>
           </div>
-        </div>
+        )}
       </div>
     </AppShell>
   )

@@ -15,13 +15,17 @@ import TasksScreen from './screens/TasksScreen'
 import TaskNewScreen from './screens/TaskNewScreen'
 import TaskDetailScreen from './screens/TaskDetailScreen'
 import RunDetailScreen from './screens/RunDetailScreen'
+import RunsScreen from './screens/RunsScreen'
+import AuditScreen from './screens/AuditScreen'
+import ChatsScreen from './screens/ChatsScreen'
+import ChatNewScreen from './screens/ChatNewScreen'
+import ChatDetailScreen from './screens/ChatDetailScreen'
 import ApprovalsScreen from './screens/ApprovalsScreen'
 import ApprovalDetailScreen from './screens/ApprovalDetailScreen'
 import ToolsScreen from './screens/ToolsScreen'
 import SpendScreen from './screens/SpendScreen'
 import ProfileScreen from './screens/ProfileScreen'
 import NotFoundScreen from './screens/NotFoundScreen'
-import StyleGuideScreen from './screens/StyleGuideScreen'
 
 function Router() {
   const { user, loading } = useAuth()
@@ -56,13 +60,17 @@ function Router() {
     { pattern: '/tasks', render: () => <TasksScreen /> },
     { pattern: '/tasks/new', render: () => <TaskNewScreen /> },
     { pattern: '/tasks/:taskId', render: p => <TaskDetailScreen taskId={p.taskId} /> },
+    { pattern: '/runs', render: () => <RunsScreen /> },
     { pattern: '/runs/:runId', render: p => <RunDetailScreen runId={p.runId} /> },
+    { pattern: '/chats', render: () => <ChatsScreen /> },
+    { pattern: '/chats/new', render: () => <ChatNewScreen /> },
+    { pattern: '/chats/:chatId', render: p => <ChatDetailScreen chatId={p.chatId} /> },
     { pattern: '/approvals', render: () => <ApprovalsScreen /> },
     { pattern: '/approvals/:approvalId', render: p => <ApprovalDetailScreen approvalId={p.approvalId} /> },
     { pattern: '/tools', render: () => <ToolsScreen /> },
     { pattern: '/spend', render: () => <SpendScreen /> },
+    { pattern: '/audit', render: () => <AuditScreen /> },
     { pattern: '/profile', render: () => <ProfileScreen /> },
-    { pattern: '/components', render: () => <StyleGuideScreen /> },
   ]
 
   for (const r of routes) {
@@ -92,7 +100,7 @@ function ThemedRoot() {
             <Router />
           </RouterProvider>
         </AuthProvider>
-        {import.meta.env.DEV && <ThemePanel defaultOpen={true} />}
+        {import.meta.env.DEV && <ThemePanel defaultOpen={false} />}
       </div>
     </RadixTheme>
   )

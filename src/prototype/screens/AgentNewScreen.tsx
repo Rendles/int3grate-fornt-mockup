@@ -84,7 +84,7 @@ export default function AgentNewScreen() {
           subtitle="Name, description, domain. Owner is inferred from you."
           actions={
             <>
-              <Button asChild variant="ghost" disabled={busy}><a href="#/agents">Cancel</a></Button>
+              <Button asChild variant="soft" disabled={busy} color='gray'><a href="#/agents">Cancel</a></Button>
               <Button onClick={submit} disabled={busy || success}>
                 {busy ? 'creating…' : success ? 'created ✓' : 'Create draft'}
               </Button>
@@ -150,7 +150,7 @@ export default function AgentNewScreen() {
                 <SelectField
                   value={domainId}
                   onChange={setDomainId}
-                  options={DOMAINS.map(d => ({ value: d.id, label: `${d.name} · ${d.id}` }))}
+                  options={DOMAINS.map(d => ({ value: d.id, label: d.name }))}
                 />
               </Box>
             </Grid>
