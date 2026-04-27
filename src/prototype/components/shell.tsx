@@ -171,11 +171,6 @@ export function Topbar({
           <nav aria-label="Breadcrumb">
             {crumbs.map((c, i) => {
               const isLast = i === crumbs.length - 1
-              const label = (
-                <Text size="1" color={isLast ? undefined : 'gray'}>
-                  {c.label}
-                </Text>
-              )
               return (
                 <Fragment key={i}>
                   {i > 0 && (
@@ -183,7 +178,15 @@ export function Topbar({
                       /
                     </Text>
                   )}
-                  {c.to ? <Link to={c.to}>{label}</Link> : label}
+                  {c.to ? (
+                    <Text size="1" color={isLast ? undefined : 'gray'} asChild>
+                      <Link to={c.to}>{c.label}</Link>
+                    </Text>
+                  ) : (
+                    <Text size="1" color={isLast ? undefined : 'gray'}>
+                      {c.label}
+                    </Text>
+                  )}
                 </Fragment>
               )
             })}

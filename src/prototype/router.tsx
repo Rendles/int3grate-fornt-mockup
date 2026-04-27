@@ -65,21 +65,17 @@ export function matchRoute(pattern: string, path: string): Params | null {
   return params
 }
 
-export function Link({ to, className, children, onClick, style, title }: {
+type LinkProps = Omit<React.AnchorHTMLAttributes<HTMLAnchorElement>, 'href' | 'onClick'> & {
   to: string
-  className?: string
-  children: ReactNode
   onClick?: () => void
-  style?: React.CSSProperties
-  title?: string
-}) {
+}
+
+export function Link({ to, onClick, children, ...rest }: LinkProps) {
   const { navigate } = useRouter()
   return (
     <a
+      {...rest}
       href={`#${to}`}
-      className={className}
-      style={style}
-      title={title}
       onClick={e => {
         if (e.metaKey || e.ctrlKey || e.shiftKey) return
         e.preventDefault()

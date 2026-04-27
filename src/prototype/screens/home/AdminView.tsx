@@ -9,7 +9,7 @@ import {
   IconTask,
 } from '../../components/icons'
 import type { Agent, ApprovalRequest, SpendDashboard, Task } from '../../lib/types'
-import { ago, money, num } from '../../lib/format'
+import { ago, approverRoleLabel, money, num, prettifyRequestedAction } from '../../lib/format'
 import { SpendByAgentCard } from './SpendByAgentCard'
 import { TaskOutcomesCard } from './TaskOutcomesCard'
 import { ActivityHeatmap } from './ActivityHeatmap'
@@ -84,9 +84,9 @@ export function AdminView({
                   <div style={{ padding: '10px 28px 10px 12px' }}>
                     <Flex align="center" justify="between" gap="3" mb="1">
                       <Text size="1" weight="medium" className="truncate" style={{ minWidth: 0 }}>
-                        {a.requested_action}
+                        {prettifyRequestedAction(a.requested_action)}
                       </Text>
-                      <Badge color="gray" variant="soft" radius="full" size="1">{a.approver_role ?? '—'}</Badge>
+                      <Badge color="gray" variant="soft" radius="full" size="1">{a.approver_role ? approverRoleLabel(a.approver_role) : '—'}</Badge>
                     </Flex>
                     <Text as="div" size="1" color="gray">
                       {a.requested_by_name ?? '—'} · {ago(a.created_at)}
@@ -95,7 +95,7 @@ export function AdminView({
                   <IconArrowRight className="ic ic--sm card--tile__arrow" />
                 </Link>
               ))}
-              <Button asChild variant="ghost" color='gray' size="1"><a href="#/approvals">Open queue</a></Button>
+              <Button asChild variant="ghost" color='gray' size="1" style={{ margin: 0 }}><a href="#/approvals">Open queue</a></Button>
             </Flex></div>
           )}
         </div>
