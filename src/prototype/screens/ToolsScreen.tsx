@@ -1,11 +1,11 @@
 import { useEffect, useMemo, useState } from 'react'
-import { Badge, Box, Button, Code, Flex, Text } from '@radix-ui/themes'
+import { Badge, Box, Button, Code, Flex, Text, TextField } from '@radix-ui/themes'
 
 import { AppShell } from '../components/shell'
 import { Caption, PageHeader, InfoHint } from '../components/common'
 import { TextInput } from '../components/fields'
 import { EmptyState, ErrorState, LoadingList } from '../components/states'
-import { IconArrowRight, IconTool } from '../components/icons'
+import { IconArrowRight, IconSearch, IconTool } from '../components/icons'
 import { api } from '../lib/api'
 import { humanKey, policyModeLabel, toolLabel } from '../lib/format'
 import type { ToolDefinition, ToolPolicyMode } from '../lib/types'
@@ -108,7 +108,11 @@ export default function ToolsScreen() {
               placeholder="Filter by name or description..."
               value={query}
               onChange={e => setQuery(e.target.value)}
-            />
+            >
+              <TextField.Slot side="left">
+                <IconSearch className="ic ic--sm" />
+              </TextField.Slot>
+            </TextInput>
           </Box>
         </Flex>
 

@@ -1,11 +1,11 @@
 import { useEffect, useMemo, useState } from 'react'
-import { Badge, Box, Button, Code, Flex, Text } from '@radix-ui/themes'
+import { Badge, Box, Button, Code, Flex, Text, TextField } from '@radix-ui/themes'
 
 import { AppShell } from '../components/shell'
 import { PageHeader, Status, InfoHint, Pagination } from '../components/common'
 import { TextInput } from '../components/fields'
 import { EmptyState, ErrorState, LoadingList } from '../components/states'
-import { IconAgent, IconArrowRight, IconLock, IconPlus } from '../components/icons'
+import { IconAgent, IconArrowRight, IconLock, IconPlus, IconSearch } from '../components/icons'
 import { Link } from '../router'
 import { useAuth } from '../auth'
 import { api } from '../lib/api'
@@ -114,7 +114,11 @@ export default function AgentsScreen() {
               placeholder="Filter by name or description..."
               value={query}
               onChange={e => { setQuery(e.target.value); setPage(0) }}
-            />
+            >
+              <TextField.Slot side="left">
+                <IconSearch className="ic ic--sm" />
+              </TextField.Slot>
+            </TextInput>
           </Box>
         </Flex>
 
