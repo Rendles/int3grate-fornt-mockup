@@ -8,7 +8,7 @@ import { IconApproval, IconArrowRight, IconCheck, IconX } from '../components/ic
 import { Link, useRouter } from '../router'
 import { api } from '../lib/api'
 import type { ApprovalRequest, ApprovalStatus, User } from '../lib/types'
-import { ago } from '../lib/format'
+import { ago, approverRoleLabel, prettifyRequestedAction } from '../lib/format'
 
 type StatusFilter = ApprovalStatus | 'all'
 const STATUSES: StatusFilter[] = ['all', 'pending', 'approved', 'rejected', 'expired', 'cancelled']
@@ -31,7 +31,7 @@ export default function ApprovalsScreen() {
     ])
       .then(([list, u]) => {
         if (cancelled) return
-        setApprovals(list)
+        setApprovals(list.items)
         setUsers(u)
         setError(null)
       })
@@ -135,13 +135,13 @@ export default function ApprovalsScreen() {
                 >
                   <Text as="div" size="1" color="gray">{ago(a.created_at)}</Text>
                   <Text as="div" size="2" className="truncate" style={{ minWidth: 0 }}>
-                    {a.requested_action}
+                    {prettifyRequestedAction(a.requested_action)}
                   </Text>
                   <Text as="div" size="1" className="truncate">
                     {a.requested_by_name ?? userName(a.requested_by) ?? '—'}
                   </Text>
                   <div>
-                    <Badge color="gray" variant="soft" radius="full" size="1">{a.approver_role ?? '—'}</Badge>
+                    <Badge color="gray" variant="soft" radius="full" size="1">{approverRoleLabel(a.approver_role)}</Badge>
                     {approverName && (
                       <Text as="div" size="1" color="gray" mt="1" className="truncate">{approverName}</Text>
                     )}

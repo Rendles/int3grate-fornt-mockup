@@ -28,6 +28,7 @@ const STATUS_MAP: Record<string, { tone: Tone; label: string; pulse?: boolean; d
   approved: { tone: 'success', label: 'Approved' },
   rejected: { tone: 'danger', label: 'Rejected' },
   expired: { tone: 'ghost', label: 'Expired' },
+  closed: { tone: 'ghost', label: 'Closed' },
 }
 
 export function Status({
@@ -36,7 +37,7 @@ export function Status({
   status:
     | 'active' | 'draft' | 'archived' | 'paused' | 'pending' | 'running' | 'suspended'
     | 'completed' | 'completed_with_errors' | 'failed' | 'cancelled'
-    | 'approved' | 'rejected' | 'expired'
+    | 'approved' | 'rejected' | 'expired' | 'closed'
 }) {
   const s = STATUS_MAP[status]
   const color = TONE_COLOR[s.tone]

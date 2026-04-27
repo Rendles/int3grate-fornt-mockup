@@ -10,17 +10,9 @@ import { Link } from '../router'
 import { useAuth } from '../auth'
 import { api } from '../lib/api'
 import type { Agent, AgentStatus, User } from '../lib/types'
-import { ago } from '../lib/format'
+import { ago, domainLabel } from '../lib/format'
 
 const STATUSES: Array<AgentStatus | 'all'> = ['all', 'active', 'paused', 'draft', 'archived']
-
-const DOMAIN_NAMES: Record<string, string> = {
-  dom_hq: 'HQ',
-  dom_sales: 'Sales',
-  dom_support: 'Support',
-}
-const humanDomain = (id: string | null) =>
-  id ? (DOMAIN_NAMES[id] ?? id.replace(/^dom_/, '')) : '—'
 
 export default function AgentsScreen() {
   const { user } = useAuth()
@@ -40,7 +32,7 @@ export default function AgentsScreen() {
     Promise.all([api.listAgents(), api.listUsers()])
       .then(([a, u]) => {
         if (cancelled) return
-        setAgents(a)
+        setAgents(a.items)
         setUsers(u)
         setError(null)
       })
@@ -181,7 +173,7 @@ export default function AgentsScreen() {
                     {ownerName(a.owner_user_id)}
                   </Text>
                   <Text as="div" size="1" color="gray" mt="1">
-                    {humanDomain(a.domain_id)}
+                    {domainLabel(a.domain_id)}
                   </Text>
                 </div>
                 <Text as="div" size="1" color="gray">

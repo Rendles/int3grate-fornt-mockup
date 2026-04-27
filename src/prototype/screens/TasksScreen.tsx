@@ -2,7 +2,7 @@ import { useEffect, useMemo, useState } from 'react'
 import { Badge, Button, Code, Flex, Text } from '@radix-ui/themes'
 
 import { AppShell } from '../components/shell'
-import { Caption, PageHeader, Status, InfoHint, Pagination } from '../components/common'
+import { Caption, PageHeader, Status, InfoHint, MockBadge, Pagination } from '../components/common'
 import { Banner, EmptyState, ErrorState, LoadingList } from '../components/states'
 import { IconArrowRight, IconPlus, IconTask } from '../components/icons'
 import { Link } from '../router'
@@ -31,8 +31,8 @@ export default function TasksScreen() {
     ])
       .then(([t, a, u]) => {
         if (cancelled) return
-        setTasks(t)
-        setAgents(a)
+        setTasks(t.items)
+        setAgents(a.items)
         setUsers(u)
         setError(null)
       })
@@ -64,6 +64,7 @@ export default function TasksScreen() {
           eyebrow={
             <>
               TASKS{' '}
+              <MockBadge kind="deferred" />{' '}
               <InfoHint>
                 List from <Code variant="ghost">GET /tasks</Code>. Status filter is applied server-side. Runs and step details are fetched separately.
               </InfoHint>
@@ -77,7 +78,7 @@ export default function TasksScreen() {
         />
 
         <Banner tone="warn" title="Task concept is MVP-deferred (ADR-0003)">
-          Gateway v0.2.0 marks <Code variant="ghost">/tasks/*</Code> as <Code variant="ghost">x-mvp-deferred</Code>. Runs can exist without a task; these screens remain in the prototype for design continuity.
+          Gateway v0.2.0 marks <Code variant="ghost">/tasks/*</Code> as <Code variant="ghost">x-mvp-deferred</Code>. Real-time chat moved to its own surface — open <Link to="/chats"><Text color="blue">Chats →</Text></Link>. Tasks remain for one-time / scheduled jobs and design continuity.
         </Banner>
         <div style={{ height: 16 }} />
 

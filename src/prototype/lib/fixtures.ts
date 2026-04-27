@@ -6,6 +6,8 @@ import type {
   Agent,
   AgentVersion,
   ApprovalRequest,
+  Chat,
+  ChatMessage,
   Run,
   RunStep,
   SpendDashboard,
@@ -91,7 +93,7 @@ export const agentVersions: AgentVersion[] = [
     memory_scope_config: { ...defaultMemoryScope(), domain_shared: true },
     tool_scope_config: defaultToolScope(),
     approval_rules: { rules: [{ id: 'rule_lq_1', when: 'email.send', required_approver_level: 3 }] },
-    model_chain_config: defaultModelChain('gpt-5-mini', ['claude-haiku-4-5']),
+    model_chain_config: defaultModelChain('claude-haiku-4-5', ['claude-sonnet-4-6']),
     is_active: true,
     created_by: 'usr_marcelo',
     created_at: days(10),
@@ -147,7 +149,7 @@ export const agentVersions: AgentVersion[] = [
     memory_scope_config: defaultMemoryScope(),
     tool_scope_config: defaultToolScope(),
     approval_rules: { rules: [{ id: 'rule_kb_1', when: 'zendesk.publish_article', required_approver_level: 3 }] },
-    model_chain_config: defaultModelChain('gpt-5-mini'),
+    model_chain_config: defaultModelChain('claude-haiku-4-5'),
     is_active: true,
     created_by: 'usr_priya',
     created_at: days(18),
@@ -482,6 +484,34 @@ export const fxTools: ToolDefinition[] = [
       },
     },
   },
+  // Built-in tools surfaced by the gateway (5).yaml catalog example. `web_search`
+  // is the canonical demo tool from the spec; `kb.lookup` is what the chat-stream
+  // mock uses when a user asks the agent to look something up.
+  {
+    name: 'web_search',
+    description: 'Search the public web.',
+    default_mode: 'read_only',
+    input_schema: {
+      type: 'object',
+      required: ['query'],
+      properties: {
+        query: { type: 'string', minLength: 1, maxLength: 500 },
+        max_results: { type: 'integer', minimum: 1, maximum: 10, default: 5 },
+      },
+    },
+  },
+  {
+    name: 'kb.lookup',
+    description: 'Search the tenant knowledge base.',
+    default_mode: 'read_only',
+    input_schema: {
+      type: 'object',
+      required: ['query'],
+      properties: {
+        query: { type: 'string', minLength: 1, maxLength: 500 },
+      },
+    },
+  },
 ]
 
 // ══════════════════════════════════════════════════ TASKS
@@ -778,7 +808,7 @@ export const runs: Record<string, Run> = {
         id: 'stp_run_4080_001',
         kind: 'llm_call',
         status: 'ok',
-        model: 'gpt-5-mini',
+        model: 'claude-haiku-4-5',
         input: { prompt: 'Score 24 inbound forms' },
         output: { plan: 'score · enrich · outreach top 8' },
         cost: 0.08,
@@ -814,7 +844,7 @@ export const runs: Record<string, Run> = {
         id: 'stp_run_4080_004',
         kind: 'llm_call',
         status: 'ok',
-        model: 'gpt-5-mini',
+        model: 'claude-haiku-4-5',
         output: { high_fit: 8, mid_fit: 9, low_fit: 7 },
         cost: 0.12,
         tokens_in: 3200,
@@ -1085,7 +1115,7 @@ export const runs: Record<string, Run> = {
         id: 'stp_run_4082_001',
         kind: 'llm_call',
         status: 'ok',
-        model: 'gpt-5-mini',
+        model: 'claude-haiku-4-5',
         input: { prompt: 'Draft outreach for 8 inbound leads' },
         output: { plan: 'enrich · draft · review' },
         cost: 0.09,
@@ -1133,7 +1163,7 @@ export const runs: Record<string, Run> = {
         id: 'stp_run_4082_005',
         kind: 'llm_call',
         status: 'ok',
-        model: 'gpt-5-mini',
+        model: 'claude-haiku-4-5',
         output: { drafts: 6, skipped: 2 },
         cost: 0.35,
         tokens_in: 12400,
@@ -1226,7 +1256,7 @@ export const runs: Record<string, Run> = {
         id: 'stp_run_4075_001',
         kind: 'llm_call',
         status: 'ok',
-        model: 'gpt-5-mini',
+        model: 'claude-haiku-4-5',
         input: { prompt: 'Score batch · inbound 14:00' },
         cost: 0.04,
         tokens_in: 1100,
@@ -1444,6 +1474,241 @@ export const approvals: ApprovalRequest[] = [
   },
 ]
 
+// ══════════════════════════════════════════════════ CHATS (gateway (5).yaml)
+
+export const chats: Chat[] = [
+  {
+    id: 'cht_3801',
+    tenant_id: 'ten_acme',
+    agent_id: 'agt_lead_qualifier',
+    agent_version_id: 'ver_lq_14',
+    created_by: 'usr_marcelo',
+    model: 'claude-haiku-4-5',
+    title: 'Lead triage debrief — Friday batch',
+    status: 'active',
+    started_at: mins(45),
+    updated_at: mins(2),
+    ended_at: null,
+    total_cost_usd: 0.42,
+    total_tokens_in: 6840,
+    total_tokens_out: 1520,
+  },
+  {
+    id: 'cht_3795',
+    tenant_id: 'ten_acme',
+    agent_id: 'agt_refund_resolver',
+    agent_version_id: 'ver_rr_08',
+    created_by: 'usr_priya',
+    model: 'claude-sonnet-4-6',
+    title: 'Refund question — Eliza Voss SR-2204',
+    status: 'closed',
+    started_at: hrs(20),
+    updated_at: hrs(19),
+    ended_at: hrs(19),
+    total_cost_usd: 0.18,
+    total_tokens_in: 3120,
+    total_tokens_out: 740,
+  },
+  {
+    id: 'cht_3790',
+    tenant_id: 'ten_acme',
+    agent_id: 'agt_kb_sync',
+    agent_version_id: 'ver_kb_03',
+    created_by: 'usr_ada',
+    model: 'claude-haiku-4-5',
+    title: 'Quick fact-check on Q4 KB drift',
+    status: 'active',
+    started_at: hrs(4),
+    updated_at: hrs(3.6),
+    ended_at: null,
+    total_cost_usd: 0.09,
+    total_tokens_in: 1840,
+    total_tokens_out: 420,
+  },
+]
+
+// chat_id → ordered messages (newest-first ordering applied at API layer).
+export const chatMessages: Record<string, ChatMessage[]> = {
+  cht_3801: [
+    {
+      id: 'msg_3801_1',
+      chat_id: 'cht_3801',
+      role: 'user',
+      content: 'What did you find for our top 3 enterprise leads this week?',
+      tool_calls: null,
+      tool_call_id: null,
+      tool_name: null,
+      cost_usd: null,
+      tokens_in: null,
+      tokens_out: null,
+      created_at: mins(45),
+    },
+    {
+      id: 'msg_3801_2',
+      chat_id: 'cht_3801',
+      role: 'assistant',
+      content: 'Pulling enriched contact records and pipeline stages from the CRM now.',
+      tool_calls: [
+        {
+          id: 'tcl_3801_a',
+          name: 'zoho_crm.read_contact',
+          args: { batch: ['Northwind', 'Adatum', 'Contoso'], fields: ['stage', 'pipeline_usd', 'last_touch'] },
+        },
+      ],
+      tool_call_id: null,
+      tool_name: null,
+      cost_usd: 0.06,
+      tokens_in: 820,
+      tokens_out: 180,
+      created_at: mins(44),
+    },
+    {
+      id: 'msg_3801_3',
+      chat_id: 'cht_3801',
+      role: 'tool',
+      content: JSON.stringify({
+        Northwind: { stage: 'proposal', pipeline_usd: 420_000, last_touch: '2026-04-22' },
+        Adatum: { stage: 'proposal', pipeline_usd: 310_000, last_touch: '2026-04-23' },
+        Contoso: { stage: 'discovery', pipeline_usd: 280_000, last_touch: '2026-04-21' },
+      }),
+      tool_calls: null,
+      tool_call_id: 'tcl_3801_a',
+      tool_name: 'zoho_crm.read_contact',
+      cost_usd: null,
+      tokens_in: null,
+      tokens_out: null,
+      created_at: mins(44),
+    },
+    {
+      id: 'msg_3801_4',
+      chat_id: 'cht_3801',
+      role: 'assistant',
+      content:
+        'Top three this week:\n\n• **Northwind** — proposal stage, $420k pipeline, last touch Apr 22.\n• **Adatum** — proposal stage, $310k pipeline, last touch Apr 23.\n• **Contoso** — still in discovery, $280k pipeline, last touch Apr 21.\n\nNorthwind and Adatum are both warm enough to schedule the close call this week. Contoso needs another discovery round before pricing.',
+      tool_calls: null,
+      tool_call_id: null,
+      tool_name: null,
+      cost_usd: 0.12,
+      tokens_in: 2400,
+      tokens_out: 460,
+      created_at: mins(43),
+    },
+    {
+      id: 'msg_3801_5',
+      chat_id: 'cht_3801',
+      role: 'user',
+      content: 'Draft the close-call invite for Northwind. Keep it short.',
+      tool_calls: null,
+      tool_call_id: null,
+      tool_name: null,
+      cost_usd: null,
+      tokens_in: null,
+      tokens_out: null,
+      created_at: mins(3),
+    },
+    {
+      id: 'msg_3801_6',
+      chat_id: 'cht_3801',
+      role: 'assistant',
+      content:
+        'Subject: Locking in the Northwind close — 30 minutes this week?\n\nHi team — we\'re at proposal with Northwind ($420k), last touch Apr 22. Proposing a 30-minute close call Thursday or Friday. I\'ll bring the redlined contract and the security questionnaire responses; you bring the executive sponsor sign-off and the pricing approval. Reply with a slot and I\'ll send the invite.',
+      tool_calls: null,
+      tool_call_id: null,
+      tool_name: null,
+      cost_usd: 0.24,
+      tokens_in: 3620,
+      tokens_out: 880,
+      created_at: mins(2),
+    },
+  ],
+  cht_3795: [
+    {
+      id: 'msg_3795_1',
+      chat_id: 'cht_3795',
+      role: 'user',
+      content: 'Customer Eliza Voss says she was double-charged on order #44021. Can you check?',
+      tool_calls: null,
+      tool_call_id: null,
+      tool_name: null,
+      cost_usd: null,
+      tokens_in: null,
+      tokens_out: null,
+      created_at: hrs(20),
+    },
+    {
+      id: 'msg_3795_2',
+      chat_id: 'cht_3795',
+      role: 'assistant',
+      content: 'Looking up the charge in Stripe.',
+      tool_calls: [
+        { id: 'tcl_3795_a', name: 'stripe.read_charge', args: { charge_id: 'ch_3P8fL2' } },
+      ],
+      tool_call_id: null,
+      tool_name: null,
+      cost_usd: 0.04,
+      tokens_in: 620,
+      tokens_out: 140,
+      created_at: hrs(20),
+    },
+    {
+      id: 'msg_3795_3',
+      chat_id: 'cht_3795',
+      role: 'tool',
+      content: JSON.stringify({ status: 'succeeded', amount_usd: 412, customer: 'Eliza Voss', order_id: '#44021' }),
+      tool_calls: null,
+      tool_call_id: 'tcl_3795_a',
+      tool_name: 'stripe.read_charge',
+      cost_usd: null,
+      tokens_in: null,
+      tokens_out: null,
+      created_at: hrs(20),
+    },
+    {
+      id: 'msg_3795_4',
+      chat_id: 'cht_3795',
+      role: 'assistant',
+      content:
+        'I see one successful $412 charge on order #44021 — no duplicate visible in Stripe. Possible causes: a pending authorization that fell off, or a separate retry attempt that did not complete. I drafted a refund request for review (it crosses the $200 cap and needs Marcelo to sign off). The refund is now in the approvals queue.',
+      tool_calls: null,
+      tool_call_id: null,
+      tool_name: null,
+      cost_usd: 0.14,
+      tokens_in: 2500,
+      tokens_out: 600,
+      created_at: hrs(19),
+    },
+  ],
+  cht_3790: [
+    {
+      id: 'msg_3790_1',
+      chat_id: 'cht_3790',
+      role: 'user',
+      content: 'Is the help-center article on bulk export still aligned with the runbook from October?',
+      tool_calls: null,
+      tool_call_id: null,
+      tool_name: null,
+      cost_usd: null,
+      tokens_in: null,
+      tokens_out: null,
+      created_at: hrs(4),
+    },
+    {
+      id: 'msg_3790_2',
+      chat_id: 'cht_3790',
+      role: 'assistant',
+      content:
+        'Diff against the October runbook: the public article still references the old 200-row export limit. Internal runbook bumped that to 1,000 rows on Oct 18. I can prepare the article update — it\'ll need an admin to publish.',
+      tool_calls: null,
+      tool_call_id: null,
+      tool_name: null,
+      cost_usd: 0.09,
+      tokens_in: 1840,
+      tokens_out: 420,
+      created_at: hrs(3.6),
+    },
+  ],
+}
+
 // ══════════════════════════════════════════════════ SPEND
 
 function row(id: string, label: string, total: number, runs: number, tokensIn: number, tokensOut: number): SpendRow {
@@ -1489,4 +1754,15 @@ export function getSpendDashboard(range: SpendRange, group_by: SpendGroupBy): Sp
   const items = (group_by === 'agent' ? byAgentBase : byUserBase).map(r => scaleRow(r, m))
   const total_usd = Math.round(items.reduce((s, r) => s + r.total_usd, 0) * 100) / 100
   return { range, group_by, total_usd, items }
+}
+
+// Lifetime stats per agent (mock equivalent of orchestrator enrichment used by
+// gateway (5).yaml on GET /agents/{id}). Returns null for unknown agents so
+// detail responses fall back gracefully when enrichment "fails".
+export function getAgentStats(agentId: string): { total_spend_usd: number; runs_count: number } | null {
+  const row = byAgentBase.find(r => r.id === agentId)
+  if (!row) return null
+  // byAgentBase numbers are 30d-scoped — we treat them as lifetime totals here
+  // for demo purposes (real backend will return cumulative numbers).
+  return { total_spend_usd: row.total_usd, runs_count: row.run_count }
 }

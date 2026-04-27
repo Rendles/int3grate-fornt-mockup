@@ -4,6 +4,7 @@ import { Button, Code, Flex, Heading, Text } from '@radix-ui/themes'
 import { useAuth } from '../auth'
 import { useRouter } from '../router'
 import { PasswordField, TextInput } from '../components/fields'
+import { MockBadge } from '../components/common'
 import { Banner } from '../components/states'
 import { IconArrowRight } from '../components/icons'
 import logo from '../../assets/logo.svg'
@@ -151,7 +152,10 @@ export default function RegisterScreen() {
       <div className="login__form-wrap">
         <form className="login__form" onSubmit={submit} noValidate>
           <div>
-            <Text as="div" size="1" color="gray" className="page__eyebrow" mb="2">SIGN UP</Text>
+            <Flex align="center" gap="2" mb="2">
+              <Text as="span" size="1" color="gray" className="page__eyebrow">SIGN UP</Text>
+              <MockBadge kind="design" hint="POST /auth/register is not in the gateway spec — registration is mock-only and runs entirely against in-memory fixtures." />
+            </Flex>
             <Heading as="h2" size="8" weight="regular" className="login__form-heading">Create account.</Heading>
             <Text as="p" size="2" color="gray" mt="1">
               Create a workspace owner account for the control plane.

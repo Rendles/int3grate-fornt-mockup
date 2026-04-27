@@ -8,15 +8,15 @@ import { IconAlert, IconArrowRight } from '../components/icons'
 import { Link } from '../router'
 import { api } from '../lib/api'
 import type { Run, RunStep, RunStepType, RunToolError } from '../lib/types'
-import { absTime, durationMs, money, num, toolLabel } from '../lib/format'
+import { absTime, domainLabel, durationMs, errorKindLabel, money, num, shortRef, stageLabel, toolErrorStatusLabel, toolLabel } from '../lib/format'
 
 const STEP_KIND_LABEL: Record<RunStepType, string> = {
-  llm_call: 'LLM_CALL',
-  tool_call: 'TOOL_CALL',
-  memory_read: 'MEMORY_READ',
-  memory_write: 'MEMORY_WRITE',
-  approval_gate: 'APPROVAL_GATE',
-  validation: 'VALIDATION',
+  llm_call: 'LLM call',
+  tool_call: 'Tool call',
+  memory_read: 'Memory read',
+  memory_write: 'Memory write',
+  approval_gate: 'Approval gate',
+  validation: 'Validation',
 }
 
 type ToneColor = { color: 'green' | 'amber' | 'red' | 'cyan' | 'gray'; variant: 'soft' | 'outline' }
@@ -68,14 +68,14 @@ export default function RunDetailScreen({ runId }: { runId: string }) {
         run.task_id
           ? { label: 'task', to: `/tasks/${run.task_id}` }
           : { label: 'standalone run' },
-        { label: run.id.toUpperCase() },
+        { label: 'timeline' },
       ]}
     >
       <div className="page page--wide">
         <PageHeader
           eyebrow={
             <>
-              {`RUN · ${run.id}`}{' '}
+              RUN{' '}
               <InfoHint>
                 Loaded via <Code variant="ghost">GET /runs/{'{id}'}</Code>. Full step timeline included in the response.
               </InfoHint>
@@ -95,17 +95,15 @@ export default function RunDetailScreen({ runId }: { runId: string }) {
 
         <CommandBar
           parts={[
-            { label: 'ID', value: run.id },
-            { label: 'TASK', value: run.task_id ?? 'standalone · no task' },
-            { label: 'AGT VER', value: run.agent_version_id ?? '—', tone: 'accent' },
+            { label: 'TASK', value: run.task_id ? shortRef(run.task_id) : 'standalone' },
             { label: 'STATUS', value: run.status, tone: run.status === 'failed' || run.status === 'suspended' || run.status === 'completed_with_errors' ? 'warn' : undefined },
             ...(run.error_kind && run.error_kind !== 'none'
-              ? [{ label: 'ERROR_KIND', value: run.error_kind, tone: 'warn' as const }]
+              ? [{ label: 'ERROR', value: errorKindLabel(run.error_kind), tone: 'warn' as const }]
               : []),
             { label: 'STEPS', value: num(run.steps.length) },
             { label: 'TOKENS', value: `${num(run.total_tokens_in)} in · ${num(run.total_tokens_out)} out` },
             { label: 'SPEND', value: money(run.total_cost_usd, { cents: true }) },
-            ...(run.suspended_stage ? [{ label: 'SUSPENDED', value: run.suspended_stage, tone: 'warn' as const }] : []),
+            ...(run.suspended_stage ? [{ label: 'WAITING ON', value: stageLabel(run.suspended_stage), tone: 'warn' as const }] : []),
           ]}
         />
 
@@ -114,7 +112,7 @@ export default function RunDetailScreen({ runId }: { runId: string }) {
             <div style={{ height: 16 }} />
             <Banner tone="warn" title="Run is suspended">
               <>
-                Orchestrator paused at <Code variant="ghost">{run.suspended_stage}</Code>. An approval_gate step is waiting for a human decision.
+                Orchestrator paused at <strong>{stageLabel(run.suspended_stage)}</strong>. An approval is waiting for a human decision.
               </>
             </Banner>
           </>
@@ -129,7 +127,7 @@ export default function RunDetailScreen({ runId }: { runId: string }) {
                   <IconAlert className="ic" style={{ color: 'var(--red-11)' }} />
                   <Text as="span" size="5" style={{ color: 'var(--red-11)' }}>Run failed</Text>
                   {run.error_kind && run.error_kind !== 'none' && (
-                    <Badge color="red" variant="soft" radius="small" size="1">{run.error_kind}</Badge>
+                    <Badge color="red" variant="soft" radius="small" size="1">{errorKindLabel(run.error_kind)}</Badge>
                   )}
                 </Flex>
                 <Text as="div" size="2" style={{ lineHeight: 1.55 }}>{run.error_message}</Text>
@@ -156,7 +154,7 @@ export default function RunDetailScreen({ runId }: { runId: string }) {
                     Completed with errors
                   </Text>
                   {run.error_kind && run.error_kind !== 'none' && (
-                    <Badge color="amber" variant="soft" radius="small" size="1">{run.error_kind}</Badge>
+                    <Badge color="amber" variant="soft" radius="small" size="1">{errorKindLabel(run.error_kind)}</Badge>
                   )}
                 </Flex>
                 <Text as="div" size="2" style={{ lineHeight: 1.55 }}>
@@ -196,7 +194,7 @@ export default function RunDetailScreen({ runId }: { runId: string }) {
               textTransform: 'uppercase',
               letterSpacing: '0.14em',
             }}>
-              <Text as="span" size="1" color="gray">step_type</Text>
+              <Text as="span" size="1" color="gray">step</Text>
               <Text as="span" size="1" color="gray">status</Text>
               <Text as="span" size="1" color="gray">model / tool</Text>
               <Text as="span" size="1" color="gray" style={{ textAlign: 'right' }}>duration</Text>
@@ -213,27 +211,28 @@ export default function RunDetailScreen({ runId }: { runId: string }) {
         <div style={{ height: 20 }} />
 
         <div className="card">
-          <div className="card__head"><Text as="div" size="2" weight="medium" className="card__title">Run metadata</Text></div>
+          <div className="card__head"><Text as="div" size="2" weight="medium" className="card__title">Run details</Text></div>
           <div className="card__body">
-            <MetaRow label="id" value={<Code variant="ghost">{run.id}</Code>} />
-            <MetaRow label="tenant_id" value={<Code variant="ghost">{run.tenant_id}</Code>} />
-            <MetaRow label="domain_id" value={<Code variant="ghost">{run.domain_id ?? '—'}</Code>} />
+            <MetaRow label="domain" value={domainLabel(run.domain_id)} />
             <MetaRow
-              label="task_id"
+              label="task"
               value={run.task_id
-                ? <Link to={`/tasks/${run.task_id}`}><Code variant="ghost">{run.task_id}</Code></Link>
-                : <Text color="gray">null · standalone run (ADR-0003)</Text>}
+                ? <Link to={`/tasks/${run.task_id}`}>{shortRef(run.task_id)}</Link>
+                : <Text color="gray">— · standalone run</Text>}
             />
-            <MetaRow label="agent_version_id" value={<Code variant="ghost">{run.agent_version_id ?? '—'}</Code>} />
             <MetaRow label="status" value={<Status status={run.status} />} />
-            <MetaRow label="error_kind" value={<Code variant="ghost">{run.error_kind ?? '—'}</Code>} />
-            <MetaRow label="suspended_stage" value={<Code variant="ghost">{run.suspended_stage ?? '—'}</Code>} />
-            <MetaRow label="started_at" value={<Code variant="ghost">{run.started_at ? absTime(run.started_at) : '—'}</Code>} />
-            <MetaRow label="ended_at" value={<Code variant="ghost">{run.ended_at ? absTime(run.ended_at) : '—'}</Code>} />
-            <MetaRow label="total_cost_usd" value={<Code variant="ghost">{money(run.total_cost_usd, { cents: true })}</Code>} />
-            <MetaRow label="total_tokens_in" value={<Code variant="ghost">{num(run.total_tokens_in)}</Code>} />
-            <MetaRow label="total_tokens_out" value={<Code variant="ghost">{num(run.total_tokens_out)}</Code>} />
-            <MetaRow label="created_at" value={<Code variant="ghost">{absTime(run.created_at)}</Code>} />
+            {run.error_kind && run.error_kind !== 'none' && (
+              <MetaRow label="error" value={errorKindLabel(run.error_kind)} />
+            )}
+            {run.suspended_stage && (
+              <MetaRow label="waiting on" value={stageLabel(run.suspended_stage)} />
+            )}
+            <MetaRow label="started" value={run.started_at ? absTime(run.started_at) : '—'} />
+            <MetaRow label="ended" value={run.ended_at ? absTime(run.ended_at) : '—'} />
+            <MetaRow label="cost" value={money(run.total_cost_usd, { cents: true })} />
+            <MetaRow label="tokens in" value={num(run.total_tokens_in)} />
+            <MetaRow label="tokens out" value={num(run.total_tokens_out)} />
+            <MetaRow label="created" value={absTime(run.created_at)} />
           </div>
         </div>
       </div>
@@ -259,9 +258,9 @@ function StepRow({ step, expanded, onToggle }: { step: RunStep; expanded: boolea
           color: 'var(--gray-12)',
         }}
       >
-        <Code variant="ghost" size="1" color="gray">
+        <Text as="span" size="1" color="gray">
           {STEP_KIND_LABEL[step.step_type]}
-        </Code>
+        </Text>
         <Badge color={tone.color} variant={tone.variant} radius="full" size="1">{step.status}</Badge>
         <Text as="div" size="1" className="truncate">
           {step.model_name ?? (step.tool_name ? toolLabel(step.tool_name) : <Text color="gray">—</Text>)}
@@ -282,11 +281,11 @@ function StepRow({ step, expanded, onToggle }: { step: RunStep; expanded: boolea
       {expanded && (
         <div style={{ padding: '0 16px 16px' }}>
           <Grid columns="2" gap="3">
-            <JsonPanel title="input_ref" value={step.input_ref} />
-            <JsonPanel title="output_ref" value={step.output_ref} />
+            <JsonPanel title="input" value={step.input_ref} />
+            <JsonPanel title="output" value={step.output_ref} />
           </Grid>
           <Text as="div" size="1" color="gray" mt="3">
-            step_id · {step.id} · created {absTime(step.created_at)}
+            created {absTime(step.created_at)}
             {step.completed_at ? ` · completed ${absTime(step.completed_at)}` : ''}
           </Text>
         </div>
@@ -368,7 +367,7 @@ function ToolErrorsCard({ errors }: { errors: RunToolError[] }) {
               }}
             >
               <Text as="div" size="2">{toolLabel(e.tool)}</Text>
-              <Badge color={color} variant={variant} radius="full" size="1">{e.status}</Badge>
+              <Badge color={color} variant={variant} radius="full" size="1">{toolErrorStatusLabel(e.status)}</Badge>
               <Text as="span" size="1" color="gray" style={{ lineHeight: 1.55 }}>
                 {e.message ?? '—'}
               </Text>

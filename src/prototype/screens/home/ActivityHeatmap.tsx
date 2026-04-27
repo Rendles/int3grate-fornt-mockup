@@ -1,6 +1,7 @@
 import { useMemo } from 'react'
-import { Text, Tooltip } from '@radix-ui/themes'
+import { Flex, Text, Tooltip } from '@radix-ui/themes'
 import { IconAgent } from '../../components/icons'
+import { MockBadge } from '../../components/common'
 
 // ACTIVITY HEATMAP — 7 days × 24 hours of fleet run volume.
 // Data is synthesized deterministically (no real /runs endpoint in the proto)
@@ -65,10 +66,13 @@ export function ActivityHeatmap() {
   return (
     <div className="card card--flush">
       <div className="card__head">
-        <Text as="div" size="2" weight="medium" className="card__title">
-          <IconAgent className="ic" />
-          Fleet activity · 7 days
-        </Text>
+        <Flex align="center" gap="2">
+          <Text as="div" size="2" weight="medium" className="card__title">
+            <IconAgent className="ic" />
+            Fleet activity · 7 days
+          </Text>
+          <MockBadge kind="design" hint="Run-volume heatmap is synthesized client-side. Backend doesn't expose hourly run aggregates yet." />
+        </Flex>
         <div className="heatmap__legend">
           <span>less</span>
           <div className="heatmap__legend-scale">

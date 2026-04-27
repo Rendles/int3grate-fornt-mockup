@@ -1,20 +1,29 @@
 import { useEffect, useState } from 'react'
 import { Badge, Button, Code, DataList, Text } from '@radix-ui/themes'
 import { AppShell } from '../components/shell'
-import { PageHeader, MetaRow, Status, CommandBar, InfoHint } from '../components/common'
+import { PageHeader, MetaRow, MockBadge, Status, CommandBar, InfoHint } from '../components/common'
 import { Banner, LoadingList, NoAccessState } from '../components/states'
 import { IconPlay } from '../components/icons'
 import { Link } from '../router'
 import { api } from '../lib/api'
-import type { Task } from '../lib/types'
-import { absTime, ago } from '../lib/format'
+import type { Agent, Task, User } from '../lib/types'
+import { absTime, ago, domainLabel } from '../lib/format'
 
 export default function TaskDetailScreen({ taskId }: { taskId: string }) {
   const [task, setTask] = useState<Task | null | undefined>(undefined)
+  const [agents, setAgents] = useState<Agent[]>([])
+  const [users, setUsers] = useState<User[]>([])
 
   useEffect(() => {
     api.getTask(taskId).then(t => setTask(t ?? null))
+    api.listAgents().then(list => setAgents(list.items))
+    api.listUsers().then(setUsers)
   }, [taskId])
+
+  const agentName = (id: string | null | undefined) =>
+    (id && agents.find(a => a.id === id)?.name) || '—'
+  const userName = (id: string | null | undefined) =>
+    (id && users.find(u => u.id === id)?.name) || '—'
 
   if (task === null) {
     return (
@@ -34,25 +43,26 @@ export default function TaskDetailScreen({ taskId }: { taskId: string }) {
       crumbs={[
         { label: 'home', to: '/' },
         { label: 'tasks', to: '/tasks' },
-        { label: task.id.toUpperCase() },
+        { label: 'task' },
       ]}
     >
       <div className="page page--wide">
         <PageHeader
           eyebrow={
             <>
-              {`TASK · ${task.id}`}{' '}
+              TASK{' '}
+              <MockBadge kind="deferred" />{' '}
               <InfoHint>
                 Loaded via <Code variant="ghost">GET /tasks/{'{id}'}</Code>. The task response doesn't include a run ID — open runs directly by ID.
               </InfoHint>
             </>
           }
           title={task.title ?? <>Untitled task</>}
-          subtitle="Task metadata. To inspect the run, open it by ID."
+          subtitle="Task details. To inspect the run, open it from the timeline."
           actions={
             <>
               <Status status={task.status} />
-              <Button asChild variant="ghost" title="Dispatch a new task with the same agent and type">
+              <Button asChild variant="solid" title="Dispatch a new task with the same agent and type">
                 <a href={`#/tasks/new?agent=${task.assigned_agent_id}&type=${task.type}&title=${encodeURIComponent(task.title ?? '')}`}>
                   <IconPlay />
                   Start another
@@ -64,12 +74,11 @@ export default function TaskDetailScreen({ taskId }: { taskId: string }) {
 
         <CommandBar
           parts={[
-            { label: 'ID', value: task.id },
             { label: 'TYPE', value: task.type.replace('_', ' ') },
             { label: 'STATUS', value: task.status },
-            { label: 'AGENT', value: task.assigned_agent_id ?? '—' },
-            { label: 'VERSION', value: task.assigned_agent_version_id ?? '—' },
-            { label: 'CREATED BY', value: task.created_by ?? '—' },
+            { label: 'AGENT', value: agentName(task.assigned_agent_id) },
+            { label: 'CREATED BY', value: userName(task.created_by) },
+            { label: 'DOMAIN', value: domainLabel(task.domain_id) },
           ]}
         />
 
@@ -83,30 +92,27 @@ export default function TaskDetailScreen({ taskId }: { taskId: string }) {
         <div className="card">
           <div className="card__head">
             <Text as="div" size="2" weight="medium" className="card__title">
-              Metadata{' '}
+              Details{' '}
               <InfoHint>
-                All fields stored on the Task. There is no run ID, step count, or spend on this record — those live on the run.
+                All fields stored on the task. Step count and spend are tracked on the run instead.
               </InfoHint>
             </Text>
           </div>
           <div className="card__body">
             <DataList.Root size="2">
-              <MetaRow label="id" value={<Code variant="ghost">{task.id}</Code>} />
-              <MetaRow label="tenant_id" value={<Code variant="ghost">{task.tenant_id}</Code>} />
-              <MetaRow label="domain_id" value={<Code variant="ghost">{task.domain_id ?? '—'}</Code>} />
+              <MetaRow label="domain" value={domainLabel(task.domain_id)} />
               <MetaRow label="type" value={<Badge color="gray" variant="soft" radius="full" size="1">{task.type.replace('_', ' ')}</Badge>} />
               <MetaRow label="status" value={<Status status={task.status} />} />
               <MetaRow
-                label="assigned_agent_id"
+                label="agent"
                 value={task.assigned_agent_id
-                  ? <Link to={`/agents/${task.assigned_agent_id}`}><Code variant="ghost">{task.assigned_agent_id}</Code></Link>
-                  : <Code variant="ghost" color="gray">—</Code>}
+                  ? <Link to={`/agents/${task.assigned_agent_id}`}>{agentName(task.assigned_agent_id)}</Link>
+                  : <Text color="gray">—</Text>}
               />
-              <MetaRow label="assigned_agent_version_id" value={<Code variant="ghost">{task.assigned_agent_version_id ?? '—'}</Code>} />
-              <MetaRow label="created_by" value={<Code variant="ghost">{task.created_by ?? '—'}</Code>} />
-              <MetaRow label="title" value={task.title ?? <Text color="gray">null</Text>} />
-              <MetaRow label="created_at" value={<Code variant="ghost">{absTime(task.created_at)}</Code>} />
-              <MetaRow label="updated_at" value={<Code variant="ghost">{absTime(task.updated_at)} · {ago(task.updated_at)}</Code>} />
+              <MetaRow label="created by" value={userName(task.created_by)} />
+              <MetaRow label="title" value={task.title ?? <Text color="gray">—</Text>} />
+              <MetaRow label="created" value={absTime(task.created_at)} />
+              <MetaRow label="updated" value={`${absTime(task.updated_at)} · ${ago(task.updated_at)}`} />
             </DataList.Root>
           </div>
         </div>

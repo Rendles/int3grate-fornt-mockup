@@ -15,6 +15,15 @@ interface AuthValue {
 const AuthCtx = createContext<AuthValue | null>(null)
 const STORAGE_KEY = 'proto.session.v1'
 
+interface StoredSession {
+  // The real gateway returns an opaque JWT in LoginResponse.token. We persist
+  // it and re-attach as the bearer credential on every request. `userId` is
+  // also stored so legacy sessions (pre-token migration) keep working until
+  // they expire naturally.
+  token?: string
+  userId?: string
+}
+
 export function AuthProvider({ children }: { children: ReactNode }) {
   const hasStoredSession = () => {
     try { return !!localStorage.getItem(STORAGE_KEY) } catch { return false }
@@ -27,11 +36,18 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     try {
       const raw = localStorage.getItem(STORAGE_KEY)
       if (raw) {
-        const { userId } = JSON.parse(raw) as { userId: string }
-        api.me(userId)
-          .then(u => { if (!cancelled) setUser(u) })
-          .catch(() => {})
-          .finally(() => { if (!cancelled) setLoading(false) })
+        const { token, userId } = JSON.parse(raw) as StoredSession
+        // Prefer token (post-migration sessions); fall back to userId if a
+        // legacy session is still in storage. Mock api.me accepts both.
+        const credential = token ?? userId
+        if (credential) {
+          api.me(credential)
+            .then(u => { if (!cancelled) setUser(u) })
+            .catch(() => {})
+            .finally(() => { if (!cancelled) setLoading(false) })
+        } else {
+          setLoading(false)
+        }
       }
     } catch {
       /* no session */
@@ -40,16 +56,21 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   }, [])
 
   const login = useCallback(async (email: string, password: string) => {
-    const u = await api.login(email, password)
+    // Two-step per gateway (5).yaml: POST /auth/login → LoginResponse, then
+    // GET /me with the issued bearer to fetch the User profile.
+    const { token } = await api.login(email, password)
+    const u = await api.me(token)
     setUser(u)
-    localStorage.setItem(STORAGE_KEY, JSON.stringify({ userId: u.id }))
+    localStorage.setItem(STORAGE_KEY, JSON.stringify({ token, userId: u.id } satisfies StoredSession))
     return u
   }, [])
 
   const register = useCallback(async (input: { name: string; email: string; password: string; workspaceName: string }) => {
+    // Registration is not in gateway (5).yaml — kept as a mock-only flow.
+    // We still persist a session so the user lands logged in.
     const u = await api.register(input)
     setUser(u)
-    localStorage.setItem(STORAGE_KEY, JSON.stringify({ userId: u.id }))
+    localStorage.setItem(STORAGE_KEY, JSON.stringify({ userId: u.id } satisfies StoredSession))
     return u
   }, [])
 

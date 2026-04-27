@@ -1,15 +1,106 @@
 import { useEffect, useState } from 'react'
-import { Badge, Button, Code, Flex, IconButton, Switch, Text } from '@radix-ui/themes'
+import { Badge, Button, Flex, IconButton, Select, Switch, Text } from '@radix-ui/themes'
 import { Caption } from './common/caption'
 
 import { api } from '../lib/api'
+import { grantModeLabel, toolLabel } from '../lib/format'
 import type { Agent, ToolDefinition, ToolGrant, ToolGrantMode, ToolGrantScopeType } from '../lib/types'
 import { Banner, LoadingList, NoAccessState } from './states'
-import { SelectField, TextInput } from './fields'
 import { IconAlert, IconCheck, IconPlus, IconX } from './icons'
 
 const MODES: ToolGrantMode[] = ['read', 'write', 'read_write']
 const SCOPES: ToolGrantScopeType[] = ['tenant', 'domain', 'agent']
+
+// Same template for header + rows so columns line up regardless of inputs.
+const GRID_COLS = 'minmax(0, 1fr) 150px 170px 160px 36px'
+
+/**
+ * Compact Radix Select sized to fill its grid cell. Differs from `SelectField`
+ * (which is a form-style wrapper with label + hint + error chrome) — here we
+ * skip the chrome so the trigger sits cleanly in a table row, vertically
+ * centered with the surrounding Switch and IconButton.
+ */
+function InlineSelect({
+  value,
+  onChange,
+  options,
+}: {
+  value: string
+  onChange: (v: string) => void
+  options: { value: string; label: string }[]
+}) {
+  return (
+    <Select.Root value={value} onValueChange={onChange} size="2">
+      <Select.Trigger
+        variant="surface"
+        style={{ width: '100%', justifyContent: 'space-between' }}
+      />
+      <Select.Content position="popper" sideOffset={4}>
+        {options.map(opt => (
+          <Select.Item key={opt.value} value={opt.value}>
+            {opt.label}
+          </Select.Item>
+        ))}
+      </Select.Content>
+    </Select.Root>
+  )
+}
+
+/**
+ * Catalog tool picker for adding grants. Replaces the native <input list>
+ * /<datalist> combo because the OS-rendered popup ignored our styles, was
+ * too narrow, and produced a stray indicator on Chromium.
+ *
+ * Uses Radix Select. Already-granted tools are hidden so the same tool can't
+ * be added twice. Tool description renders as a second line under the name.
+ */
+function CatalogPicker({
+  value,
+  onChange,
+  catalog,
+  granted,
+}: {
+  value: string
+  onChange: (v: string) => void
+  catalog: ToolDefinition[]
+  granted: string[]
+}) {
+  const grantedSet = new Set(granted)
+  const available = catalog.filter(t => !grantedSet.has(t.name))
+  const exhausted = catalog.length > 0 && available.length === 0
+
+  return (
+    <Select.Root
+      value={value || undefined}
+      onValueChange={onChange}
+      size="2"
+      disabled={catalog.length === 0 || exhausted}
+    >
+      <Select.Trigger
+        variant="surface"
+        className="catalog-trigger"
+        placeholder={
+          catalog.length === 0
+            ? 'Loading tool catalog…'
+            : exhausted
+              ? 'Every catalog tool is already granted'
+              : 'Pick a tool to grant…'
+        }
+        style={{ width: '100%', justifyContent: 'space-between' }}
+      />
+      <Select.Content position="popper" sideOffset={4} style={{ maxHeight: 320 }}>
+        {available.map(t => (
+          <Select.Item key={t.name} value={t.name} className="catalog-item">
+            <span className="catalog-item__name">{toolLabel(t.name)}</span>
+            {t.description && (
+              <span className="catalog-item__desc">{t.description}</span>
+            )}
+          </Select.Item>
+        ))}
+      </Select.Content>
+    </Select.Root>
+  )
+}
 
 export function GrantsEditor({
   agent, grants, canEdit, onChange,
@@ -136,103 +227,68 @@ export function GrantsEditor({
         </Banner>
       )}
 
-      <div className="card" style={{ padding: 0 }}>
-        <div
-          style={{
-            display: 'grid',
-            gridTemplateColumns: 'minmax(0, 1fr) 130px 110px 110px 32px',
-            gap: 12,
-            padding: '10px 16px',
-            background: 'var(--gray-3)',
-            borderBottom: '1px solid var(--gray-6)',
-            textTransform: 'uppercase',
-            letterSpacing: '0.14em',
-          }}
-        >
-          <Text as="span" size="1" color="gray">tool_name</Text>
+      <div className="card card--table">
+        <div className="table-head" style={{ gridTemplateColumns: GRID_COLS }}>
+          <Text as="span" size="1" color="gray">tool</Text>
           <Text as="span" size="1" color="gray">scope</Text>
-          <Text as="span" size="1" color="gray">mode</Text>
+          <Text as="span" size="1" color="gray">access</Text>
           <Text as="span" size="1" color="gray">approval</Text>
           <span />
         </div>
         {local.length === 0 ? (
-          <Text as="div" size="1" color="gray" align="center" style={{ padding: '20px 16px' }}>
+          <Text as="div" size="2" color="gray" align="center" style={{ padding: '24px 16px' }}>
             No grants yet. Add one below.
           </Text>
         ) : (
           local.map(g => (
             <div
               key={g.id}
-              style={{
-                display: 'grid',
-                gridTemplateColumns: 'minmax(0, 1fr) 130px 110px 110px 32px',
-                gap: 12,
-                padding: '10px 16px',
-                alignItems: 'center',
-                borderBottom: '1px solid var(--gray-6)',
-              }}
+              className="grants-row"
+              style={{ gridTemplateColumns: GRID_COLS }}
             >
-              <Code variant="ghost" size="1">{g.tool_name}</Code>
-              <SelectField
-                size="1"
+              <Text size="2">{toolLabel(g.tool_name)}</Text>
+              <InlineSelect
                 value={g.scope_type}
                 onChange={v => updateGrant(g.id, { scope_type: v as ToolGrantScopeType })}
-                options={SCOPES.map(s => ({ value: s }))}
+                options={SCOPES.map(s => ({ value: s, label: s.charAt(0).toUpperCase() + s.slice(1) }))}
               />
-              <SelectField
-                size="1"
+              <InlineSelect
                 value={g.mode}
                 onChange={v => updateGrant(g.id, { mode: v as ToolGrantMode })}
-                options={MODES.map(m => ({ value: m }))}
+                options={MODES.map(m => ({ value: m, label: grantModeLabel(m) }))}
               />
               <Flex align="center" gap="2" asChild>
-                <label>
+                <label style={{ cursor: 'pointer' }}>
                   <Switch
-                    size="1"
+                    size="2"
                     checked={g.approval_required}
                     onCheckedChange={v => updateGrant(g.id, { approval_required: v })}
                   />
-                  <Text size="2">{g.approval_required ? 'required' : 'auto'}</Text>
+                  <Text size="2">{g.approval_required ? 'Required' : 'Auto'}</Text>
                 </label>
               </Flex>
               <IconButton
-                size="1"
+                size="2"
                 variant="ghost"
                 color="red"
                 onClick={() => removeGrant(g.id)}
                 title="Remove grant"
                 aria-label="Remove grant"
               >
-                <IconX size={12} />
+                <IconX />
               </IconButton>
             </div>
           ))
         )}
 
-        <div
-          style={{
-            display: 'grid',
-            gridTemplateColumns: 'minmax(0, 1fr) auto',
-            gap: 8,
-            padding: '10px 16px',
-            background: 'var(--gray-3)',
-            borderTop: '1px solid var(--gray-6)',
-          }}
-        >
-          <TextInput
-            size="1"
-            placeholder="tool_name (e.g. stripe.refund, slack.post_message)"
+        <div className="grants-add">
+          <CatalogPicker
             value={newTool}
-            onChange={e => setNewTool(e.target.value)}
-            onKeyDown={e => { if (e.key === 'Enter') addGrant() }}
-            list={`tool-catalog-${agent.id}`}
+            onChange={setNewTool}
+            catalog={catalog}
+            granted={local.map(g => g.tool_name)}
           />
-          <datalist id={`tool-catalog-${agent.id}`}>
-            {catalog.map(t => (
-              <option key={t.name} value={t.name}>{t.description ?? ''}</option>
-            ))}
-          </datalist>
-          <Button size="1" onClick={addGrant} disabled={!newTool.trim()}><IconPlus />Add</Button>
+          <Button size="2" onClick={addGrant} disabled={!newTool.trim()}><IconPlus />Add grant</Button>
         </div>
       </div>
 
@@ -254,28 +310,29 @@ export function GrantsEditor({
 
 function ReadOnlyGrants({ grants }: { grants: ToolGrant[] }) {
   if (grants.length === 0) {
-    return <Text as="div" size="1" color="gray">No grants configured.</Text>
+    return <Text as="div" size="2" color="gray">No grants configured.</Text>
   }
+  const cols = 'minmax(0, 1fr) 110px 130px 120px'
   return (
-    <div className="card" style={{ padding: 0 }}>
+    <div className="card card--table">
+      <div className="table-head" style={{ gridTemplateColumns: cols }}>
+        <Text as="span" size="1" color="gray">tool</Text>
+        <Text as="span" size="1" color="gray">scope</Text>
+        <Text as="span" size="1" color="gray">access</Text>
+        <Text as="span" size="1" color="gray">approval</Text>
+      </div>
       {grants.map(g => (
         <div
           key={g.id}
-          style={{
-            display: 'grid',
-            gridTemplateColumns: 'minmax(0, 1fr) 100px 100px 100px',
-            gap: 12,
-            padding: '10px 16px',
-            alignItems: 'center',
-            borderBottom: '1px solid var(--gray-6)',
-          }}
+          className="grants-row grants-row--readonly"
+          style={{ gridTemplateColumns: cols }}
         >
-          <Code variant="ghost" size="1">{g.tool_name}</Code>
-          <Badge color="gray" variant="soft" radius="full" size="1">{g.scope_type}</Badge>
-          <Badge color="gray" variant="soft" radius="full" size="1">{g.mode}</Badge>
+          <Text size="2">{toolLabel(g.tool_name)}</Text>
+          <Badge color="gray" variant="soft" radius="full" size="1">{g.scope_type.charAt(0).toUpperCase() + g.scope_type.slice(1)}</Badge>
+          <Badge color="gray" variant="soft" radius="full" size="1">{grantModeLabel(g.mode)}</Badge>
           {g.approval_required
-            ? <Badge color="amber" variant="soft" radius="full" size="1">approval</Badge>
-            : <Badge color="gray" variant="outline" radius="full" size="1">auto</Badge>}
+            ? <Badge color="amber" variant="soft" radius="full" size="1">Approval</Badge>
+            : <Badge color="gray" variant="outline" radius="full" size="1">Auto</Badge>}
         </div>
       ))}
     </div>

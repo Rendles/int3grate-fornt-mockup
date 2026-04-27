@@ -94,7 +94,7 @@ export default function SpendScreen() {
         <PageHeader
           eyebrow={
             <>
-              {`SPEND · ${data.range} · ${data.group_by}`}{' '}
+              {`SPEND · ${data.range} · by ${data.group_by}`}{' '}
               <InfoHint>
                 Loaded via <Code variant="ghost">GET /dashboard/spend</Code> with <Code variant="ghost">range</Code> and <Code variant="ghost">group_by</Code> parameters. Only cost and token aggregates are returned.
               </InfoHint>
@@ -123,7 +123,7 @@ export default function SpendScreen() {
             )
           })}
           <span style={{ width: 1, height: 20, background: 'var(--gray-a3)', margin: '0 6px' }} />
-          <Caption mr="1">group_by</Caption>
+          <Caption mr="1">group by</Caption>
           {GROUPINGS.map(g => {
             const isActive = groupBy === g
             return (
@@ -231,9 +231,6 @@ export default function SpendScreen() {
                       )}
                       <Text as="div" size="2" className="truncate">{r.label}</Text>
                     </Flex>
-                    <Text as="div" size="1" color="gray" mt="1">
-                      {r.id}
-                    </Text>
                   </div>
                   <Text as="div" size="2" style={{ textAlign: 'right' }}>
                     {money(r.total_usd, { cents: r.total_usd < 100 })}
