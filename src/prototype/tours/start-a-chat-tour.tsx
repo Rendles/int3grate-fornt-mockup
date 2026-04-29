@@ -1,49 +1,54 @@
 import type { Tour } from './types'
+import { START_A_CHAT_IDS } from './training-fixtures'
+
+const agentId = START_A_CHAT_IDS.activeAgentId
 
 export const startAChatTour: Tour = {
   id: 'start-a-chat',
   name: 'Start a chat',
   steps: [
     {
-      id: 'agent-picker',
-      target: '[data-tour="chat-agent-picker"]',
+      id: 'team-page',
+      target: '[data-tour="nav-assistants"]',
+      placement: 'right',
+      navigateTo: '/agents',
+      title: 'Find your team',
+      body:
+        'Your agents live here. Open this page any time you want to talk to one of them.',
+    },
+    {
+      id: 'agent-card',
+      target: '[data-tour="team-agent-card"]',
       placement: 'bottom',
-      navigateTo: '/chats/new',
-      title: 'Pick an agent',
+      title: 'Pick an active agent',
       body:
-        'Choose the agent you want to talk to. Active agents can start a chat; paused agents are shown as context but cannot open a new conversation.',
+        'Active agents are ready to talk. Paused agents need to be unpaused first. Click into the agent you want to start a conversation with.',
     },
     {
-      id: 'agent-version',
-      target: '[data-tour="chat-agent-version"]',
-      placement: 'left',
-      title: 'Bound to one version',
+      id: 'agent-detail',
+      target: '[data-tour="agent-talk-cta"]',
+      placement: 'bottom',
+      navigateTo: `/agents/${agentId}`,
+      title: 'Open the conversation',
       body:
-        'Every chat is attached to one active agent version. That keeps the instructions, tools, and model behavior stable for the whole conversation.',
+        'Tap Talk to to start chatting. Conversations live inside the agent — that way each agent has its own history with you.',
     },
     {
-      id: 'title',
-      target: '[data-tour="chat-title"]',
-      placement: 'left',
-      title: 'Give it a title',
+      id: 'talk-content',
+      target: '[data-tour="agent-talk-tab-content"]',
+      placement: 'bottom',
+      navigateTo: `/agents/${agentId}/talk`,
+      title: 'Your chats with this agent',
       body:
-        'The title is optional. It helps you find the conversation later in the chat list, especially when you have many chats with the same agent.',
+        'Past conversations show below. Open one to keep talking, or click New chat to start fresh.',
     },
     {
-      id: 'model',
-      target: '[data-tour="chat-model"]',
-      placement: 'left',
-      title: 'Choose the model',
+      id: 'wrap-up',
+      target: '[data-tour="agent-talk-tab-content"]',
+      placement: 'bottom',
+      title: 'You’re set',
       body:
-        "The model starts from the agent version's primary model. Once the chat opens, the model is fixed; open a new chat if you need to switch.",
-    },
-    {
-      id: 'submit',
-      target: '[data-tour="chat-submit"]',
-      placement: 'left',
-      title: 'Open the chat',
-      body:
-        'This button creates the chat and redirects to the conversation screen. In Training mode, the created chat is sandboxed and will not touch real data.',
+        'Replies stream in real time. The conversation is private to you and the agent — open a new chat any time you want a fresh thread.',
     },
   ],
 }

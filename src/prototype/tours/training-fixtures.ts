@@ -362,7 +362,7 @@ export const CONFIGURE_TOOL_GRANTS: TrainingScenario = {
         scope_type: 'agent',
         scope_id: CONFIGURE_GRANTS_AGENT_ID,
         tool_name: 'kb.lookup',
-        mode: 'read',
+        mode: 'read_write',
         approval_required: false,
         config: {},
       },

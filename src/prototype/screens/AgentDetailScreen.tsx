@@ -71,10 +71,10 @@ export default function AgentDetailScreen({
   const activeVersion = agent.active_version
   const canTalk = agent.status === 'active' && activeVersion != null
 
-  const tabs: { key: AgentTab; label: string; count?: number | string; href: string }[] = [
+  const tabs: { key: AgentTab; label: string; count?: number | string; href: string; dataTour?: string }[] = [
     { key: 'overview', label: 'Overview', href: `/agents/${agent.id}` },
     { key: 'talk', label: 'Talk to', count: chats.length || undefined, href: `/agents/${agent.id}/talk` },
-    { key: 'grants', label: 'Permissions', count: grants?.length ?? '—', href: `/agents/${agent.id}/grants` },
+    { key: 'grants', label: 'Permissions', count: grants?.length ?? '—', href: `/agents/${agent.id}/grants`, dataTour: 'agent-tab-grants' },
     { key: 'activity', label: 'Activity', count: runs.length || undefined, href: `/agents/${agent.id}/activity` },
     { key: 'settings', label: 'Settings', href: `/agents/${agent.id}/settings` },
     { key: 'advanced', label: 'Advanced', href: `/agents/${agent.id}/advanced` },
@@ -102,7 +102,7 @@ export default function AgentDetailScreen({
             <>
               <Status status={agent.status} />
               <Button asChild disabled={!canTalk}>
-                <a href={canTalk ? `#/agents/${agent.id}/talk` : undefined}>
+                <a href={canTalk ? `#/agents/${agent.id}/talk` : undefined} data-tour="agent-talk-cta">
                   <IconChat />
                   Talk to {agent.name.split(' ')[0]}
                 </a>
@@ -305,7 +305,7 @@ function TalkToTab({ agent, chats, canTalk, chatId }: { agent: Agent; chats: Cha
 
   return (
     <Flex direction="column" gap="3">
-      <div className="card" style={{ borderColor: 'var(--accent-a6)' }}>
+      <div className="card" data-tour="agent-talk-tab-content" style={{ borderColor: 'var(--accent-a6)' }}>
         <Flex align="center" gap="3" p="4" wrap="wrap">
           <Box style={{ color: 'var(--accent-9)' }}>
             <IconChat size={22} />

@@ -39,7 +39,7 @@ export const approvalReviewTour: Tour = {
       navigateTo: detailPath,
       title: 'What is being asked',
       body:
-        'The title summarises the action — friendly tool label plus amounts and reference IDs. The CommandBar below adds run, task, approver role, and expiry context.',
+        'The title summarises what the agent wants to do — the friendly action name plus amounts and reference IDs.',
     },
     {
       id: 'detail-evidence',
@@ -47,7 +47,7 @@ export const approvalReviewTour: Tour = {
       placement: 'top',
       title: 'Evidence panel',
       body:
-        'Read this first. The agent attaches the run summary, customer / charge metadata, and policy verdicts that triggered the gate. Decide based on this.',
+        'Read this first. The agent attaches a short summary, customer / charge metadata, and the policy reason that triggered the request. Decide based on this.',
     },
     {
       id: 'detail-decision',
@@ -55,7 +55,7 @@ export const approvalReviewTour: Tour = {
       placement: 'top',
       title: 'Approve or reject',
       body:
-        'Both decisions are queued and written to the audit trail. The orchestrator resumes the suspended run on accept or terminates it on reject. Reject requires a reason (≥ 4 characters); approve is optional.',
+        'Both decisions are written to the history log. On accept, the agent continues the action right away. On reject, the agent stops. Reject requires a reason (≥ 4 characters); approve is optional.',
     },
   ],
 }

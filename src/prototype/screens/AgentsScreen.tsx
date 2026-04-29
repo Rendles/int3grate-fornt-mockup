@@ -164,6 +164,7 @@ function AssistantCard({ agent, lastRun }: { agent: Agent; lastRun: RunListItem 
   return (
     <div
       className="card"
+      data-tour="team-agent-card"
       style={{ padding: 16, gap: 12, display: 'flex', flexDirection: 'column' }}
     >
       <Flex align="center" gap="3" minWidth="0">

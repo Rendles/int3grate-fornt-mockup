@@ -32,7 +32,7 @@ export const TOURS: TourEntry[] = [
     audience: 'all',
     group: 'getting-started',
     description: 'Quick tour of the sidebar nav and what each section is for.',
-    durationLabel: '~1 min · 5 steps',
+    durationLabel: '~2 min · 9 steps',
     scenarioId: null,
   },
   {
@@ -58,8 +58,8 @@ export const TOURS: TourEntry[] = [
     audience: 'domain_admin',
     group: 'admin-setup',
     description:
-      'Learn how to grant an agent a tool, choose its scope and access level, and decide when approval is required.',
-    durationLabel: '~3 min · 7 steps',
+      'Learn how to set what an agent can access — pick a permission, choose its access level, and decide when human approval is required.',
+    durationLabel: '~2 min · 7 steps',
     scenarioId: 'configure-tool-grants',
   },
 ]

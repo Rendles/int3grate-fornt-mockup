@@ -74,7 +74,9 @@
       "PowerShell(git diff HEAD -- src/prototype/screens/HomeScreen.tsx | Select-Object -First 30; \"---\"; git diff HEAD -- src/prototype/screens/home/SpendByAgentCard.tsx)",
       "PowerShell(git diff HEAD -- src/prototype/components/shell.tsx | Select-String -Pattern \"^[+-]\" | Select-Object -First 20)",
       "Bash(grep -rn \"\\\\\\\\brun\\\\\\\\b\\\\|\\\\\\\\bruns\\\\\\\\b\" src/prototype/screens --include=\"*.tsx\")",
-      "Bash(git mv *)"
+      "Bash(git mv *)",
+      "Bash(sed 's/\\\\[data-tour=\"//; s/\"\\\\]$//')",
+      "Bash(grep -rhoE 'data-tour=[\"{`][^\"}`]+[\"}`]' src/prototype/components src/prototype/screens)"
     ]
   }
 }

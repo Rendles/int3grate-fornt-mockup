@@ -225,7 +225,7 @@ export function GrantsEditor({
 
   return (
     <div>
-      <Flex align="center" justify="between" gap="3" mb="3">
+      <Flex align="center" justify="between" gap="3" mb="3" data-tour="grants-summary">
         <Caption as="div">
           {local.length} {local.length === 1 ? 'permission' : 'permissions'}
           {' · '}
@@ -301,14 +301,16 @@ export function GrantsEditor({
       {writeAutoCount > 0 && (
         <>
           <div style={{ height: 12 }} />
-          <Banner tone="warn" title={`${writeAutoCount} ${writeAutoCount === 1 ? 'permission lets' : 'permissions let'} this agent write without approval`}>
-            <Flex align="center" gap="2">
-              <IconAlert className="ic ic--sm" />
-              <Text as="span" size="2">
-                Switch to <strong>Read &amp; write (with approval)</strong> if you want a human to confirm every write.
-              </Text>
-            </Flex>
-          </Banner>
+          <div data-tour="grants-write-warning">
+            <Banner tone="warn" title={`${writeAutoCount} ${writeAutoCount === 1 ? 'permission lets' : 'permissions let'} this agent write without approval`}>
+              <Flex align="center" gap="2">
+                <IconAlert className="ic ic--sm" />
+                <Text as="span" size="2">
+                  Switch to <strong>Read &amp; write (with approval)</strong> if you want a human to confirm every write.
+                </Text>
+              </Flex>
+            </Banner>
+          </div>
         </>
       )}
 
