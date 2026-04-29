@@ -1,45 +1,56 @@
 import { useEffect, useState } from 'react'
-import { Badge, Button, Flex, IconButton, Select, Switch, Text } from '@radix-ui/themes'
+import { Badge, Button, Flex, IconButton, Select, Text } from '@radix-ui/themes'
 import { Caption } from './common/caption'
 
 import { api } from '../lib/api'
-import { grantModeLabel, toolLabel } from '../lib/format'
-import type { Agent, ToolDefinition, ToolGrant, ToolGrantMode, ToolGrantScopeType } from '../lib/types'
+import { appLabel, appPrefix, toolLabel } from '../lib/format'
+import type { Agent, ToolDefinition, ToolGrant, ToolGrantMode } from '../lib/types'
 import { Banner, LoadingList, NoAccessState } from './states'
 import { IconAlert, IconCheck, IconPlus, IconX } from './icons'
 
-const MODES: ToolGrantMode[] = ['read', 'write', 'read_write']
-const SCOPES: ToolGrantScopeType[] = ['tenant', 'domain', 'agent']
+// Plan section 7.5 collapses the underlying mode (read|write|read_write) +
+// approval_required:bool axes into a single tri-state PermissionLevel. The
+// data model stays the same — we just don't expose every cell of the matrix
+// in the UI. Power users who need finer-grained settings use the API.
+type PermissionLevel = 'read' | 'write_auto' | 'write_approval'
 
-// Same template for header + rows so columns line up regardless of inputs.
-const GRID_COLS = 'minmax(0, 1fr) 150px 170px 160px 36px'
+const PERMISSION_OPTIONS: { value: PermissionLevel; label: string; hint: string }[] = [
+  { value: 'read', label: 'Read only', hint: 'Can read data, never write.' },
+  { value: 'write_auto', label: 'Read & write (auto)', hint: 'Can read and write without your approval.' },
+  { value: 'write_approval', label: 'Read & write (with approval)', hint: 'Can read; writes need your approval first.' },
+]
 
-/**
- * Compact Radix Select sized to fill its grid cell. Differs from `SelectField`
- * (which is a form-style wrapper with label + hint + error chrome) — here we
- * skip the chrome so the trigger sits cleanly in a table row, vertically
- * centered with the surrounding Switch and IconButton.
- */
-function InlineSelect({
+function levelFromGrant(g: { mode: ToolGrantMode; approval_required: boolean }): PermissionLevel {
+  if (g.mode === 'read') return 'read'
+  return g.approval_required ? 'write_approval' : 'write_auto'
+}
+
+function applyLevel(level: PermissionLevel): { mode: ToolGrantMode; approval_required: boolean } {
+  if (level === 'read') return { mode: 'read', approval_required: false }
+  if (level === 'write_auto') return { mode: 'read_write', approval_required: false }
+  return { mode: 'read_write', approval_required: true }
+}
+
+const GRID_COLS = 'minmax(0, 1fr) 220px 36px'
+
+function PermissionSelect({
   value,
   onChange,
-  options,
   tour,
 }: {
-  value: string
-  onChange: (v: string) => void
-  options: { value: string; label: string }[]
+  value: PermissionLevel
+  onChange: (v: PermissionLevel) => void
   tour?: string
 }) {
   return (
-    <Select.Root value={value} onValueChange={onChange} size="2">
+    <Select.Root value={value} onValueChange={v => onChange(v as PermissionLevel)} size="2">
       <Select.Trigger
         variant="surface"
         data-tour={tour}
         style={{ width: '100%', justifyContent: 'space-between' }}
       />
       <Select.Content position="popper" sideOffset={4}>
-        {options.map(opt => (
+        {PERMISSION_OPTIONS.map(opt => (
           <Select.Item key={opt.value} value={opt.value}>
             {opt.label}
           </Select.Item>
@@ -50,12 +61,9 @@ function InlineSelect({
 }
 
 /**
- * Catalog tool picker for adding grants. Replaces the native <input list>
- * /<datalist> combo because the OS-rendered popup ignored our styles, was
- * too narrow, and produced a stray indicator on Chromium.
- *
- * Uses Radix Select. Already-granted tools are hidden so the same tool can't
- * be added twice. Tool description renders as a second line under the name.
+ * Catalog tool picker for adding grants. Already-granted tools are hidden so
+ * the same tool can't be added twice. Tool name + app + description show up
+ * inside the popup; the trigger shows just the tool name once selected.
  */
 function CatalogPicker({
   value,
@@ -87,10 +95,10 @@ function CatalogPicker({
         data-tour={tour}
         placeholder={
           catalog.length === 0
-            ? 'Loading tool catalog…'
+            ? 'Loading apps…'
             : exhausted
-              ? 'Every catalog tool is already granted'
-              : 'Pick a tool to grant…'
+              ? 'Every app is already permitted'
+              : 'Pick an app permission to add…'
         }
         style={{ width: '100%', justifyContent: 'space-between' }}
       />
@@ -130,8 +138,7 @@ export function GrantsEditor({
   }, [])
 
   // React-recommended pattern for syncing external state into internal state:
-  // compare during render and call setState inside the branch. React bails out
-  // before the render commits, so there's no extra re-render.
+  // compare during render and call setState inside the branch.
   if (grants !== baseline) {
     setBaseline(grants)
     setLocal(grants)
@@ -143,7 +150,7 @@ export function GrantsEditor({
       <div>
         <NoAccessState
           requiredRole="domain_admin or admin"
-          body="Only admins can manage tool grants. You can still view what's granted below."
+          body="Only admins can manage permissions. You can still see what's permitted below."
         />
         <div style={{ height: 12 }} />
         {local && <ReadOnlyGrants grants={local} />}
@@ -157,7 +164,8 @@ export function GrantsEditor({
 
   const dirty = JSON.stringify(local) !== JSON.stringify(baseline)
 
-  const updateGrant = (id: string, patch: Partial<ToolGrant>) => {
+  const updateLevel = (id: string, level: PermissionLevel) => {
+    const patch = applyLevel(level)
     setLocal(prev => prev ? prev.map(g => g.id === id ? { ...g, ...patch } : g) : prev)
   }
 
@@ -175,6 +183,8 @@ export function GrantsEditor({
         scope_type: 'agent',
         scope_id: agent.id,
         tool_name: name,
+        // New permissions default to "Read only" — the safest option. Admins
+        // can step up to write or write-with-approval per row.
         mode: 'read',
         approval_required: false,
         config: {},
@@ -192,7 +202,6 @@ export function GrantsEditor({
     setSaving(true)
     setSaveError(null)
     try {
-      // Strip server-assigned fields: spec body is ReplaceToolGrantsRequest.
       const body = {
         grants: local.map(g => ({
           tool_name: g.tool_name,
@@ -212,38 +221,40 @@ export function GrantsEditor({
     }
   }
 
+  const writeAutoCount = local.filter(g => levelFromGrant(g) === 'write_auto').length
+
   return (
     <div>
       <Flex align="center" justify="between" gap="3" mb="3">
         <Caption as="div">
-          {local.length} grants · {local.filter(g => g.approval_required).length} require approval
+          {local.length} {local.length === 1 ? 'permission' : 'permissions'}
+          {' · '}
+          {local.filter(g => g.approval_required).length} require approval
         </Caption>
         <Flex align="center" gap="2">
           {dirty && <Button variant="ghost" size="1" onClick={reset} disabled={saving}>Reset</Button>}
           <Button size="1" onClick={save} disabled={!dirty || saving} data-tour="grants-save">
             <IconCheck />
-            {saving ? 'saving…' : 'Save grants'}
+            {saving ? 'saving…' : 'Save permissions'}
           </Button>
         </Flex>
       </Flex>
 
       {saveError && (
-        <Banner tone="warn" title="Couldn't save grants">
+        <Banner tone="warn" title="Couldn't save permissions">
           {saveError}
         </Banner>
       )}
 
       <div className="card card--table">
         <div className="table-head" style={{ gridTemplateColumns: GRID_COLS }}>
-          <Text as="span" size="1" color="gray">tool</Text>
-          <Text as="span" size="1" color="gray">scope</Text>
-          <Text as="span" size="1" color="gray">access</Text>
-          <Text as="span" size="1" color="gray">approval</Text>
+          <Text as="span" size="1" color="gray">app · what</Text>
+          <Text as="span" size="1" color="gray">permission</Text>
           <span />
         </div>
         {local.length === 0 ? (
           <Text as="div" size="2" color="gray" align="center" style={{ padding: '24px 16px' }}>
-            No grants yet. Add one below.
+            No permissions yet. Pick one below to give this agent access.
           </Text>
         ) : (
           local.map(g => (
@@ -252,36 +263,19 @@ export function GrantsEditor({
               className="grants-row"
               style={{ gridTemplateColumns: GRID_COLS }}
             >
-              <Text size="2" data-tour="grants-tool-cell">{toolLabel(g.tool_name)}</Text>
-              <InlineSelect
-                value={g.scope_type}
-                onChange={v => updateGrant(g.id, { scope_type: v as ToolGrantScopeType })}
-                options={SCOPES.map(s => ({ value: s, label: s.charAt(0).toUpperCase() + s.slice(1) }))}
-                tour="grants-scope-type"
-              />
-              <InlineSelect
-                value={g.mode}
-                onChange={v => updateGrant(g.id, { mode: v as ToolGrantMode })}
-                options={MODES.map(m => ({ value: m, label: grantModeLabel(m) }))}
+              <ToolNameCell name={g.tool_name} />
+              <PermissionSelect
+                value={levelFromGrant(g)}
+                onChange={level => updateLevel(g.id, level)}
                 tour="grants-mode"
               />
-              <Flex align="center" gap="2" asChild>
-                <label style={{ cursor: 'pointer' }} data-tour="grants-policy">
-                  <Switch
-                    size="2"
-                    checked={g.approval_required}
-                    onCheckedChange={v => updateGrant(g.id, { approval_required: v })}
-                  />
-                  <Text size="2">{g.approval_required ? 'Required' : 'Auto'}</Text>
-                </label>
-              </Flex>
               <IconButton
                 size="2"
                 variant="ghost"
                 color="red"
                 onClick={() => removeGrant(g.id)}
-                title="Remove grant"
-                aria-label="Remove grant"
+                title="Remove permission"
+                aria-label="Remove permission"
               >
                 <IconX />
               </IconButton>
@@ -299,19 +293,21 @@ export function GrantsEditor({
           />
           <Button size="2" onClick={addGrant} disabled={!newTool.trim()} data-tour="grants-add">
             <IconPlus />
-            Add grant
+            Add permission
           </Button>
         </div>
       </div>
 
-      {local.some(g => (g.mode === 'write' || g.mode === 'read_write') && !g.approval_required) && (
+      {writeAutoCount > 0 && (
         <>
           <div style={{ height: 12 }} />
-          <Banner tone="warn" title="Write access without approval">
-            <>
-              <IconAlert className="ic ic--sm" style={{ display: 'inline-block', verticalAlign: 'middle' }} />
-              {' '}Some write grants don't require approval. The orchestrator will execute them without a human in the loop.
-            </>
+          <Banner tone="warn" title={`${writeAutoCount} ${writeAutoCount === 1 ? 'permission lets' : 'permissions let'} this agent write without approval`}>
+            <Flex align="center" gap="2">
+              <IconAlert className="ic ic--sm" />
+              <Text as="span" size="2">
+                Switch to <strong>Read &amp; write (with approval)</strong> if you want a human to confirm every write.
+              </Text>
+            </Flex>
           </Banner>
         </>
       )}
@@ -320,33 +316,52 @@ export function GrantsEditor({
   )
 }
 
+function ToolNameCell({ name }: { name: string }) {
+  const prefix = appPrefix(name)
+  const app = appLabel(prefix)
+  const action = toolLabel(name).replace(`${app} · `, '')
+  return (
+    <Flex direction="column" minWidth="0">
+      <Text as="span" size="2" weight="medium" className="truncate">{app}</Text>
+      <Text as="span" size="1" color="gray" className="truncate">
+        {action === toolLabel(name) ? '—' : action}
+      </Text>
+    </Flex>
+  )
+}
+
 function ReadOnlyGrants({ grants }: { grants: ToolGrant[] }) {
   if (grants.length === 0) {
-    return <Text as="div" size="2" color="gray">No grants configured.</Text>
+    return <Text as="div" size="2" color="gray">No permissions configured.</Text>
   }
-  const cols = 'minmax(0, 1fr) 110px 130px 120px'
+  const cols = 'minmax(0, 1fr) 220px'
   return (
     <div className="card card--table">
       <div className="table-head" style={{ gridTemplateColumns: cols }}>
-        <Text as="span" size="1" color="gray">tool</Text>
-        <Text as="span" size="1" color="gray">scope</Text>
-        <Text as="span" size="1" color="gray">access</Text>
-        <Text as="span" size="1" color="gray">approval</Text>
+        <Text as="span" size="1" color="gray">app · what</Text>
+        <Text as="span" size="1" color="gray">permission</Text>
       </div>
-      {grants.map(g => (
-        <div
-          key={g.id}
-          className="grants-row grants-row--readonly"
-          style={{ gridTemplateColumns: cols }}
-        >
-          <Text size="2">{toolLabel(g.tool_name)}</Text>
-          <Badge color="gray" variant="soft" radius="full" size="1">{g.scope_type.charAt(0).toUpperCase() + g.scope_type.slice(1)}</Badge>
-          <Badge color="gray" variant="soft" radius="full" size="1">{grantModeLabel(g.mode)}</Badge>
-          {g.approval_required
-            ? <Badge color="amber" variant="soft" radius="full" size="1">Approval</Badge>
-            : <Badge color="gray" variant="outline" radius="full" size="1">Auto</Badge>}
-        </div>
-      ))}
+      {grants.map(g => {
+        const level = levelFromGrant(g)
+        const meta = PERMISSION_OPTIONS.find(o => o.value === level)!
+        return (
+          <div
+            key={g.id}
+            className="grants-row grants-row--readonly"
+            style={{ gridTemplateColumns: cols }}
+          >
+            <ToolNameCell name={g.tool_name} />
+            <Badge
+              color={level === 'read' ? 'cyan' : level === 'write_approval' ? 'amber' : 'red'}
+              variant="soft"
+              radius="full"
+              size="1"
+            >
+              {meta.label}
+            </Badge>
+          </div>
+        )
+      })}
     </div>
   )
 }

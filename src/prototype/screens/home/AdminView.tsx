@@ -41,7 +41,7 @@ export function AdminView({
         <MetricCard
           label="Tasks"
           value={num(tasks.length)}
-          delta={`${failedTasks.length} failed`}
+          delta={`${failedTasks.length} got stuck`}
           href="/tasks"
           icon={<IconTask />}
         />
@@ -57,7 +57,7 @@ export function AdminView({
           label="Spend · 7d"
           value={money(spend.total_usd, { compact: true })}
           delta={`${spend.items.length} ${spend.group_by}s`}
-          href="/spend"
+          href="/costs"
           icon={<IconSpend />}
         />
       </Grid>
@@ -120,7 +120,7 @@ export function AdminView({
           {recentTasks.length === 0 ? (
             <div className="card__body">
               <Text as="div" size="2" color="gray" align="center" style={{ padding: '30px 0' }}>
-                No tasks yet. <Link to="/tasks/new"><Text color="blue">Dispatch a task →</Text></Link>
+                No tasks yet. <Link to="/tasks/new"><Text color="blue">Assign a task →</Text></Link>
               </Text>
             </div>
           ) : (

@@ -18,7 +18,7 @@ const GROUPS: { id: TourGroup; label: string }[] = [
 
 function audienceLabel(a: TourAudience): string {
   if (a === 'admin') return 'Admin'
-  if (a === 'domain_admin') return 'Domain admin'
+  if (a === 'domain_admin') return 'Team admin'
   return 'All'
 }
 
@@ -38,7 +38,7 @@ export default function LearnScreen() {
         <PageHeader
           eyebrow="LEARN"
           title={<>Learning <em>Center.</em></>}
-          subtitle="Short interactive tours of the platform. Each tour walks you through a real flow with example data — your changes during the tour aren't saved to the real backend."
+          subtitle="Short interactive tours of the platform. Each tour walks you through a real flow with example data — your changes during the tour aren't saved to your workspace."
         />
 
         {GROUPS.map(group => {

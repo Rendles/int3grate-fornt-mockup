@@ -57,8 +57,8 @@ export function durationMs(ms: number | null): string {
 }
 
 export function roleLabel(r: 'admin' | 'domain_admin' | 'member'): string {
-  if (r === 'admin') return 'Tenant Admin'
-  if (r === 'domain_admin') return 'Domain Admin'
+  if (r === 'admin') return 'Workspace Admin'
+  if (r === 'domain_admin') return 'Team Admin'
   return 'Member'
 }
 
@@ -204,4 +204,31 @@ export const TOOL_LABELS: Record<string, string> = {
 export function toolLabel(key: string | null | undefined): string {
   if (!key) return '—'
   return TOOL_LABELS[key] ?? key
+}
+
+// App-level label. Tools follow `<app>.<action>`; we split on `.` and look
+// up the app prefix in this map. Unknown prefixes fall back to humanKey, so
+// new fixtures don't crash the UI.
+const APP_LABELS: Record<string, string> = {
+  stripe: 'Stripe',
+  zoho_crm: 'Zoho CRM',
+  apollo: 'Apollo',
+  email: 'Email',
+  okta: 'Okta',
+  aws: 'AWS',
+  irs: 'IRS',
+  quickbooks: 'QuickBooks',
+  slack: 'Slack',
+  memory: 'Memory',
+  web_search: 'Web Search',
+  kb: 'Knowledge Base',
+}
+
+export function appPrefix(toolName: string): string {
+  const i = toolName.indexOf('.')
+  return i === -1 ? toolName : toolName.slice(0, i)
+}
+
+export function appLabel(prefix: string): string {
+  return APP_LABELS[prefix] ?? humanKey(prefix)
 }

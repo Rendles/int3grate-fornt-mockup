@@ -1,14 +1,14 @@
-# TOURS_IMPLEMENTATION_PLAN.md
+# Tours implementation plan
 
 Status: **In progress**. 6a `start-a-chat` and 6b
 `configure-tool-grants` are done; 6c-6d remain.
 
 Step-by-step build plan for the tour-system expansion described in
-`TOURS_PLAN.md`. Sequenced so each phase delivers a self-contained,
+`tours.md`. Sequenced so each phase delivers a self-contained,
 verifiable increment and any future session can resume mid-flight by
 reading this file alone.
 
-Read this file together with `TOURS_PLAN.md`. The plan doc describes
+Read this file together with `tours.md`. The plan doc describes
 *what* and *why*; this file describes *how* and *in what order*.
 
 ## Sequencing rationale
@@ -679,8 +679,8 @@ In the **Routing** section:
 ### `README.md` updates
 
 Add one line in "Where to read next":
-- `TOURS_PLAN.md` — design and copy for guided tours.
-- `TOURS_IMPLEMENTATION_PLAN.md` — leave it pointing here as well in
+- `tours.md` — design and copy for guided tours.
+- `docs/plans/tours-implementation.md` — leave it pointing here as well in
   case future maintainers want the build history.
 
 ### Acceptance criteria
@@ -707,9 +707,9 @@ Add one line in "Where to read next":
 
 If picking up this plan from a fresh context:
 
-1. Read `TOURS_PLAN.md` for design intent.
+1. Read `tours.md` for design intent.
 2. Read this file top to bottom.
-3. Run `git status` and `git log -- TOURS_IMPLEMENTATION_PLAN.md` to
+3. Run `git status` and `git log -- docs/plans/tours-implementation.md` to
    see which phases were marked done in commits.
 4. Update each phase's `Status:` line in this file as you move
    through it (`Not started` → `In progress` → `Done`).

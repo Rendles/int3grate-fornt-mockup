@@ -1,22 +1,14 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { Badge, Box, Button, Code, Flex, Text } from '@radix-ui/themes'
 
-import { AppShell } from '../components/shell'
-import { PageHeader, Status, CommandBar, InfoHint, Caption } from '../components/common'
-import { statusLabel } from '../components/common/status-label'
-import { TextAreaField } from '../components/fields'
-import { Banner, LoadingList, NoAccessState } from '../components/states'
-import { IconChat, IconCheck, IconPlay, IconStop, IconX } from '../components/icons'
-import { Link } from '../router'
+import { CommandBar, Caption } from './common'
+import { statusLabel } from './common/status-label'
+import { TextAreaField } from './fields'
+import { Banner, LoadingList, NoAccessState } from './states'
+import { IconChat, IconCheck, IconPlay, IconStop, IconX } from './icons'
 import { useAuth } from '../auth'
 import { api } from '../lib/api'
-import type {
-  Agent,
-  Chat,
-  ChatMessage,
-  ChatStreamFrame,
-  ChatToolCall,
-} from '../lib/types'
+import type { Agent, Chat, ChatMessage, ChatStreamFrame, ChatToolCall } from '../lib/types'
 import { absTime, ago, money, num, toolLabel } from '../lib/format'
 
 interface StreamingState {
@@ -28,7 +20,28 @@ interface StreamingState {
   tokensOut?: number
 }
 
-export default function ChatDetailScreen({ chatId }: { chatId: string }) {
+/**
+ * Self-contained chat experience: state, streaming, send, close, messages,
+ * composer. Shared by the full-screen ChatDetailScreen wrapper and the
+ * embedded chat inside the AgentDetailScreen Talk-to tab.
+ *
+ * The component owns its data fetching (chat + agent + messages); callers
+ * just give it a chatId and the right wrapping div + CSS class.
+ *
+ * `mode='full'` prints a CommandBar at the top with full chat metadata.
+ * `mode='embed'` skips the CommandBar (the parent screen — usually an
+ * agent tab — already shows the agent context). Both modes show the
+ * inline closed/failed banners.
+ */
+export function ChatPanel({
+  chatId,
+  mode,
+  emptyHint,
+}: {
+  chatId: string
+  mode: 'full' | 'embed'
+  emptyHint?: string
+}) {
   const { user } = useAuth()
   const [chat, setChat] = useState<Chat | null | undefined>(undefined)
   const [agent, setAgent] = useState<Agent | null>(null)
@@ -40,7 +53,6 @@ export default function ChatDetailScreen({ chatId }: { chatId: string }) {
   const [closing, setClosing] = useState(false)
   const messagesEndRef = useRef<HTMLDivElement | null>(null)
 
-  // Load chat + history on mount.
   useEffect(() => {
     let cancelled = false
     api.getChat(chatId).then(c => {
@@ -53,7 +65,6 @@ export default function ChatDetailScreen({ chatId }: { chatId: string }) {
         })
         api.listChatMessages(chatId, { limit: 200 }).then(list => {
           if (cancelled) return
-          // API returns newest-first; for chat UI we want oldest-first.
           setMessages([...list.items].reverse())
         })
       }
@@ -61,26 +72,15 @@ export default function ChatDetailScreen({ chatId }: { chatId: string }) {
     return () => { cancelled = true }
   }, [chatId])
 
-  // Auto-scroll to bottom on new messages or streaming updates.
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth', block: 'end' })
   }, [messages, streaming])
 
   if (chat === null) {
-    return (
-      <AppShell crumbs={[{ label: 'home', to: '/' }, { label: 'chats', to: '/chats' }, { label: 'not found' }]}>
-        <div className="page">
-          <NoAccessState requiredRole="access to this chat" body={`Chat ${chatId} could not be loaded.`} />
-        </div>
-      </AppShell>
-    )
+    return <NoAccessState requiredRole="access to this chat" body="This chat could not be loaded. It may have been closed long ago or you may not have access." />
   }
   if (chat === undefined || messages === null) {
-    return (
-      <AppShell crumbs={[{ label: '...', to: '/' }]}>
-        <div className="page"><LoadingList rows={4} /></div>
-      </AppShell>
-    )
+    return <LoadingList rows={4} />
   }
 
   const isOwner = chat.created_by === user?.id
@@ -94,7 +94,6 @@ export default function ChatDetailScreen({ chatId }: { chatId: string }) {
     setBusy(true)
     setStreamError(null)
 
-    // Optimistically push the user message into the list.
     const optimisticUser: ChatMessage = {
       id: `tmp_${Date.now()}`,
       chat_id: chat.id,
@@ -121,8 +120,6 @@ export default function ChatDetailScreen({ chatId }: { chatId: string }) {
     } catch (e) {
       setStreamError((e as Error).message ?? 'Stream interrupted')
     } finally {
-      // Reload from the source of truth so persisted messages overwrite the
-      // optimistic + streaming local state.
       const fresh = await api.listChatMessages(chat.id, { limit: 200 })
       setMessages([...fresh.items].reverse())
       const updatedChat = await api.getChat(chat.id)
@@ -145,44 +142,9 @@ export default function ChatDetailScreen({ chatId }: { chatId: string }) {
   }
 
   return (
-    <AppShell
-      crumbs={[
-        { label: 'home', to: '/' },
-        { label: 'chats', to: '/chats' },
-        { label: 'conversation' },
-      ]}
-    >
-      <div className="chat-detail">
-        {/* HEAD — pinned at top of the chat shell. */}
-        <div className="chat-detail__head">
-          <PageHeader
-            eyebrow={
-              <>
-                CHAT{' '}
-                <InfoHint>
-                  Loaded via <Code variant="ghost">GET /chat/{'{id}'}</Code>. Sending a message streams via <Code variant="ghost">POST /chat/{'{id}'}/message</Code> as Server-Sent Events.
-                </InfoHint>
-              </>
-            }
-            title={chat.title ?? <>Conversation with <em>{agent?.name ?? 'agent'}</em></>}
-            subtitle={agent ? `Talking to ${agent.name} · model fixed for this chat.` : undefined}
-            actions={
-              <>
-                <Status status={chat.status} />
-                {agent && (
-                  <Button variant="soft" color='gray' size="2">
-                    <Link to={`/agents/${agent.id}`}>Open agent</Link>
-                  </Button>
-                )}
-                {canClose && (
-                  <Button color="red" variant="soft" onClick={close} disabled={closing}>
-                    <IconStop /> {closing ? 'closing…' : 'Close chat'}
-                  </Button>
-                )}
-              </>
-            }
-          />
-
+    <>
+      <div className="chat-detail__head">
+        {mode === 'full' && (
           <CommandBar
             parts={[
               { label: 'AGENT', value: agent?.name ?? '—' },
@@ -194,78 +156,94 @@ export default function ChatDetailScreen({ chatId }: { chatId: string }) {
               ...(chat.ended_at ? [{ label: 'CLOSED', value: absTime(chat.ended_at), tone: 'muted' as const }] : []),
             ]}
           />
+        )}
 
-          {chat.status === 'closed' && (
-            <Box mt="4">
-              <Banner
-                tone="info"
-                title="This chat is closed"
-                action={agent ? (
-                  <Button asChild size="1">
-                    <a href={`#/chats/new?agent=${agent.id}`}><IconChat />Start a new chat</a>
-                  </Button>
-                ) : undefined}
-              >
-                Messages are read-only. Open a new chat to keep talking with this agent.
-              </Banner>
-            </Box>
-          )}
-
-          {chat.status === 'failed' && (
-            <Box mt="4">
-              <Banner tone="danger" title="This chat ended in a failed state">
-                The orchestrator marked the chat <Code variant="ghost">failed</Code>. Inspect the audit timeline to see the last turn.
-              </Banner>
-            </Box>
-          )}
-        </div>
-
-        {/* MESSAGES — fills the remaining height, scrolls internally. */}
-        <div className="chat-detail__body">
-          <div className="chat-detail__messages">
-            {messages.length === 0 && !streaming && (
-              <Text as="div" size="2" color="gray" align="center" style={{ padding: '40px 0' }}>
-                No messages yet — say something to {agent?.name ?? 'the agent'}.
-              </Text>
+        {mode === 'embed' && (
+          <Flex align="center" justify="between" gap="2" wrap="wrap" mb="3">
+            <Flex align="center" gap="2" wrap="wrap">
+              <Badge color="gray" variant="soft" radius="full" size="1" style={{ fontFamily: 'var(--font-mono)' }}>
+                {chat.model}
+              </Badge>
+              <Text size="1" color="gray">started {ago(chat.started_at)}</Text>
+              <Text size="1" color="gray">·</Text>
+              <Text size="1" color="gray">{money(chat.total_cost_usd, { cents: chat.total_cost_usd < 100 })}</Text>
+            </Flex>
+            {canClose && (
+              <Button color="red" variant="soft" size="1" onClick={close} disabled={closing}>
+                <IconStop /> {closing ? 'closing…' : 'Close chat'}
+              </Button>
             )}
-            {messages.map(msg => (
-              <MessageBubble
-                key={msg.id}
-                message={msg}
-                modelLabel={msg.role === 'assistant' ? chat.model : null}
-              />
-            ))}
-            {streaming && (
-              <StreamingBubble streaming={streaming} modelLabel={chat.model} />
-            )}
-            {streamError && (
-              <Banner tone="danger" title="Stream error">
-                {streamError}
-              </Banner>
-            )}
-            <div ref={messagesEndRef} />
-          </div>
-        </div>
+          </Flex>
+        )}
 
-        {/* COMPOSER — pinned at bottom of the chat shell. */}
-        {canSend ? (
-          <div className="chat-detail__composer">
-            <Composer
-              value={draft}
-              onChange={setDraft}
-              onSend={send}
-              busy={busy}
-            />
-          </div>
-        ) : chat.status === 'active' ? (
-          <div className="chat-detail__composer chat-detail__composer--readonly">
-            <Text as="div" size="1" color="gray">
-              Read-only — only the chat owner ({chat.created_by === user?.id ? 'you' : 'someone else'}) and admins can send messages.
-            </Text>
-          </div>
-        ) : null}
+        {chat.status === 'closed' && (
+          <Box mt={mode === 'embed' ? '2' : '4'}>
+            <Banner
+              tone="info"
+              title="This chat is closed"
+              action={agent ? (
+                <Button asChild size="1">
+                  <a href={`#/chats/new?agent=${agent.id}`}><IconChat />Start a new chat</a>
+                </Button>
+              ) : undefined}
+            >
+              Messages are read-only. Open a new chat to keep talking with this agent.
+            </Banner>
+          </Box>
+        )}
+
+        {chat.status === 'failed' && (
+          <Box mt={mode === 'embed' ? '2' : '4'}>
+            <Banner tone="danger" title="This chat ended in a failed state">
+              Something went wrong on the agent's side. Open the activity log to see what happened on the last turn.
+            </Banner>
+          </Box>
+        )}
       </div>
-    </AppShell>
+
+      <div className="chat-detail__body">
+        <div className="chat-detail__messages">
+          {messages.length === 0 && !streaming && (
+            <Text as="div" size="2" color="gray" align="center" style={{ padding: '40px 0' }}>
+              {emptyHint ?? `No messages yet — say something to ${agent?.name ?? 'the agent'}.`}
+            </Text>
+          )}
+          {messages.map(msg => (
+            <MessageBubble
+              key={msg.id}
+              message={msg}
+              modelLabel={msg.role === 'assistant' ? chat.model : null}
+            />
+          ))}
+          {streaming && (
+            <StreamingBubble streaming={streaming} modelLabel={chat.model} />
+          )}
+          {streamError && (
+            <Banner tone="danger" title="Stream error">
+              {streamError}
+            </Banner>
+          )}
+          <div ref={messagesEndRef} />
+        </div>
+      </div>
+
+      {canSend ? (
+        <div className="chat-detail__composer">
+          <Composer
+            value={draft}
+            onChange={setDraft}
+            onSend={send}
+            busy={busy}
+          />
+        </div>
+      ) : chat.status === 'active' ? (
+        <div className="chat-detail__composer chat-detail__composer--readonly">
+          <Text as="div" size="1" color="gray">
+            Read-only — only the chat owner ({chat.created_by === user?.id ? 'you' : 'someone else'}) and admins can send messages.
+          </Text>
+        </div>
+      ) : null}
+    </>
   )
 }
 
@@ -455,8 +433,6 @@ function ToolCallChip({ tc }: { tc: ChatToolCall }) {
 function ToolCallInflight({ tc }: { tc: { id: string; tool: string; args: Record<string, unknown>; resultStatus?: 'ok' | 'error'; output?: Record<string, unknown> | null } }) {
   const status = tc.resultStatus
   const color = status === 'ok' ? 'var(--green-11)' : status === 'error' ? 'var(--red-11)' : 'var(--accent-9)'
-  // Status colour leaks into the background instead of the border so the
-  // surface stays borderless but you can still see ok/error/inflight at a glance.
   const bg = status === 'error'
     ? 'var(--red-a3)'
     : status === 'ok'
@@ -563,7 +539,7 @@ function Composer({
       />
       <Flex align="center" justify="between" gap="2" mt="2">
         <Text size="1" color="gray">
-          Streams via <Code variant="ghost" size="1">POST /chat/{'{id}'}/message</Code> as Server-Sent Events.
+          Replies stream in token-by-token.
         </Text>
         <Button onClick={onSend} disabled={!canSend}>
           <IconPlay /> {busy ? 'streaming…' : 'Send'}

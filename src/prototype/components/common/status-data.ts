@@ -37,7 +37,7 @@ export const STATUS_MAP: Record<StatusValue, StatusMeta> = {
   suspended: { tone: 'warn', label: 'Suspended', pulse: true },
   completed: { tone: 'success', label: 'Completed' },
   completed_with_errors: { tone: 'warn', label: 'Completed · with errors', dotted: true },
-  failed: { tone: 'danger', label: 'Failed' },
+  failed: { tone: 'danger', label: 'Got stuck — needs help' },
   cancelled: { tone: 'ghost', label: 'Cancelled' },
   approved: { tone: 'success', label: 'Approved' },
   rejected: { tone: 'danger', label: 'Rejected' },

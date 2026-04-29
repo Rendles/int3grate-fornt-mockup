@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react'
-import { Badge, Button, Code, DataList, Text } from '@radix-ui/themes'
+import { Badge, Button, DataList, Text } from '@radix-ui/themes'
 import { AppShell } from '../components/shell'
-import { PageHeader, MetaRow, MockBadge, Status, CommandBar, InfoHint } from '../components/common'
+import { PageHeader, MetaRow, MockBadge, Status, CommandBar } from '../components/common'
 import { statusLabel } from '../components/common/status-label'
 import { Banner, LoadingList, NoAccessState } from '../components/states'
 import { IconPlay } from '../components/icons'
@@ -29,7 +29,7 @@ export default function TaskDetailScreen({ taskId }: { taskId: string }) {
   if (task === null) {
     return (
       <AppShell crumbs={[{ label: 'home', to: '/' }, { label: 'tasks', to: '/tasks' }, { label: 'not found' }]}>
-        <div className="page"><NoAccessState requiredRole="access to this task" body={`Task ${taskId} could not be loaded.`} /></div>
+        <div className="page"><NoAccessState requiredRole="access to this task" body="This task could not be loaded. It may have been removed or you may not have access." /></div>
       </AppShell>
     )
   }
@@ -49,17 +49,9 @@ export default function TaskDetailScreen({ taskId }: { taskId: string }) {
     >
       <div className="page page--wide">
         <PageHeader
-          eyebrow={
-            <>
-              TASK{' '}
-              <MockBadge kind="deferred" />{' '}
-              <InfoHint>
-                Loaded via <Code variant="ghost">GET /tasks/{'{id}'}</Code>. The task response doesn't include a run ID — open runs directly by ID.
-              </InfoHint>
-            </>
-          }
+          eyebrow={<>TASK <MockBadge kind="deferred" /></>}
           title={task.title ?? <>Untitled task</>}
-          subtitle="Task details. To inspect the run, open it from the timeline."
+          subtitle="Task details. Open the activity timeline to see what your agent actually did."
           actions={
             <>
               <Status status={task.status} />
@@ -84,20 +76,15 @@ export default function TaskDetailScreen({ taskId }: { taskId: string }) {
         />
 
         <div style={{ height: 16 }} />
-        <Banner tone="warn" title="Task concept is MVP-deferred (ADR-0003)">
-          Gateway v0.2.0 marks <Code variant="ghost">/tasks/{'{id}'}</Code> as <Code variant="ghost">x-mvp-deferred</Code>. This screen is kept for design continuity; runs can exist without a task.
+        <Banner tone="warn" title="Tasks aren't part of the main UI">
+          Kept here for design preview. Day-to-day, your agents run activities directly — see them on the Activity page.
         </Banner>
 
         <div style={{ height: 20 }} />
 
         <div className="card">
           <div className="card__head">
-            <Text as="div" size="2" weight="medium" className="card__title">
-              Details{' '}
-              <InfoHint>
-                All fields stored on the task. Step count and spend are tracked on the run instead.
-              </InfoHint>
-            </Text>
+            <Text as="div" size="2" weight="medium" className="card__title">Details</Text>
           </div>
           <div className="card__body">
             <DataList.Root size="2">

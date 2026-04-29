@@ -1249,3 +1249,15 @@
   .prototype-root .tour__spot,
   .prototype-root .tour__tooltip { transition: none; }
 }
+
+/* Embed mode — used inside the assistant Talk-to tab. The wrapper page
+   handles outer scroll; this panel claims a sensible viewport-relative
+   slice so messages scroll internally without forcing the page into a
+   double-scroll situation. */
+.chat-detail--embed {
+  height: auto;
+  min-height: 480px;
+  max-height: calc(100svh - 280px);
+  padding: 0;
+}
+.chat-detail--embed .chat-detail__composer { padding-bottom: 0; }

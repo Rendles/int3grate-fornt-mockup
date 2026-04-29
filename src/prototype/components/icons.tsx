@@ -21,6 +21,7 @@ import {
   PlusSignIcon,
   Robot02Icon,
   Search01Icon,
+  Settings02Icon,
   StopCircleIcon,
   Sun03Icon,
   TaskDone01Icon,
@@ -77,3 +78,4 @@ export const IconLogout = make(Logout03Icon)
 export const IconSun = make(Sun03Icon)
 export const IconMoon = make(Moon02Icon)
 export const IconHelp = make(HelpCircleIcon)
+export const IconSettings = make(Settings02Icon)

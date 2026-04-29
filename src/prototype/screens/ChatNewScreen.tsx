@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from 'react'
-import { Badge, Box, Button, Code, Flex, Grid, Separator, Text } from '@radix-ui/themes'
+import { Badge, Box, Button, Flex, Grid, Separator, Text } from '@radix-ui/themes'
 
 import { AppShell } from '../components/shell'
 import { PageHeader, InfoHint, Status } from '../components/common'
@@ -63,7 +63,7 @@ export default function ChatNewScreen() {
         },
         user,
       )
-      navigate(`/chats/${chat.id}`)
+      navigate(`/agents/${chat.agent_id}/talk/${chat.id}`)
     } catch (e) {
       setErr((e as Error).message ?? 'Could not start chat')
     } finally {
@@ -71,15 +71,25 @@ export default function ChatNewScreen() {
     }
   }
 
+  const cancelHref = agent ? `/agents/${agent.id}/talk` : '/agents'
+  const crumbs = agent
+    ? [
+        { label: 'home', to: '/' },
+        { label: 'team', to: '/agents' },
+        { label: agent.name, to: `/agents/${agent.id}/talk` },
+        { label: 'new chat' },
+      ]
+    : [{ label: 'home', to: '/' }, { label: 'team', to: '/agents' }, { label: 'new chat' }]
+
   return (
-    <AppShell crumbs={[{ label: 'home', to: '/' }, { label: 'chats', to: '/chats' }, { label: 'new' }]}>
+    <AppShell crumbs={crumbs}>
       <div className="page page--narrow">
         <PageHeader
           eyebrow={
             <>
               NEW CHAT{' '}
               <InfoHint>
-                Creates a chat via <Code variant="ghost">POST /chat</Code>. Bound to one <Code variant="ghost">agent_version_id</Code> + <Code variant="ghost">model</Code> for its lifetime — to switch models, open a new chat.
+                Each chat is locked to one agent setup and one model. To switch, open a new chat.
               </InfoHint>
             </>
           }
@@ -87,7 +97,7 @@ export default function ChatNewScreen() {
           subtitle="Pick an agent, optionally pick the model. The model is fixed once the chat opens."
           actions={
             <>
-              <Button asChild variant="soft" disabled={busy} color='gray'><a href="#/chats">Cancel</a></Button>
+              <Button asChild variant="soft" disabled={busy} color='gray'><a href={`#${cancelHref}`}>Cancel</a></Button>
               <Button onClick={submit} disabled={busy || !runnable} data-tour="chat-submit">
                 <IconChat />
                 {busy ? 'opening…' : 'Open chat'}
@@ -188,7 +198,7 @@ export default function ChatNewScreen() {
                   <Box>
                     <Text as="div" size="2" weight="medium">Model</Text>
                     <Text as="div" size="1" color="gray" mt="1">
-                      Defaults to the agent version's primary model. Fixed once the chat opens.
+                      Defaults to the agent's primary model. Fixed once the chat opens.
                     </Text>
                   </Box>
                   <Box data-tour="chat-model">

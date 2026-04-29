@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useState } from 'react'
-import { Badge, Box, Button, Code, DataList, Flex, Grid, Separator, Text } from '@radix-ui/themes'
+import { Badge, Box, Button, DataList, Flex, Grid, Separator, Text } from '@radix-ui/themes'
 import { AppShell } from '../components/shell'
-import { PageHeader, MetaRow, MockBadge, Status, InfoHint } from '../components/common'
+import { PageHeader, MetaRow, MockBadge, Status } from '../components/common'
 import { TextAreaField, TextInput } from '../components/fields'
 import { Banner, LoadingList } from '../components/states'
 import { IconAlert, IconArrowRight, IconCheck, IconPlay } from '../components/icons'
@@ -10,7 +10,7 @@ import { api } from '../lib/api'
 import { domainLabel, humanKey } from '../lib/format'
 import type { Agent, Task, TaskType } from '../lib/types'
 
-// Chat-type interactions live on /chats now (gateway (5).yaml). The picker
+// Chat-type interactions live on /chats now (docs/gateway.yaml). The picker
 // here only surfaces non-chat types; visiting `?type=chat` redirects to the
 // chat surface.
 type DispatchableTaskType = Exclude<TaskType, 'chat'>
@@ -100,20 +100,12 @@ export default function TaskNewScreen() {
     <AppShell crumbs={[{ label: 'home', to: '/' }, { label: 'tasks', to: '/tasks' }, { label: created ? 'created' : 'new' }]}>
       <div className="page page--narrow">
         <PageHeader
-          eyebrow={
-            <>
-              DISPATCH TASK{' '}
-              <MockBadge kind="deferred" />{' '}
-              <InfoHint>
-                Creates a task via <Code variant="ghost">POST /tasks</Code>. Requires an agent and user_input. The orchestrator attaches a run asynchronously — the task response doesn't include a run_id.
-              </InfoHint>
-            </>
-          }
+          eyebrow={<>DISPATCH TASK <MockBadge kind="deferred" /></>}
           title={created ? <><em>Dispatched</em></> : <>Dispatch <em>a task.</em></>}
           subtitle={
             created
-              ? 'Task queued. Open its detail to watch the orchestrator attach a run.'
-              : 'Pick an agent, describe what it should do, fire it off.'
+              ? 'Task queued. Open the activity timeline to watch progress.'
+              : 'Pick an agent, describe what it should do, then start it.'
           }
           actions={
             created ? (
@@ -134,8 +126,8 @@ export default function TaskNewScreen() {
           }
         />
 
-        <Banner tone="warn" title="Task concept is MVP-deferred (ADR-0003)">
-          Gateway v0.2.0 marks <Code variant="ghost">POST /tasks</Code> as <Code variant="ghost">x-mvp-deferred</Code>. The production path will dispatch runs directly; this form remains for design continuity.
+        <Banner tone="warn" title="Tasks aren't part of the main UI">
+          Kept for design preview only. To talk to an agent, open Team and click <strong>Talk to</strong>.
         </Banner>
         <div style={{ height: 16 }} />
 
@@ -293,8 +285,8 @@ export default function TaskNewScreen() {
             </div>
 
             <div style={{ height: 16 }} />
-            <Banner tone="info" title="What gets created">
-              A pending Task is created and the orchestrator picks it up shortly. You won't see a run ID until the orchestrator attaches one — open the task detail to watch for it.
+            <Banner tone="info" title="What happens next">
+              The task is queued and your agent starts on it shortly. Open the task detail to watch progress.
             </Banner>
           </>
         )}
@@ -331,7 +323,7 @@ function SuccessPanel({ task, agentName }: { task: Task; agentName: string }) {
                 Task queued.
               </Text>
               <Text as="div" size="2" color="gray" mt="2" style={{ lineHeight: 1.5 }}>
-                The orchestrator will pick it up shortly. Open the task detail to watch for run attachment.
+                Your agent will start on this shortly. Open the task detail to watch progress.
               </Text>
             </Box>
           </Flex>

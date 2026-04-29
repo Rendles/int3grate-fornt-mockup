@@ -59,7 +59,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   }, [])
 
   const login = useCallback(async (email: string, password: string) => {
-    // Two-step per gateway (5).yaml: POST /auth/login → LoginResponse, then
+    // Two-step per docs/gateway.yaml: POST /auth/login → LoginResponse, then
     // GET /me with the issued bearer to fetch the User profile.
     const { token } = await api.login(email, password)
     const u = await api.me(token)
@@ -69,7 +69,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   }, [])
 
   const register = useCallback(async (input: { name: string; email: string; password: string; workspaceName: string }) => {
-    // Registration is not in gateway (5).yaml — kept as a mock-only flow.
+    // Registration is not in docs/gateway.yaml — kept as a mock-only flow.
     // We still persist a session so the user lands logged in.
     const u = await api.register(input)
     setUser(u)

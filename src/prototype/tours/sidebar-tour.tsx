@@ -13,17 +13,17 @@ export const sidebarTour: Tour = {
     },
     {
       id: 'dashboard',
-      target: '[data-tour="nav-dashboard"]',
+      target: '[data-tour="nav-home"]',
       placement: 'right',
-      title: 'Your dashboard',
-      body: 'KPIs, pending approvals, and recent activity at a glance — your daily home base.',
+      title: 'Your home',
+      body: 'Approvals waiting for you, recent activity, and your agents at a glance — your daily starting point.',
     },
     {
       id: 'agents',
-      target: '[data-tour="nav-agents"]',
+      target: '[data-tour="nav-assistants"]',
       placement: 'right',
-      title: 'Agents',
-      body: 'Create, configure, and monitor your AI agents here. Each agent has versions, tool grants, and approval rules.',
+      title: 'Team',
+      body: 'Hire, train, and monitor your agents here. Each agent has its own setup, app permissions, and approval rules.',
     },
     {
       id: 'approvals',

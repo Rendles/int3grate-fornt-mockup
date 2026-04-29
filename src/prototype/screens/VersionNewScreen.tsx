@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react'
-import { Box, Button, Code, Flex, Grid, Separator, Text } from '@radix-ui/themes'
+import { Box, Button, Flex, Grid, Separator, Text } from '@radix-ui/themes'
 
 import { AppShell } from '../components/shell'
 import { PageHeader, InfoHint } from '../components/common'
@@ -57,12 +57,12 @@ export default function VersionNewScreen({ agentId }: { agentId: string }) {
 
   if (!canEdit) {
     return (
-      <AppShell crumbs={[{ label: 'home', to: '/' }, { label: 'agents', to: '/agents' }, { label: agent?.name ?? '…', to: `/agents/${agentId}` }, { label: 'new version' }]}>
+      <AppShell crumbs={[{ label: 'home', to: '/' }, { label: 'team', to: '/agents' }, { label: agent?.name ?? '…', to: `/agents/${agentId}` }, { label: 'new version' }]}>
         <div className="page page--narrow">
-          <PageHeader eyebrow="NEW VERSION" title={<>Admins only</>} />
+          <PageHeader eyebrow="NEW SETUP" title={<>Admins only</>} />
           <NoAccessState
-            requiredRole="domain_admin or admin"
-            body="Creating versions is restricted to admins."
+            requiredRole="Team Admin or Workspace Admin"
+            body="Only admins can create a new setup for an agent."
           />
         </div>
       </AppShell>
@@ -74,9 +74,9 @@ export default function VersionNewScreen({ agentId }: { agentId: string }) {
   }
   if (agent === null) {
     return (
-      <AppShell crumbs={[{ label: 'home', to: '/' }, { label: 'agents', to: '/agents' }, { label: 'not found' }]}>
+      <AppShell crumbs={[{ label: 'home', to: '/' }, { label: 'team', to: '/agents' }, { label: 'not found' }]}>
         <div className="page">
-          <NoAccessState requiredRole="access" body={`Agent ${agentId} could not be loaded.`} />
+          <NoAccessState requiredRole="access to this agent" body="The agent you're looking for could not be loaded. It may have been removed or the link is incorrect." />
         </div>
       </AppShell>
     )
@@ -120,7 +120,7 @@ export default function VersionNewScreen({ agentId }: { agentId: string }) {
     <AppShell
       crumbs={[
         { label: 'home', to: '/' },
-        { label: 'agents', to: '/agents' },
+        { label: 'team', to: '/agents' },
         { label: agent.name, to: `/agents/${agent.id}` },
         { label: 'new version' },
       ]}
@@ -129,16 +129,16 @@ export default function VersionNewScreen({ agentId }: { agentId: string }) {
         <PageHeader
           eyebrow={
             <>
-              NEW VERSION{' '}
+              NEW SETUP{' '}
               <InfoHint>
-                Creates an immutable version via <Code variant="ghost">POST /agents/{'{id}'}/versions</Code>. If you check "activate immediately", the new version is then set active via <Code variant="ghost">POST /versions/{'{verId}'}/activate</Code>.
+                If you check "activate immediately", the new setup replaces the current one. Otherwise it stays as a draft until you activate it.
               </InfoHint>
             </>
           }
-          title={<>New <em>version</em> <Text as="span" size="7" color="gray" ml="2">v{nextVer}</Text></>}
+          title={<>New <em>setup</em> <Text as="span" size="7" color="gray" ml="2">v{nextVer}</Text></>}
           subtitle={agent.active_version
-            ? `Forking from v${agent.active_version.version}. Changes below produce a new immutable version.`
-            : 'This is the first version for this agent.'}
+            ? `Forking from v${agent.active_version.version}. Changes below produce a new immutable setup.`
+            : 'This is the first setup for this agent.'}
           actions={
             <>
               <Button asChild variant="soft" color="gray" disabled={busy}><a href={`#/agents/${agent.id}`}>Cancel</a></Button>

@@ -5,7 +5,7 @@ import type { TrainingModeValue } from './training-context'
 import { __setTrainingMode } from '../lib/api'
 
 // Auto-exit if the user wandered off mid-tour. The 15 min figure is a
-// starting guess; revisit once real tours are in use (see TOURS_PLAN.md
+// starting guess; revisit once real tours are in use (see docs/plans/tours.md
 // "Open questions").
 const IDLE_TIMEOUT_MS = 15 * 60 * 1000
 

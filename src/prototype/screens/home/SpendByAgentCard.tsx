@@ -18,7 +18,7 @@ export function SpendByAgentCard({ spend }: { spend: SpendDashboard }) {
           Spend by agent · 7d
         </Text>
         <Button asChild variant="ghost" color='gray' size="1">
-          <a href="#/spend"><IconArrowRight className="ic ic--sm" />All</a>
+          <a href="#/costs"><IconArrowRight className="ic ic--sm" />All</a>
         </Button>
       </div>
       <div className="card__body" style={{ padding: '14px 18px', flex: 1 }}>

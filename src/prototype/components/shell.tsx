@@ -10,19 +10,17 @@ import logo from '../../assets/logo.svg'
 import {
   IconAgent,
   IconApproval,
-  IconAudit,
-  IconChat,
   IconHelp,
   IconHome,
   IconLogout,
   IconMoon,
   IconRun,
+  IconSettings,
   IconSpend,
   IconSun,
-  IconTask,
   IconTool,
 } from './icons'
-import { Avatar, MockBadge } from './common'
+import { Avatar } from './common'
 import { roleLabel } from '../lib/format'
 import { useTour } from '../tours/useTour'
 
@@ -32,47 +30,20 @@ interface NavItem {
   to: string
   icon: ReactNode
   badge?: { count: number | string; tone?: 'accent' | 'warn' | 'muted' }
-  mockKind?: 'design' | 'deferred'
 }
 
 export function Sidebar() {
   const { user } = useAuth()
   const { path } = useRouter()
   const [pendingApprovals, setPendingApprovals] = useState<number>(0)
-  const [activeTasks, setActiveTasks] = useState<number>(0)
-  const [activeChats, setActiveChats] = useState<number>(0)
 
   useEffect(() => {
     api.listApprovals({ status: 'pending' }).then(list => setPendingApprovals(list.total))
-    api.listTasks().then(list =>
-      setActiveTasks(list.items.filter(t => t.status === 'pending' || t.status === 'running').length)
-    )
-    if (user) {
-      api.listChats({ id: user.id, role: user.role }, { limit: 100 }).then(list =>
-        setActiveChats(list.items.filter(c => c.status === 'active').length)
-      )
-    }
-  }, [user])
+  }, [])
 
   const isAdmin = user?.role === 'admin' || user?.role === 'domain_admin'
   const items: NavItem[] = [
-    { key: 'dashboard', label: 'Dashboard', to: '/', icon: <IconHome /> },
-    { key: 'agents', label: 'Agents', to: '/agents', icon: <IconAgent /> },
-    {
-      key: 'chats',
-      label: 'Chats',
-      to: '/chats',
-      icon: <IconChat />,
-      badge: activeChats > 0 ? { count: activeChats, tone: 'accent' } : undefined,
-    },
-    {
-      key: 'tasks',
-      label: 'Tasks',
-      to: '/tasks',
-      icon: <IconTask />,
-      badge: activeTasks > 0 ? { count: activeTasks, tone: 'muted' } : undefined,
-      mockKind: 'deferred',
-    },
+    { key: 'home', label: 'Home', to: '/', icon: <IconHome /> },
     {
       key: 'approvals',
       label: 'Approvals',
@@ -80,11 +51,12 @@ export function Sidebar() {
       icon: <IconApproval />,
       badge: pendingApprovals > 0 ? { count: pendingApprovals, tone: 'warn' } : undefined,
     },
-    { key: 'runs', label: 'Runs', to: '/runs', icon: <IconRun /> },
-    { key: 'tools', label: 'Tools', to: '/tools', icon: <IconTool /> },
-    { key: 'spend', label: 'Spend', to: '/spend', icon: <IconSpend /> },
+    { key: 'activity', label: 'Activity', to: '/activity', icon: <IconRun /> },
+    { key: 'assistants', label: 'Team', to: '/agents', icon: <IconAgent /> },
+    { key: 'apps', label: 'Apps', to: '/apps', icon: <IconTool /> },
+    { key: 'costs', label: 'Costs', to: '/costs', icon: <IconSpend /> },
     ...(isAdmin
-      ? [{ key: 'audit', label: 'Audit', to: '/audit', icon: <IconAudit /> } as NavItem]
+      ? [{ key: 'settings', label: 'Settings', to: '/settings', icon: <IconSettings /> } as NavItem]
       : []),
   ]
 
@@ -115,7 +87,6 @@ export function Sidebar() {
           >
             <span className="sb__item-icon">{item.icon}</span>
             <Text as="span" size="2">{item.label}</Text>
-            {item.mockKind && <MockBadge kind={item.mockKind} />}
             {item.badge && (
               <Badge
                 color={item.badge.tone === 'warn' ? 'amber' : item.badge.tone === 'muted' ? 'gray' : 'blue'}

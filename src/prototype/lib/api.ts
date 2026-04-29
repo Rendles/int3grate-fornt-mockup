@@ -96,7 +96,7 @@ function userIdFromToken(token: string): string {
 //
 // Module-level pointer to the currently-active training scenario. Set by
 // `TrainingModeProvider` via `__setTrainingMode(id)` on tour start, cleared
-// to null on exit. See TOURS_PLAN.md "Training mode" section.
+// to null on exit. See docs/plans/tours.md "Training mode" section.
 //
 // Reads inside `api.*` route through `_trainingScenario()` and replace
 // their underlying fixture array with the scenario's set when active.
@@ -170,7 +170,7 @@ function cloneGrant(grant: ToolGrant): ToolGrant {
 
 export const api = {
   // ── POST /auth/login ──────────────────────────────────────────────
-  // Returns LoginResponse { token, expires_at } per gateway (5).yaml.
+  // Returns LoginResponse { token, expires_at } per docs/gateway.yaml.
   // Clients then call GET /me with the token to fetch the User profile.
   async login(email: string, password: string): Promise<LoginResponse> {
     void password
@@ -238,7 +238,7 @@ export const api = {
   },
 
   // ── GET /agents ────────────────────────────────────────────────────
-  // Returns AgentList envelope (gateway (5).yaml). Detail-only enrichment
+  // Returns AgentList envelope (docs/gateway.yaml). Detail-only enrichment
   // fields (total_spend_usd, runs_count) are null on list views per spec.
   async listAgents(filter?: { limit?: number; offset?: number }): Promise<AgentList> {
     await delay()
@@ -248,7 +248,7 @@ export const api = {
 
   // ── GET /agents/{id} ───────────────────────────────────────────────
   // Detail view enriches the Agent with total_spend_usd / runs_count
-  // (gateway (5).yaml). List view leaves these null.
+  // (docs/gateway.yaml). List view leaves these null.
   async getAgent(id: string): Promise<Agent | undefined> {
     await delay()
     const scenario = _trainingScenario()
@@ -365,7 +365,7 @@ export const api = {
   },
 
   // ── GET /tasks ────────────────────────────────────────────────────
-  // Returns TaskList envelope (gateway (5).yaml, x-mvp-deferred).
+  // Returns TaskList envelope (docs/gateway.yaml, x-mvp-deferred).
   async listTasks(filter?: { status?: Task['status']; limit?: number; offset?: number }): Promise<TaskList> {
     await delay()
     let list = [...fxTasks]
@@ -411,7 +411,7 @@ export const api = {
   },
 
   // ── GET /runs/{id} ────────────────────────────────────────────────
-  // Returns RunDetail (gateway (5).yaml schema name).
+  // Returns RunDetail (docs/gateway.yaml schema name).
   async getRun(id: string): Promise<RunDetail | undefined> {
     await delay()
     const scenario = _trainingScenario()
@@ -420,7 +420,7 @@ export const api = {
   },
 
   // ── GET /dashboard/runs ───────────────────────────────────────────
-  // Paginated list of runs with denormalized agent_id (gateway (5).yaml).
+  // Paginated list of runs with denormalized agent_id (docs/gateway.yaml).
   async listRuns(filter?: {
     status?: RunStatus
     limit?: number
@@ -548,7 +548,7 @@ export const api = {
   },
 
   // ── GET /approvals ────────────────────────────────────────────────
-  // Returns ApprovalList envelope (gateway (5).yaml).
+  // Returns ApprovalList envelope (docs/gateway.yaml).
   async listApprovals(filter?: { status?: ApprovalRequest['status']; limit?: number; offset?: number }): Promise<ApprovalList> {
     await delay()
     const scenario = _trainingScenario()
@@ -666,7 +666,7 @@ export const api = {
     }
   },
 
-  // ── Chat (gateway (5).yaml) ───────────────────────────────────────
+  // ── Chat (docs/gateway.yaml) ───────────────────────────────────────
 
   // GET /chats — visibility scoped by role (member sees own, admin/domain_admin
   // see everything within tenant scope). The mock takes role + userId
@@ -1038,7 +1038,7 @@ function chunkText(text: string, size: number): string[] {
   return out
 }
 
-// Map RunStep.step_type → canonical audit step_type per gateway (5).yaml.
+// Map RunStep.step_type → canonical audit step_type per docs/gateway.yaml.
 // Run-side values are intentionally a small enum: llm | tool_call | approval_wait | system.
 function stepTypeToAudit(kind: RunStepType): string {
   if (kind === 'llm_call') return 'llm'

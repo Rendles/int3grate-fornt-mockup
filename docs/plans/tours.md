@@ -1,4 +1,4 @@
-# TOURS_PLAN.md
+# Tours plan
 
 Status: **In progress** — `sidebar-overview`, `approval-review`,
 `start-a-chat`, and `configure-tool-grants` tours shipped; the

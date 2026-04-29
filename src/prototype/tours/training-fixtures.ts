@@ -15,7 +15,7 @@ import type {
  * reads return whatever lives here, mutations write to a sandbox tied
  * to the scenario session (see lib/api.ts).
  *
- * Per-scenario contents are documented in TOURS_PLAN.md
+ * Per-scenario contents are documented in docs/plans/tours.md
  * "Training mode" → "Per-scenario fixture sets".
  */
 export interface TrainingScenario {
