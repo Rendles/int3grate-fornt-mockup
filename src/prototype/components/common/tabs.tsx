@@ -1,6 +1,6 @@
 import { TabNav, Tabs as RadixTabs, Text } from '@radix-ui/themes'
 
-type Item = { key: string; label: string; count?: number | string; href?: string }
+type Item = { key: string; label: string; count?: number | string; href?: string; dataTour?: string }
 
 function Count({ value }: { value: number | string }) {
   return (
@@ -26,7 +26,7 @@ export function Tabs({
       <TabNav.Root>
         {items.map(t => (
           <TabNav.Link key={t.key} asChild active={active === t.key}>
-            <a href={t.href ? `#${t.href}` : undefined}>
+            <a href={t.href ? `#${t.href}` : undefined} data-tour={t.dataTour}>
               <span>{t.label}</span>
               {t.count != null && <Count value={t.count} />}
             </a>
@@ -40,7 +40,7 @@ export function Tabs({
     <RadixTabs.Root value={active} onValueChange={v => onSelect?.(v)}>
       <RadixTabs.List>
         {items.map(t => (
-          <RadixTabs.Trigger key={t.key} value={t.key}>
+          <RadixTabs.Trigger key={t.key} value={t.key} data-tour={t.dataTour}>
             <span>{t.label}</span>
             {t.count != null && <Count value={t.count} />}
           </RadixTabs.Trigger>

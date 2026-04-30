@@ -58,7 +58,7 @@ export function WelcomeToast() {
         </Flex>
         <Text as="div" size="2" color="gray">
           The Learning Center has short tours that walk you through agents,
-          approvals, and runs.
+          approvals, and activity.
         </Text>
         <Flex justify="end">
           <Button size="1" onClick={open}>

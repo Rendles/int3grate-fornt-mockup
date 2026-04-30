@@ -1,16 +1,18 @@
-import { useEffect, useState } from 'react'
-import { Badge, Box, Button, Code, Flex, Grid, Separator, Text } from '@radix-ui/themes'
+import { useEffect, useMemo, useState } from 'react'
+import { Badge, Box, Button, Code, Flex, Text } from '@radix-ui/themes'
 
 import { AppShell } from '../components/shell'
-import { Caption, PageHeader, Status, CommandBar, InfoHint } from '../components/common'
+import { Caption, MockBadge, PageHeader, Status } from '../components/common'
 import { statusLabel } from '../components/common/status-label'
 import { TextAreaField } from '../components/fields'
 import { Banner, LoadingList, NoAccessState } from '../components/states'
 import {
+  IconAgent,
   IconAlert,
   IconApproval,
   IconArrowLeft,
   IconArrowRight,
+  IconChat,
   IconCheck,
   IconLock,
   IconPlay,
@@ -20,7 +22,17 @@ import {
 import { Link, useRouter } from '../router'
 import { useAuth } from '../auth'
 import { api } from '../lib/api'
-import type { Agent, ApprovalDecisionAccepted, ApprovalRequest, Run, RunDetail, RunStatus, RunStep, Task, User } from '../lib/types'
+import type {
+  Agent,
+  ApprovalDecisionAccepted,
+  ApprovalRequest,
+  Run,
+  RunDetail,
+  RunStatus,
+  RunStep,
+  Task,
+  User,
+} from '../lib/types'
 import { absTime, ago, approverRoleLabel, humanKey, prettifyRequestedAction, shortRef, toolLabel } from '../lib/format'
 
 type Decision = 'approved' | 'rejected'
@@ -42,9 +54,6 @@ export default function ApprovalDetailScreen({ approvalId }: { approvalId: strin
   const [resume, setResume] = useState<ApprovalDecisionAccepted | null>(null)
   const [runAfter, setRunAfter] = useState<Run | null>(null)
   const [users, setUsers] = useState<User[]>([])
-  // Context for the "what am I approving?" summary — the run that paused on
-  // this approval, the originating task (if any), and the catalog of agents
-  // (for resolving agent_version_id → agent name).
   const [runContext, setRunContext] = useState<RunDetail | null>(null)
   const [taskContext, setTaskContext] = useState<Task | null>(null)
   const [agents, setAgents] = useState<Agent[]>([])
@@ -77,7 +86,7 @@ export default function ApprovalDetailScreen({ approvalId }: { approvalId: strin
   const userName = (id: string | null | undefined) =>
     (id && users.find(u => u.id === id)?.name) || null
 
-  // Polling: after 202-ack, wait for approval to flip, then for run to reach terminal.
+  // Polling: after 202-ack, wait for approval to flip, then run terminal.
   useEffect(() => {
     if (!resume) return
     let cancelled = false
@@ -111,10 +120,15 @@ export default function ApprovalDetailScreen({ approvalId }: { approvalId: strin
     }
   }, [resume, approvalId])
 
+  const agent = useMemo(() => {
+    if (!runContext?.agent_version_id) return null
+    return agents.find(a => a.active_version?.id === runContext.agent_version_id) ?? null
+  }, [runContext, agents])
+
   if (approval === null) {
     return (
       <AppShell crumbs={[{ label: 'home', to: '/' }, { label: 'approvals', to: '/approvals' }, { label: 'not found' }]}>
-        <div className="page"><NoAccessState requiredRole="visibility into this approval" body={`Approval ${approvalId} could not be loaded.`} /></div>
+        <div className="page"><NoAccessState requiredRole="access to this approval" body="This approval request could not be found. It may have already been resolved or the link may be incorrect." /></div>
       </AppShell>
     )
   }
@@ -122,17 +136,17 @@ export default function ApprovalDetailScreen({ approvalId }: { approvalId: strin
     return <AppShell crumbs={[{ label: '...', to: '/' }]}><div className="page"><LoadingList rows={4} /></div></AppShell>
   }
 
-  // Rejection requires a reason; approve is optional per the API spec.
   const reasonRequired = decision === 'rejected'
   const reasonInvalid = reasonRequired && reasonTouched && reason.trim().length < 4
   const canSubmit = decision !== null && (!reasonRequired || reason.trim().length >= 4) && !busy
-
   const userCanDecide = approval.status === 'pending' && !!user
+  const agentName = agent?.name ?? 'Agent'
+  const actionVerb = prettifyRequestedAction(approval.requested_action)
 
-  const doDecide = async () => {
-    setReasonTouched(true)
-    if (!decision || !user) return
-    if (reasonRequired && reason.trim().length < 4) return
+  const doDecide = async (d: Decision, reasonText: string) => {
+    if (!user) return
+    const requiresReason = d === 'rejected'
+    if (requiresReason && reasonText.length < 4) return
 
     setBusy(true)
     setSaveError(null)
@@ -146,8 +160,7 @@ export default function ApprovalDetailScreen({ approvalId }: { approvalId: strin
         setBusy(false)
         return
       }
-      const ack = await api.decideApproval(approval.id, decision, reason.trim() || null, user.id)
-      // v0.2.0: 202 queued — enter polling mode instead of assuming sync result.
+      const ack = await api.decideApproval(approval.id, d, reasonText || null, user.id)
       setResume(ack)
       setDecision(null)
       setReason('')
@@ -164,6 +177,12 @@ export default function ApprovalDetailScreen({ approvalId }: { approvalId: strin
     } finally {
       setBusy(false)
     }
+  }
+
+  const submitFromConfirmCard = () => {
+    setReasonTouched(true)
+    if (!decision) return
+    void doDecide(decision, reason.trim())
   }
 
   const cancelDecision = () => {
@@ -183,64 +202,42 @@ export default function ApprovalDetailScreen({ approvalId }: { approvalId: strin
     >
       <div className="page page--narrow">
         <div data-tour="approval-action">
-        <PageHeader
-          eyebrow={
-            <>
-              APPROVAL{' '}
-              <InfoHint>
-                Loaded via <Code variant="ghost">GET /approvals/{'{id}'}</Code>. Decision posts to <Code variant="ghost">POST /approvals/{'{id}'}/decision</Code> with <Code variant="ghost">{'{ decision, reason }'}</Code>.
-              </InfoHint>
-            </>
-          }
-          title={prettifyRequestedAction(approval.requested_action)}
-          actions={
-            // Direct children of PageHeader's wrapping Flex so each item can
-            // wrap to a new row independently when the title eats the width.
-            <>
-              <Status status={approval.status} />
-              <Separator orientation="vertical" size="1" />
-              <Button asChild variant="soft" color="gray" size="1">
-                <a href={`#/runs/${approval.run_id}`}>
-                  Open run <IconArrowRight className="ic ic--sm" />
-                </a>
-              </Button>
-              {approval.task_id && (
-                <Button asChild variant="soft" color="gray" size="1">
-                  <a href={`#/tasks/${approval.task_id}`}>
-                    Open task <IconArrowRight className="ic ic--sm" />
-                  </a>
-                </Button>
-              )}
-            </>
-          }
-        />
-        </div>
-
-        <CommandBar
-          parts={[
-            { label: 'RUN', value: shortRef(approval.run_id), tone: 'accent' },
-            { label: 'TASK', value: approval.task_id ? shortRef(approval.task_id) : 'standalone' },
-            { label: 'NEEDS', value: approverRoleLabel(approval.approver_role) },
-            ...(approval.status === 'pending' && approval.expires_at
-              ? [{ label: 'EXPIRES', value: ago(approval.expires_at), tone: 'warn' as const }]
-              : []),
-            ...(approval.resolved_at ? [{ label: 'RESOLVED', value: absTime(approval.resolved_at) }] : []),
-          ]}
-        />
-
-        <div style={{ height: 20 }} />
-
-        <div data-tour="approval-evidence">
-          <ApprovalContextCard
-            approval={approval}
-            run={runContext}
-            task={taskContext}
-            agents={agents}
-            requestedByName={approval.requested_by_name ?? userName(approval.requested_by) ?? null}
+          <PageHeader
+            eyebrow={
+              <>
+                APPROVAL REQUEST{' '}
+                <MockBadge kind="design" hint="GET /approvals/{id} isn't in the gateway spec yet — single-fetch is mocked locally. The list endpoint is real." />
+              </>
+            }
+            title={<><Text as="span">{agentName} wants to </Text><em>{actionVerb.toLowerCase()}</em></>}
+            subtitle={
+              taskContext?.title ? (
+                <>In task: <Link to={`/tasks/${taskContext.id}`}>{taskContext.title}</Link></>
+              ) : undefined
+            }
+            actions={
+              <>
+                {agent && (
+                  <Button asChild size="1" variant="ghost" color="gray">
+                    <Link to={`/agents/${agent.id}`}>
+                      <IconAgent className="ic ic--sm" />
+                      View agent
+                    </Link>
+                  </Button>
+                )}
+                {agent && (
+                  <Button asChild size="1" variant="ghost" color="gray">
+                    <Link to={`/agents/${agent.id}/talk`}>
+                      <IconChat className="ic ic--sm" />
+                      Open chat
+                    </Link>
+                  </Button>
+                )}
+                <Status status={approval.status} />
+              </>
+            }
           />
         </div>
-
-        <div style={{ height: 20 }} />
 
         {conflict && (
           <>
@@ -254,28 +251,33 @@ export default function ApprovalDetailScreen({ approvalId }: { approvalId: strin
                 <> Decided by <strong>{userName(conflict.approver_user_id) ?? '—'}</strong> at {absTime(conflict.resolved_at)}.</>
               )}
             </Banner>
-            <div style={{ height: 16 }} />
+            <Box mt="4" />
           </>
         )}
 
         {resume && (
           <>
             <ResumeBanner ack={resume} approval={approval} run={runAfter} />
-            <div style={{ height: 16 }} />
+            <Box mt="4" />
           </>
         )}
 
-        {/* Pending · decision panel */}
+        {/* Pending · review + decision panel */}
         {approval.status === 'pending' && userCanDecide && !decision && !resume && (
           <div data-tour="approval-decision">
-          <DecisionIntroCard
-            onApprove={() => setDecision('approved')}
-            onReject={() => setDecision('rejected')}
-          />
+            <ReviewCard
+              approval={approval}
+              run={runContext}
+              agentName={agentName}
+              busy={busy}
+              onApprove={() => setDecision('approved')}
+              onReject={() => setDecision('rejected')}
+              onQuickApprove={() => doDecide('approved', '')}
+            />
           </div>
         )}
 
-        {/* Pending · confirm panel */}
+        {/* Pending · confirm panel (after user clicked Approve / Reject) */}
         {approval.status === 'pending' && userCanDecide && decision && !resume && (
           <DecisionConfirmCard
             decision={decision}
@@ -289,8 +291,7 @@ export default function ApprovalDetailScreen({ approvalId }: { approvalId: strin
             onChangeReason={v => { setReason(v); setReasonTouched(true) }}
             onBlurReason={() => setReasonTouched(true)}
             onCancel={cancelDecision}
-            onConfirm={doDecide}
-            onSwitch={d => { setDecision(d); setReason(''); setReasonTouched(false); setSaveError(null) }}
+            onConfirm={submitFromConfirmCard}
           />
         )}
 
@@ -299,140 +300,200 @@ export default function ApprovalDetailScreen({ approvalId }: { approvalId: strin
           <ResolvedCard approval={approval} approverName={userName(approval.approver_user_id)} />
         )}
 
-        <div style={{ height: 20 }} />
-
-        {/* Metadata */}
-        <div className="card">
-          <div className="card__head"><Text as="div" size="2" weight="medium" className="card__title">Details</Text></div>
-          <div className="card__body">
-            <MetaRow
-              label="run"
-              value={<Link to={`/runs/${approval.run_id}`}>{shortRef(approval.run_id)}</Link>}
-            />
-            <MetaRow
-              label="task"
-              value={approval.task_id
-                ? <Link to={`/tasks/${approval.task_id}`}>{shortRef(approval.task_id)}</Link>
-                : <Text color="gray">— · standalone run</Text>}
-            />
-            <MetaRow label="action" value={prettifyRequestedAction(approval.requested_action)} />
-            <MetaRow label="requested by" value={approval.requested_by_name ?? userName(approval.requested_by) ?? <Text color="gray">—</Text>} />
-            <MetaRow label="approver role" value={<Badge color="gray" variant="soft" radius="full" size="1">{approverRoleLabel(approval.approver_role)}</Badge>} />
-            <MetaRow label="approver" value={userName(approval.approver_user_id) ?? <Text color="gray">—</Text>} />
-            <MetaRow label="status" value={<Status status={approval.status} />} />
-            <MetaRow label="reason" value={approval.reason ?? <Text color="gray">—</Text>} />
-            <MetaRow label="expires" value={approval.expires_at ? absTime(approval.expires_at) : '—'} />
-            <MetaRow label="resolved" value={approval.resolved_at ? absTime(approval.resolved_at) : '—'} />
-            <MetaRow label="created" value={absTime(approval.created_at)} />
-          </div>
+        {/* What the agent did so far — inline, always visible */}
+        <div data-tour="approval-evidence">
+          <PriorActivitySection run={runContext} />
         </div>
 
-        {approval.evidence_ref && (
-          <>
-            <div style={{ height: 16 }} />
-            <div className="card">
-              <div className="card__head">
-                <Text as="div" size="2" weight="medium" className="card__title">Evidence</Text>
-                <Text size="1" color="gray">context for this decision</Text>
-              </div>
-              <div className="card__body">
-                <EvidenceList data={approval.evidence_ref} />
-              </div>
-            </div>
-          </>
-        )}
-
+        {/* Backend metadata + raw evidence — collapsible */}
+        <TechnicalDetailsAccordion approval={approval} userName={userName} />
       </div>
     </AppShell>
   )
 }
 
-function DecisionIntroCard({ onApprove, onReject }: { onApprove: () => void; onReject: () => void }) {
+// ────────────────────────────────────────────── ReviewCard
+// Plan section 7.2 — the main "supervisor decision" panel. Structured copy
+// (Why / What to check / What happens if approve / What happens if reject)
+// and two big primary buttons: "Approve action" / "Reject action".
+
+function ReviewCard({
+  approval,
+  run,
+  agentName,
+  busy,
+  onApprove,
+  onReject,
+  onQuickApprove,
+}: {
+  approval: ApprovalRequest
+  run: RunDetail | null
+  agentName: string
+  busy: boolean
+  onApprove: () => void
+  onReject: () => void
+  onQuickApprove: () => void
+}) {
+  const policyReason = useMemo(() => {
+    if (!run) return null
+    for (let i = run.steps.length - 1; i >= 0; i--) {
+      const s = run.steps[i]
+      if (s.step_type !== 'validation') continue
+      const out = s.output_ref as { verdict?: string; reason?: string } | null
+      if (out?.verdict === 'approval_required' && typeof out.reason === 'string') {
+        return out.reason
+      }
+    }
+    return null
+  }, [run])
+
+  const evidenceEntries = approval.evidence_ref
+    ? Object.entries(approval.evidence_ref).filter(([, v]) => v != null)
+    : []
+
   return (
-    <div
-      className="card"
-      style={{
-        borderColor: 'var(--amber-a6)',
-        background: 'linear-gradient(180deg, var(--amber-a3) 0%, transparent 80%)',
-      }}
-    >
-      <div className="card__head">
-        <Text as="div" size="2" weight="medium" className="card__title" style={{ color: 'var(--amber-11)' }}>
-          <IconApproval className="ic" />
-          Your decision is required
-        </Text>
+    <div className="card" style={{ borderColor: 'var(--amber-a6)' }}>
+      <Flex justify="end" px="4" pt="3">
+        <Button
+          size="1"
+          variant="ghost"
+          color="green"
+          onClick={onQuickApprove}
+          disabled={busy}
+          title="Approve without adding a reason"
+          aria-label="Quick approve — submit without adding a reason"
+          style={{ minHeight: 24 }}
+        >
+          <IconCheck className="ic ic--sm" />
+          Quick approve
+        </Button>
+      </Flex>
+      <div className="card__body" style={{ padding: '16px 24px 8px' }}>
+        <Section title="Why approval is needed">
+          <Text as="p" size="2" style={{ lineHeight: 1.6 }}>
+            {policyReason ?? `This kind of action is set to require your approval before ${agentName} can run it.`}
+          </Text>
+        </Section>
+
+        {evidenceEntries.length > 0 && (
+          <Section title="What you should check">
+            <Flex direction="column" gap="2">
+              {evidenceEntries.map(([k, v]) => (
+                <Flex
+                  key={k}
+                  align="start"
+                  gap="3"
+                  py="2"
+                  style={{ borderTop: '1px dashed var(--gray-a3)' }}
+                >
+                  <Text size="2" color="gray" style={{ flex: '0 0 35%' }}>{humanKey(k)}</Text>
+                  <Box style={{ flex: '1 1 auto', minWidth: 0 }}>
+                    <FactValue value={v} />
+                  </Box>
+                </Flex>
+              ))}
+            </Flex>
+          </Section>
+        )}
+
+        <Section title="What happens if you approve">
+          <Flex align="start" gap="2">
+            <Box style={{ color: 'var(--green-11)', paddingTop: 2 }}>
+              <IconPlay className="ic ic--sm" />
+            </Box>
+            <Text as="p" size="2" style={{ lineHeight: 1.6 }}>
+              {agentName} will run this action right away and continue with the task.
+            </Text>
+          </Flex>
+        </Section>
+
+        <Section title="What happens if you reject">
+          <Flex align="start" gap="2">
+            <Box style={{ color: 'var(--red-11)', paddingTop: 2 }}>
+              <IconStop className="ic ic--sm" />
+            </Box>
+            <Text as="p" size="2" style={{ lineHeight: 1.6 }}>
+              {agentName} will not run this action. The current task will stop.
+            </Text>
+          </Flex>
+        </Section>
       </div>
-      <div className="card__body">
-        <Text as="p" size="2" color="gray" mb="4" style={{ lineHeight: 1.55 }}>
-          Your decision is written to the audit trail. Approving resumes the suspended run; rejecting stops the pending action.
+
+      <Flex
+        gap="3"
+        p="4"
+        wrap="wrap"
+        style={{ borderTop: '1px solid var(--gray-a3)' }}
+      >
+        <Button
+          size="3"
+          color="green"
+          onClick={onApprove}
+          style={{ flex: '1 1 200px', minWidth: 200 }}
+        >
+          <IconCheck />
+          Approve action
+        </Button>
+        <Button
+          size="3"
+          color="red"
+          variant="soft"
+          onClick={onReject}
+          style={{ flex: '1 1 200px', minWidth: 200 }}
+        >
+          <IconX />
+          Reject action
+        </Button>
+      </Flex>
+
+      <Box px="4" pb="3">
+        <Text as="div" size="1" color="gray" style={{ lineHeight: 1.5 }}>
+          Triggered {ago(approval.created_at)}{approval.requested_by_name ? ` by ${approval.requested_by_name}` : ''}.
+          {' '}{approval.expires_at ? `Auto-expires ${ago(approval.expires_at)}.` : ''}
         </Text>
-        <Grid columns="2" gap="4">
-          <DecisionCTA
-            tone="success"
-            icon={<IconCheck />}
-            title="Approve"
-            sub="Resume the suspended run and execute the requested action."
-            reasonHint="Reason optional"
-            onClick={onApprove}
-          />
-          <DecisionCTA
-            tone="danger"
-            icon={<IconX />}
-            title="Reject"
-            sub="Stop the requested action. The run is terminated."
-            reasonHint="Reason required"
-            onClick={onReject}
-          />
-        </Grid>
-      </div>
+      </Box>
     </div>
   )
 }
 
-function DecisionCTA({
-  tone, icon, title, sub, reasonHint, onClick,
-}: {
-  tone: 'success' | 'danger'
-  icon: React.ReactNode
-  title: string
-  sub: string
-  reasonHint: string
-  onClick: () => void
-}) {
-  const color = tone === 'success' ? 'var(--green-11)' : 'var(--red-11)'
-  const bg = tone === 'success' ? 'var(--green-a3)' : 'var(--red-a3)'
-  const border = tone === 'success' ? 'var(--green-a6)' : 'var(--red-a6)'
+function Section({ title, children }: { title: string; children: React.ReactNode }) {
   return (
-    <button
-      onClick={onClick}
-      style={{
-        textAlign: 'left',
-        padding: 16,
-        borderRadius: 6,
-        border: `1px solid ${border}`,
-        background: bg,
-        color: 'var(--gray-12)',
-      }}
-    >
-      <Flex align="center" gap="3" mb="3">
-        <span style={{ width: 32, height: 32, borderRadius: 4, border: `1px solid ${border}`, background: 'var(--gray-3)', color, display: 'grid', placeItems: 'center' }}>
-          {icon}
-        </span>
-        <Text as="div" size="6" style={{ color }}>{title}</Text>
-      </Flex>
-      <Text as="div" size="1" color="gray" mb="3" style={{ lineHeight: 1.55 }}>
-        {sub}
+    <Box mb="5">
+      <Text
+        as="div"
+        size="1"
+        weight="medium"
+        mb="2"
+        style={{ color: 'var(--gray-12)', textTransform: 'uppercase', letterSpacing: '0.12em' }}
+      >
+        {title}
       </Text>
-      <Text as="div" size="1" style={{ color, letterSpacing: '0.12em', textTransform: 'uppercase' }}>
-        {reasonHint}
-      </Text>
-    </button>
+      {children}
+    </Box>
   )
 }
 
+function FactValue({ value }: { value: unknown }) {
+  if (typeof value === 'boolean') return <Text size="2">{value ? 'Yes' : 'No'}</Text>
+  if (typeof value === 'number') return <Text size="2">{value.toLocaleString('en-US')}</Text>
+  if (typeof value === 'string') {
+    return <Text size="2" style={{ wordBreak: 'break-word', whiteSpace: 'pre-wrap' }}>{value}</Text>
+  }
+  return (
+    <Code variant="ghost" size="1" style={{ whiteSpace: 'pre-wrap' }}>
+      {JSON.stringify(value)}
+    </Code>
+  )
+}
+
+// ────────────────────────────────────────────── DecisionConfirmCard
+// The "are you sure + reason" step that comes after the user clicks
+// Approve action / Reject action in ReviewCard. Reject still requires a
+// reason ≥ 4 chars (audit / compliance); approve is optional.
+
 function DecisionConfirmCard({
   decision, reason, reasonRequired, reasonInvalid, userLabel, busy, canSubmit, saveError,
-  onChangeReason, onBlurReason, onCancel, onConfirm, onSwitch,
+  onChangeReason, onBlurReason, onCancel, onConfirm,
 }: {
   decision: Decision
   reason: string
@@ -446,66 +507,28 @@ function DecisionConfirmCard({
   onBlurReason: () => void
   onCancel: () => void
   onConfirm: () => void
-  onSwitch: (d: Decision) => void
 }) {
   const isApprove = decision === 'approved'
   const color = isApprove ? 'var(--green-11)' : 'var(--red-11)'
   const border = isApprove ? 'var(--green-a6)' : 'var(--red-a6)'
-  const bg = isApprove ? 'var(--green-a3)' : 'var(--red-a3)'
 
   return (
     <div className="card" style={{ borderColor: border }}>
-      <div className="card__head" style={{ background: bg }}>
+      <div className="card__head">
         <Flex align="center" gap="3">
-          <span style={{ width: 30, height: 30, borderRadius: 4, border: `1px solid ${border}`, color, background: 'var(--gray-2)', display: 'grid', placeItems: 'center' }}>
+          <span style={{
+            width: 28, height: 28, borderRadius: 6, border: `1px solid ${border}`,
+            color, background: 'var(--gray-2)', display: 'grid', placeItems: 'center',
+          }}>
             {isApprove ? <IconCheck /> : <IconX />}
           </span>
-          <Box>
-            <Text as="div" size="6" style={{ color }}>
-              {isApprove ? 'Approve request' : 'Reject request'}
-            </Text>
-            <Text as="div" size="1" color="gray" mt="1">
-              {isApprove ? 'approving resumes the suspended run' : 'rejecting stops the requested action'}
-            </Text>
-          </Box>
-        </Flex>
-        <button
-          onClick={() => onSwitch(isApprove ? 'rejected' : 'approved')}
-          style={{
-            padding: '6px 10px',
-            border: '1px solid var(--gray-7)',
-            borderRadius: 4,
-            background: 'var(--gray-3)',
-          }}
-        >
-          <Text size="1" color="gray" style={{ letterSpacing: '0.12em', textTransform: 'uppercase' }}>
-            ↔ switch to {isApprove ? 'reject' : 'approve'}
+          <Text as="div" size="3" weight="medium" style={{ color }}>
+            {isApprove ? 'Confirm — approve this action' : 'Confirm — reject this action'}
           </Text>
-        </button>
+        </Flex>
       </div>
 
       <div className="card__body">
-        <div className="card" style={{ background: 'var(--gray-3)', marginBottom: 14 }}>
-          <div style={{ padding: 12 }}>
-            <Caption as="div" mb="2">
-              What happens next
-            </Caption>
-            <Text as="div" size="2" style={{ lineHeight: 1.55 }}>
-              {isApprove ? (
-                <>
-                  <IconPlay className="ic ic--sm" style={{ display: 'inline-block', verticalAlign: 'middle', color: 'var(--green-11)', marginRight: 4 }} />
-                  The run leaves the suspended state and the orchestrator executes the pending step.
-                </>
-              ) : (
-                <>
-                  <IconStop className="ic ic--sm" style={{ display: 'inline-block', verticalAlign: 'middle', color: 'var(--red-11)', marginRight: 4 }} />
-                  The run does NOT execute the pending action. It terminates in the rejected state.
-                </>
-              )}
-            </Text>
-          </div>
-        </div>
-
         <label>
           <Flex align="center" justify="between" gap="3" mb="2">
             <Caption>
@@ -528,8 +551,7 @@ function DecisionConfirmCard({
         </label>
 
         <Text as="div" size="1" color="gray" mt="4" style={{ lineHeight: 1.6 }}>
-          <Text as="span" color="gray">Signing as:</Text> {userLabel}<br />
-          <Text as="span" color="gray">Decision:</Text> {isApprove ? 'Approve' : 'Reject'}
+          <Text as="span" color="gray">Signing as:</Text> {userLabel}
         </Text>
 
         {saveError && (
@@ -544,21 +566,25 @@ function DecisionConfirmCard({
           <IconArrowLeft className="ic ic--sm" /> Back
         </Button>
         <Button
-          color={isApprove ? undefined : 'red'}
+          color={isApprove ? 'green' : 'red'}
           onClick={onConfirm}
           disabled={!canSubmit}
+          size="3"
         >
           {isApprove ? <IconCheck /> : <IconX />}
           {busy
             ? 'submitting…'
             : isApprove
-              ? 'Approve · resume run'
-              : 'Reject · stop action'}
+              ? 'Approve action'
+              : 'Reject action'}
         </Button>
       </div>
     </div>
   )
 }
+
+// ────────────────────────────────────────────── ResolvedCard
+// Already-decided approvals just show the outcome inline.
 
 function ResolvedCard({ approval, approverName }: { approval: ApprovalRequest; approverName: string | null }) {
   const toneColor =
@@ -607,26 +633,15 @@ function ResolvedCard({ approval, approverName }: { approval: ApprovalRequest; a
               </Text>
             )}
           </Box>
-          <Button asChild variant="ghost" size="1">
-            <a href={`#/runs/${approval.run_id}`}>
-              <IconArrowRight className="ic ic--sm" />
-              Open run
-            </a>
-          </Button>
         </Flex>
       </div>
     </div>
   )
 }
 
-function MetaRow({ label, value }: { label: string; value: React.ReactNode }) {
-  return (
-    <Flex align="center" justify="between" gap="3" py="1" style={{ borderBottom: '1px dashed var(--gray-a3)' }}>
-      <Caption>{label}</Caption>
-      <Text as="span" size="1">{value}</Text>
-    </Flex>
-  )
-}
+// ────────────────────────────────────────────── ResumeBanner
+// Three-stage lifecycle while the orchestrator processes our decision:
+// queued → resolved → terminal. Same logic as before, with action-centric copy.
 
 function ResumeBanner({
   ack, approval, run,
@@ -640,17 +655,17 @@ function ResumeBanner({
     approval.status !== 'pending' ? 'resolved' :
     'queued'
 
-  const label = ack.decision === 'approve' ? 'Approve' : 'Reject'
+  const verb = ack.decision === 'approve' ? 'Approve' : 'Reject'
 
   if (stage === 'queued') {
     return (
       <Banner
         tone="info"
         icon={<IconApproval className="ic" />}
-        title={`${label} queued`}
+        title={`${verb} action queued`}
         action={<Badge color="cyan" variant="soft" radius="small" size="1">waiting</Badge>}
       >
-        Your decision is recorded. The orchestrator will resume the run shortly — usually within 8–15 seconds.
+        Your decision is recorded. Your agent will resume shortly — usually within 8–15 seconds.
       </Banner>
     )
   }
@@ -660,15 +675,14 @@ function ResumeBanner({
       <Banner
         tone="info"
         icon={<IconPlay className="ic" />}
-        title={`Approval ${statusLabel(approval.status).toLowerCase()} · run resuming`}
+        title={`Action ${statusLabel(approval.status).toLowerCase()} · agent resuming`}
         action={<Badge color="blue" variant="soft" radius="small" size="1">running</Badge>}
       >
-        The orchestrator picked up the decision. Waiting for the run to finish…
+        Your decision is being applied. Waiting for the activity to finish…
       </Banner>
     )
   }
 
-  // terminal
   if (!run) return null
   const tone: 'success' | 'warn' | 'danger' | 'ghost' =
     run.status === 'completed' ? 'success' :
@@ -684,136 +698,50 @@ function ResumeBanner({
     <Banner
       tone={tone}
       icon={icon}
-      title={`Run ${statusLabel(run.status).toLowerCase()}`}
-      action={
-        <Button asChild variant="ghost" size="1">
-          <a href={`#/runs/${run.id}`}>
-            <IconArrowRight />
-            Open run
-          </a>
-        </Button>
-      }
+      title={`Activity ${statusLabel(run.status).toLowerCase()}`}
     >
       {run.error_message ?? (
         run.status === 'completed'
-          ? 'The run finished after the decision was applied.'
-          : `The run finished as ${statusLabel(run.status).toLowerCase()}.`
+          ? 'The action was carried out and the activity finished.'
+          : `The activity finished as ${statusLabel(run.status).toLowerCase()}.`
       )}
     </Banner>
   )
 }
 
-// ─────────────────────────────────────────────────────────────────
-// ApprovalContextCard — the "why am I being asked to approve this?"
-// summary. Pulls the agent (via run.agent_version_id), the originating
-// task (if any), the policy reason from the run's validation step, and
-// a compact timeline of what the agent already did before pausing.
-// All synthesized from existing data — nothing is invented.
-// ─────────────────────────────────────────────────────────────────
+// ────────────────────────────────────────────── PriorActivitySection
+// What the agent has done so far on this task. Always visible (no accordion);
+// the parent task is surfaced in the page hero, so this section only renders
+// when there are real steps to show.
 
-function ApprovalContextCard({
-  approval, run, task, agents, requestedByName,
-}: {
-  approval: ApprovalRequest
-  run: RunDetail | null
-  task: Task | null
-  agents: Agent[]
-  requestedByName: string | null
-}) {
-  // Resolve agent through agent_version_id. Works for currently-active
-  // versions; falls back to null when the version has been superseded.
-  const agent = run?.agent_version_id
-    ? agents.find(a => a.active_version?.id === run.agent_version_id) ?? null
-    : null
-
-  // Steps that lead up to the approval, in chronological order, filtered
-  // to the ones a human would actually want to read (skip memory I/O).
-  const leadingSteps = (run?.steps ?? [])
-    .filter(s => s.step_type === 'tool_call' || s.step_type === 'validation' || s.step_type === 'llm_call')
-    .filter(s => s.step_type !== 'approval_gate')
-
-  // The most recent validation step with a verdict explains *why* approval
-  // was required (e.g. "amount > $200 cap").
-  const policyReason = (() => {
-    for (let i = (run?.steps.length ?? 0) - 1; i >= 0; i--) {
-      const s = run!.steps[i]
-      if (s.step_type !== 'validation') continue
-      const out = s.output_ref as { verdict?: string; reason?: string } | null
-      if (out?.verdict === 'approval_required' && typeof out.reason === 'string') {
-        return out.reason
-      }
-    }
-    return null
-  })()
-
-  const hasContext = agent || task || policyReason || leadingSteps.length > 0
-  if (!hasContext) return null
-
-  return (
-    <div className="card">
-      <div className="card__head">
-        <Text as="div" size="2" weight="medium" className="card__title">Context</Text>
-        <Text size="1" color="gray">what you're being asked to approve</Text>
-      </div>
-      <div className="card__body">
-        <Flex direction="column" gap="3">
-          {agent && (
-            <ContextRow label="Agent">
-              <Link to={`/agents/${agent.id}`}>{agent.name}</Link>
-              {agent.description && (
-                <Text size="1" color="gray" mt="1" as="div">
-                  {agent.description}
-                </Text>
-              )}
-            </ContextRow>
-          )}
-          {task && (
-            <ContextRow label="Task">
-              <Link to={`/tasks/${task.id}`}>{task.title ?? '— untitled —'}</Link>
-            </ContextRow>
-          )}
-          {!task && approval.task_id == null && (
-            <ContextRow label="Task">
-              <Text size="2" color="gray">Standalone run · no parent task</Text>
-            </ContextRow>
-          )}
-          {requestedByName && (
-            <ContextRow label="Started by">
-              <Text size="2">{requestedByName}</Text>
-            </ContextRow>
-          )}
-          {policyReason && (
-            <ContextRow label="Why approval">
-              <Text size="2">{policyReason}</Text>
-            </ContextRow>
-          )}
-        </Flex>
-
-        {leadingSteps.length > 0 && (
-          <>
-            <Caption as="div" mt="5" mb="2">What the agent did so far</Caption>
-            <Flex direction="column" gap="2">
-              {leadingSteps.map(s => <StepLine key={s.id} step={s} />)}
-            </Flex>
-          </>
-        )}
-      </div>
-    </div>
+function PriorActivitySection({ run }: { run: RunDetail | null }) {
+  const leadingSteps = useMemo(
+    () =>
+      (run?.steps ?? []).filter(
+        s => s.step_type === 'tool_call' || s.step_type === 'validation' || s.step_type === 'llm_call',
+      ),
+    [run],
   )
-}
-
-function ContextRow({ label, children }: { label: string; children: React.ReactNode }) {
+  if (leadingSteps.length === 0) return null
   return (
-    <Flex align="start" gap="3">
-      <Text size="1" color="gray" style={{ flex: '0 0 110px', paddingTop: 2 }}>{label}</Text>
-      <Box style={{ flex: '1 1 auto', minWidth: 0 }}>{children}</Box>
-    </Flex>
+    <Box mt="5">
+      <div className="card" style={{ padding: '14px 18px' }}>
+        <Flex align="center" justify="between" mb="3">
+          <Text as="span" size="2" weight="medium">What the agent did so far</Text>
+          <Text as="span" size="1" color="gray">
+            {leadingSteps.length} step{leadingSteps.length === 1 ? '' : 's'}
+          </Text>
+        </Flex>
+        <Flex direction="column" gap="2">
+          {leadingSteps.map(s => <StepLine key={s.id} step={s} />)}
+        </Flex>
+      </div>
+    </Box>
   )
 }
 
 function StepLine({ step }: { step: RunStep }) {
   const tone = stepTone(step.status)
-  const icon = stepIcon(step.status)
   return (
     <Flex
       align="start"
@@ -833,7 +761,7 @@ function StepLine({ step }: { step: RunStep }) {
         }}
         aria-label={step.status}
       >
-        {icon}
+        {stepIcon(step.status)}
       </span>
       <Box style={{ flex: '1 1 auto', minWidth: 0 }}>
         <Text as="div" size="2">{stepHeadline(step)}</Text>
@@ -875,7 +803,7 @@ function stepHeadline(step: RunStep): string {
     return 'Policy check'
   }
   if (step.step_type === 'llm_call') {
-    return step.model_name ? `Agent reasoned (${step.model_name})` : 'Agent reasoned'
+    return step.model_name ? `Reasoned (${step.model_name})` : 'Reasoned'
   }
   return step.step_type.replace(/_/g, ' ')
 }
@@ -884,19 +812,12 @@ function stepDetail(step: RunStep): string | null {
   if (step.step_type === 'tool_call') {
     const out = step.output_ref as Record<string, unknown> | null
     if (!out) return null
-    // Pull out the most reader-friendly summary we can find.
     if (typeof out.amount_usd === 'number') {
       return `Result: $${out.amount_usd}${typeof out.status === 'string' ? ` · ${out.status}` : ''}`
     }
-    if (typeof out.exit_date === 'string') {
-      return `Exit date: ${out.exit_date}`
-    }
-    if (typeof out.loaded === 'number') {
-      return `Loaded ${out.loaded} record${out.loaded === 1 ? '' : 's'}`
-    }
-    if (typeof out.enriched === 'number') {
-      return `Enriched ${out.enriched} contact${out.enriched === 1 ? '' : 's'}`
-    }
+    if (typeof out.exit_date === 'string') return `Exit date: ${out.exit_date}`
+    if (typeof out.loaded === 'number') return `Loaded ${out.loaded} record${out.loaded === 1 ? '' : 's'}`
+    if (typeof out.enriched === 'number') return `Enriched ${out.enriched} contact${out.enriched === 1 ? '' : 's'}`
     return null
   }
   if (step.step_type === 'validation') {
@@ -911,56 +832,75 @@ function stepDetail(step: RunStep): string | null {
   return null
 }
 
-// ─────────────────────────────────────────────────────────────────
-// EvidenceList — render the approval.evidence_ref object as a friendly
-// key/value list. Snake-case keys become "Sentence case" labels; scalar
-// values render directly; nested objects/arrays still fall back to
-// pretty-printed JSON, but inline rather than as a wall of text.
-// ─────────────────────────────────────────────────────────────────
+// ────────────────────────────────────────────── TechnicalDetailsAccordion
+// Backend metadata + raw evidence dump. Phase 1 banished API endpoints from
+// InfoHints; this is the one place where a power user can still inspect the
+// raw approval object. Always collapsed.
 
-function EvidenceList({ data }: { data: Record<string, unknown> }) {
-  const entries = Object.entries(data)
-  if (entries.length === 0) {
-    return <Text as="div" size="2" color="gray">No additional context.</Text>
-  }
+function TechnicalDetailsAccordion({
+  approval,
+  userName,
+}: {
+  approval: ApprovalRequest
+  userName: (id: string | null | undefined) => string | null
+}) {
   return (
-    <Flex direction="column" gap="2">
-      {entries.map(([k, v]) => (
-        <Flex
-          key={k}
-          align="start"
-          justify="between"
-          gap="3"
-          py="2"
-          style={{ borderBottom: '1px dashed var(--gray-a3)' }}
-        >
-          <Text size="2" color="gray" style={{ flex: '0 0 40%' }}>{humanKey(k)}</Text>
-          <Box style={{ flex: '1 1 auto', textAlign: 'right', minWidth: 0 }}>
-            <EvidenceValue value={v} />
+    <Box mt="3">
+      <details className="card" style={{ padding: '14px 18px' }}>
+        <summary style={{ cursor: 'pointer', listStyle: 'none' }}>
+          <Text as="span" size="2" weight="medium">Technical details</Text>
+        </summary>
+        <Box mt="3">
+          <Flex direction="column" gap="1">
+            <DetailRow label="Activity">
+              <Link to={`/activity/${approval.run_id}`}>{shortRef(approval.run_id)}</Link>
+            </DetailRow>
+            {approval.task_id && (
+              <DetailRow label="Task">
+                <Link to={`/tasks/${approval.task_id}`}>{shortRef(approval.task_id)}</Link>
+              </DetailRow>
+            )}
+            <DetailRow label="Action key" value={approval.requested_action} />
+            <DetailRow label="Approver role" value={approverRoleLabel(approval.approver_role)} />
+            {approval.approver_user_id && (
+              <DetailRow label="Approver" value={userName(approval.approver_user_id) ?? '—'} />
+            )}
+            <DetailRow label="Created" value={absTime(approval.created_at)} />
+            {approval.expires_at && <DetailRow label="Expires" value={absTime(approval.expires_at)} />}
+            {approval.resolved_at && <DetailRow label="Resolved" value={absTime(approval.resolved_at)} />}
+            {approval.reason && <DetailRow label="Reason" value={approval.reason} />}
+          </Flex>
+          {approval.evidence_ref && Object.keys(approval.evidence_ref).length > 0 && (
+            <Box mt="4">
+              <Caption as="div" mb="2">Raw evidence</Caption>
+              <Code
+                variant="ghost"
+                size="1"
+                style={{ whiteSpace: 'pre-wrap', wordBreak: 'break-word', display: 'block' }}
+              >
+                {JSON.stringify(approval.evidence_ref, null, 2)}
+              </Code>
+            </Box>
+          )}
+          <Box mt="4">
+            <Button asChild variant="ghost" size="1">
+              <a href={`#/activity/${approval.run_id}`}>
+                <IconArrowRight className="ic ic--sm" />
+                Open full activity record
+              </a>
+            </Button>
           </Box>
-        </Flex>
-      ))}
-    </Flex>
+        </Box>
+      </details>
+    </Box>
   )
 }
 
-function EvidenceValue({ value }: { value: unknown }) {
-  if (value == null) {
-    return <Text size="2" color="gray">—</Text>
-  }
-  if (typeof value === 'boolean') {
-    return <Text size="2">{value ? 'Yes' : 'No'}</Text>
-  }
-  if (typeof value === 'number') {
-    return <Text size="2">{value.toLocaleString('en-US')}</Text>
-  }
-  if (typeof value === 'string') {
-    return <Text size="2" style={{ wordBreak: 'break-word' }}>{value}</Text>
-  }
-  // Objects / arrays — small inline JSON for low-frequency complex values.
+function DetailRow({ label, value, children }: { label: string; value?: React.ReactNode; children?: React.ReactNode }) {
   return (
-    <Code variant="ghost" size="1" style={{ whiteSpace: 'pre-wrap' }}>
-      {JSON.stringify(value)}
-    </Code>
+    <Flex align="center" justify="between" gap="3" py="1" style={{ borderBottom: '1px dashed var(--gray-a3)' }}>
+      <Caption>{label}</Caption>
+      <Text as="span" size="1">{children ?? value}</Text>
+    </Flex>
   )
 }

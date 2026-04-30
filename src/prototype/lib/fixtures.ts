@@ -1,4 +1,4 @@
-// All fixtures below are shaped exactly after gateway.yaml schemas.
+// All fixtures below are shaped exactly after docs/gateway.yaml schemas.
 // No UI-only / denormalised fields — what you see is what the backend
 // would actually return.
 
@@ -484,7 +484,7 @@ export const fxTools: ToolDefinition[] = [
       },
     },
   },
-  // Built-in tools surfaced by the gateway (5).yaml catalog example. `web_search`
+  // Built-in tools surfaced by the docs/gateway.yaml catalog example. `web_search`
   // is the canonical demo tool from the spec; `kb.lookup` is what the chat-stream
   // mock uses when a user asks the agent to look something up.
   {
@@ -1248,7 +1248,7 @@ export const runs: Record<string, Run> = {
     total_cost_usd: 0.04,
     total_tokens_in: 1100,
     total_tokens_out: 0,
-    error_message: 'Orchestrator error: worker died mid-step (SIGKILL). No assistant output produced.',
+    error_message: 'Agent stopped before finishing this step. No output was produced.',
     error_kind: 'orchestrator_error',
     created_at: hrs(22),
     steps: [
@@ -1474,7 +1474,7 @@ export const approvals: ApprovalRequest[] = [
   },
 ]
 
-// ══════════════════════════════════════════════════ CHATS (gateway (5).yaml)
+// ══════════════════════════════════════════════════ CHATS (docs/gateway.yaml)
 
 export const chats: Chat[] = [
   {
@@ -1757,7 +1757,7 @@ export function getSpendDashboard(range: SpendRange, group_by: SpendGroupBy): Sp
 }
 
 // Lifetime stats per agent (mock equivalent of orchestrator enrichment used by
-// gateway (5).yaml on GET /agents/{id}). Returns null for unknown agents so
+// docs/gateway.yaml on GET /agents/{id}). Returns null for unknown agents so
 // detail responses fall back gracefully when enrichment "fails".
 export function getAgentStats(agentId: string): { total_spend_usd: number; runs_count: number } | null {
   const row = byAgentBase.find(r => r.id === agentId)

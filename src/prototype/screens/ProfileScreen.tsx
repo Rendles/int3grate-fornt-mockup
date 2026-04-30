@@ -1,7 +1,7 @@
 import { AppShell } from '../components/shell'
 import { Badge, Box, Button, Code, Flex, Grid, Text } from '@radix-ui/themes'
 
-import { Caption, PageHeader, Avatar, InfoHint } from '../components/common'
+import { Caption, PageHeader, Avatar } from '../components/common'
 import { useAuth } from '../auth'
 import { roleLabel, absTime, domainLabel, tenantLabel } from '../lib/format'
 
@@ -15,14 +15,7 @@ export default function ProfileScreen() {
     <AppShell crumbs={[{ label: 'home', to: '/' }, { label: 'profile' }]}>
       <div className="page page--narrow">
         <PageHeader
-          eyebrow={
-            <>
-              PROFILE{' '}
-              <InfoHint>
-                Loaded via <Code variant="ghost">GET /me</Code>. Only your own user record is exposed by the gateway.
-              </InfoHint>
-            </>
-          }
+          eyebrow="PROFILE"
           title={<>Hello, <em>{user.name.split(' ')[0]}.</em></>}
           actions={<Button variant="ghost" onClick={logout}>Sign out</Button>}
         />
@@ -61,7 +54,7 @@ export default function ProfileScreen() {
                 <Text as="div" size="1">{tenantLabel(user.tenant_id)}</Text>
               </Box>
               <Box>
-                <Caption as="div" mb="1">Domain</Caption>
+                <Caption as="div" mb="1">Team</Caption>
                 <Text as="div" size="1">{domainLabel(user.domain_id)}</Text>
               </Box>
               <Box>

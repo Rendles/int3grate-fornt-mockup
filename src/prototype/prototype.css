@@ -292,6 +292,26 @@
 }
 .card--tile:hover { background: var(--gray-a4); }
 
+.prototype-root .role-card {
+  background: var(--color-panel-solid);
+  border: 1px solid var(--gray-a3);
+  cursor: pointer;
+  transition: border-color 120ms ease, background 120ms ease;
+}
+
+.prototype-root .role-card:hover {
+  border-color: var(--accent-a7);
+}
+
+.prototype-root .cta-name {
+  display: inline-block;
+  max-width: 18ch;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  vertical-align: bottom;
+  white-space: nowrap;
+}
+
 /* Table variant — full-page data tables (Tasks, Agents, Approvals, Spend).
    Subtler dividers + hover than the global .agent-row defaults. */
 .card--table {
@@ -334,6 +354,26 @@
 .card--tile:hover .card--tile__arrow {
   opacity: 1;
   transform: translate(4px, -50%);
+}
+
+.prototype-root .advanced-toggle__summary {
+  cursor: pointer;
+  list-style: none;
+}
+
+.prototype-root .advanced-toggle__summary::-webkit-details-marker {
+  display: none;
+}
+
+.prototype-root .advanced-toggle__chevron {
+  color: var(--gray-10);
+  flex: 0 0 auto;
+  transition: color 160ms ease, transform 160ms ease;
+}
+
+.prototype-root .advanced-toggle[open] .advanced-toggle__chevron {
+  color: var(--accent-9);
+  transform: rotate(90deg);
 }
 
 /* ============================================================= ACTIVITY HEATMAP */
@@ -1249,3 +1289,15 @@
   .prototype-root .tour__spot,
   .prototype-root .tour__tooltip { transition: none; }
 }
+
+/* Embed mode — used inside the assistant Talk-to tab. The wrapper page
+   handles outer scroll; this panel claims a sensible viewport-relative
+   slice so messages scroll internally without forcing the page into a
+   double-scroll situation. */
+.chat-detail--embed {
+  height: auto;
+  min-height: 480px;
+  max-height: calc(100svh - 280px);
+  padding: 0;
+}
+.chat-detail--embed .chat-detail__composer { padding-bottom: 0; }

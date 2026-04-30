@@ -22,7 +22,7 @@ export const approvalReviewTour: Tour = {
       placement: 'bottom',
       title: 'Each row is one request',
       body:
-        'You see what was requested, who triggered it, the approver role required, and how long it has been waiting. Click a row to open the full detail.',
+        'You see what the agent wants to do, who asked for it, who can approve it, and how long it has been waiting. Open a row for the full context.',
     },
     {
       id: 'queue-filter',
@@ -30,7 +30,7 @@ export const approvalReviewTour: Tour = {
       placement: 'bottom',
       title: 'Filter by status',
       body:
-        'By default you only see pending requests. Switch to Approved / Rejected to audit past decisions, or All to see everything.',
+        'By default you only see pending requests. Switch to Approved, Rejected, or All when you want to review older decisions.',
     },
     {
       id: 'detail-action',
@@ -39,7 +39,7 @@ export const approvalReviewTour: Tour = {
       navigateTo: detailPath,
       title: 'What is being asked',
       body:
-        'The title summarises the action — friendly tool label plus amounts and reference IDs. The CommandBar below adds run, task, approver role, and expiry context.',
+        'The title summarises what the agent wants to do, with the key amount and customer detail you need for a decision.',
     },
     {
       id: 'detail-evidence',
@@ -47,7 +47,7 @@ export const approvalReviewTour: Tour = {
       placement: 'top',
       title: 'Evidence panel',
       body:
-        'Read this first. The agent attaches the run summary, customer / charge metadata, and policy verdicts that triggered the gate. Decide based on this.',
+        'Read this first. The agent explains the request, the customer or charge involved, and why it needs your approval.',
     },
     {
       id: 'detail-decision',
@@ -55,7 +55,7 @@ export const approvalReviewTour: Tour = {
       placement: 'top',
       title: 'Approve or reject',
       body:
-        'Both decisions are queued and written to the audit trail. The orchestrator resumes the suspended run on accept or terminates it on reject. Reject requires a reason (≥ 4 characters); approve is optional.',
+        'Your choice is saved for the team. Approve lets the agent continue; reject stops this request and asks you for a short reason.',
     },
   ],
 }

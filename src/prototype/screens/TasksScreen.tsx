@@ -2,7 +2,7 @@ import { useEffect, useMemo, useState } from 'react'
 import { Badge, Button, Code, Flex, Text } from '@radix-ui/themes'
 
 import { AppShell } from '../components/shell'
-import { Caption, PageHeader, Status, InfoHint, MockBadge, Pagination } from '../components/common'
+import { Caption, PageHeader, Status, MockBadge, Pagination } from '../components/common'
 import { Banner, EmptyState, ErrorState, LoadingList } from '../components/states'
 import { IconArrowRight, IconPlus, IconTask } from '../components/icons'
 import { Link } from '../router'
@@ -61,24 +61,16 @@ export default function TasksScreen() {
     <AppShell crumbs={[{ label: 'home', to: '/' }, { label: 'tasks' }]}>
       <div className="page page--wide">
         <PageHeader
-          eyebrow={
-            <>
-              TASKS{' '}
-              <MockBadge kind="deferred" />{' '}
-              <InfoHint>
-                List from <Code variant="ghost">GET /tasks</Code>. Status filter is applied server-side. Runs and step details are fetched separately.
-              </InfoHint>
-            </>
-          }
+          eyebrow={<>TASKS <MockBadge kind="deferred" /></>}
           title={<>Work <em>in motion.</em></>}
-          subtitle="Each task is dispatched to an agent. Runs are fetched separately."
+          subtitle="Each task is handed to an agent. Activity entries appear separately."
           actions={
             <Button asChild><a href="#/tasks/new"><IconPlus />Create task</a></Button>
           }
         />
 
-        <Banner tone="warn" title="Task concept is MVP-deferred (ADR-0003)">
-          Gateway v0.2.0 marks <Code variant="ghost">/tasks/*</Code> as <Code variant="ghost">x-mvp-deferred</Code>. Real-time chat moved to its own surface — open <Link to="/chats"><Text color="blue">Chats →</Text></Link>. Tasks remain for one-time / scheduled jobs and design continuity.
+        <Banner tone="warn" title="Tasks aren't in the main UI yet">
+          This page is kept for design preview only. To talk to an agent, open the Team page and click <strong>Talk to</strong> on the one you want.
         </Banner>
         <div style={{ height: 16 }} />
 
@@ -114,6 +106,7 @@ export default function TasksScreen() {
           <EmptyState
             icon={<IconTask />}
             title={status === 'all' ? 'No tasks yet' : `No ${status} tasks`}
+            body={status === 'all' ? 'Tasks were one of the original ways to dispatch work — kept here for design preview.' : undefined}
             action={{ label: 'Create a task', href: '/tasks/new' }}
           />
         ) : (

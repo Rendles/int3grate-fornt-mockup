@@ -1,4 +1,4 @@
-// Canonical entity types — aligned 1:1 with gateway.yaml schemas.
+// Canonical entity types — aligned 1:1 with docs/gateway.yaml schemas.
 // No UI helper fields: only data the backend actually returns.
 
 export type Role = 'member' | 'domain_admin' | 'admin'
@@ -25,7 +25,7 @@ export interface User {
   email: string
   name: string
   role: Role
-  // Optional per gateway (5).yaml — only required: [id, tenant_id, email, name, role].
+  // Optional per docs/gateway.yaml — only required: [id, tenant_id, email, name, role].
   approval_level?: ApprovalLevel
   created_at: string
 }
@@ -43,7 +43,7 @@ export interface Agent {
   description: string | null
   status: AgentStatus
   active_version: AgentVersion | null
-  // Detail-only enrichment fields (gateway (5).yaml). Populated only on
+  // Detail-only enrichment fields (docs/gateway.yaml). Populated only on
   // GET /agents/{id}; null on list views or when orchestrator lookup fails.
   total_spend_usd?: number | null
   runs_count?: number | null
@@ -208,7 +208,7 @@ export interface RunToolError {
   tool_call_id?: string | null
 }
 
-// gateway (5).yaml schema name is `RunDetail` (response of GET /runs/{runId}).
+// docs/gateway.yaml schema name is `RunDetail` (response of GET /runs/{runId}).
 // `Run` is kept as a backward-compatible alias so existing imports keep working.
 export interface RunDetail {
   id: string
@@ -258,7 +258,7 @@ export interface RunStep {
   completed_at: string | null
 }
 
-// ─────────────────────────────────────────────── Runs list (gateway (5).yaml)
+// ─────────────────────────────────────────────── Runs list (docs/gateway.yaml)
 // Lightweight projection of Run for /dashboard/runs — no `steps[]`, includes a
 // denormalized `agent_id` so list views don't need to resolve agent_version_id.
 
@@ -286,7 +286,7 @@ export interface RunsList {
   offset: number
 }
 
-// ─────────────────────────────────────────────── Chat (gateway (5).yaml)
+// ─────────────────────────────────────────────── Chat (docs/gateway.yaml)
 
 export type ChatStatus = 'active' | 'closed' | 'failed'
 export type ChatMessageRole = 'user' | 'assistant' | 'tool' | 'system'
@@ -353,7 +353,7 @@ export interface SendMessageRequest {
 }
 
 // SSE frames for POST /chat/{chatId}/message. The wire format is `data: <json>`
-// per gateway (5).yaml; the mock yields these as a typed AsyncIterable.
+// per docs/gateway.yaml; the mock yields these as a typed AsyncIterable.
 export type ChatStreamFrame =
   | { event: 'turn_start'; message_id: string }
   | { event: 'text_delta'; delta: string }
@@ -363,7 +363,7 @@ export type ChatStreamFrame =
   | { event: 'done' }
   | { event: 'error'; kind: 'approval_required' | 'tool_error' | 'llm_error'; message: string }
 
-// ─────────────────────────────────────────────── Audit (gateway (5).yaml)
+// ─────────────────────────────────────────────── Audit (docs/gateway.yaml)
 // Tenant-scoped step-level events unified across runs and chats.
 // Each event carries exactly one of run_id / chat_id (the other is null).
 // Chat-sourced events also populate message_id.

@@ -1,20 +1,17 @@
 import { useEffect, useMemo, useState } from 'react'
-import { Box, Button, Code } from '@radix-ui/themes'
+import { Box, Button } from '@radix-ui/themes'
 
 import { AppShell } from '../components/shell'
-import { PageHeader, InfoHint } from '../components/common'
+import { PageHeader } from '../components/common'
 import { ErrorState, LoadingList } from '../components/states'
 import { IconChat } from '../components/icons'
 import { useAuth } from '../auth'
 import { api } from '../lib/api'
 import type { Agent, ApprovalRequest, SpendDashboard, Task } from '../lib/types'
 import { AdminView } from './home/AdminView'
-import { MemberView } from './home/MemberView'
 
 export default function HomeScreen() {
   const { user } = useAuth()
-  const isMember = user?.role === 'member'
-  const isAdmin = user?.role === 'admin' || user?.role === 'domain_admin'
 
   const [tasks, setTasks] = useState<Task[] | null>(null)
   const [approvals, setApprovals] = useState<ApprovalRequest[] | null>(null)
@@ -30,7 +27,7 @@ export default function HomeScreen() {
         api.listTasks(),
         api.listApprovals(),
         api.listAgents(),
-        isAdmin ? api.getSpend('7d', 'agent') : Promise.resolve(null),
+        api.getSpend('7d', 'agent'),
       ])
       if (cancelled) return
       setErrored(false)
@@ -41,9 +38,9 @@ export default function HomeScreen() {
     }
     run().catch(() => { if (!cancelled) setErrored(true) })
     return () => { cancelled = true }
-  }, [reloadKey, isAdmin])
+  }, [reloadKey])
 
-  const loading = !errored && (!tasks || !approvals || !agents || (isAdmin && !spend))
+  const loading = !errored && (!tasks || !approvals || !agents || !spend)
 
   const nowDate = new Date()
 
@@ -60,16 +57,6 @@ export default function HomeScreen() {
     [agents],
   )
   const recentTasks = useMemo(() => (tasks ?? []).slice(0, 6), [tasks])
-
-  // Member view: filter to the current user's work
-  const myApprovalRequests = useMemo(
-    () => (approvals ?? []).filter(a => a.requested_by === user?.id),
-    [approvals, user?.id],
-  )
-  const myTasks = useMemo(
-    () => (tasks ?? []).filter(t => t.created_by === user?.id).slice(0, 6),
-    [tasks, user?.id],
-  )
 
   if (errored) {
     return (
@@ -90,27 +77,9 @@ export default function HomeScreen() {
     <AppShell crumbs={[{ label: 'home', to: '/' }]}>
       <div className="page">
         <PageHeader
-          eyebrow={
-            <>
-              {nowDate.toLocaleDateString('en-US', { weekday: 'long', month: 'short', day: 'numeric' }).toUpperCase()}
-              {!isMember && (
-                <>
-                  {' '}
-                  <InfoHint>
-                    Dashboard tiles are derived from{' '}
-                    <Code variant="ghost">GET /agents</Code>,{' '}
-                    <Code variant="ghost">GET /tasks</Code>,{' '}
-                    <Code variant="ghost">GET /approvals</Code>, and{' '}
-                    <Code variant="ghost">GET /dashboard/spend</Code>.
-                  </InfoHint>
-                </>
-              )}
-            </>
-          }
+          eyebrow={nowDate.toLocaleDateString('en-US', { weekday: 'long', month: 'short', day: 'numeric' }).toUpperCase()}
           title={<>Good {nowDate.getHours() < 12 ? 'morning' : nowDate.getHours() < 18 ? 'afternoon' : 'evening'}, <em>{user?.name.split(' ')[0]}.</em></>}
-          subtitle={isMember
-            ? 'Your tasks and approval requests.'
-            : 'Fleet-wide counts, live approvals, and spend this week.'}
+          subtitle="Team-wide counts, live approvals, and spend this week."
           actions={
             <>
               <Button asChild variant="soft" color="gray"><a href="#/approvals">Approvals</a></Button>
@@ -121,12 +90,6 @@ export default function HomeScreen() {
 
         {loading ? (
           <Box mt="5"><LoadingList rows={8} /></Box>
-        ) : isMember ? (
-          <MemberView
-            myTasks={myTasks}
-            myApprovals={myApprovalRequests}
-            agents={agents!}
-          />
         ) : (
           <AdminView
             agents={agents!}

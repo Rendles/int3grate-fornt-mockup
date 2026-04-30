@@ -1,43 +1,58 @@
 import { useEffect, useState } from 'react'
-import { Badge, Button, Code, DataList, Flex, Grid, Text } from '@radix-ui/themes'
+import { Badge, Box, Button, DataList, Flex, Grid, Text } from '@radix-ui/themes'
 import { AppShell } from '../components/shell'
-import { Caption, PageHeader, MetaRow, MetricCard, Status, Tabs, CommandBar, InfoHint } from '../components/common'
-import { Banner, LoadingList, NoAccessState } from '../components/states'
-import { IconChat, IconPlus, IconSpend, IconTask } from '../components/icons'
+import { Avatar, Caption, MockBadge, PageHeader, MetaRow, Status, Tabs, InfoHint } from '../components/common'
+import { Banner, EmptyState, LoadingList, NoAccessState } from '../components/states'
+import { IconArrowRight, IconChat, IconLock, IconPlus, IconRun, IconStop } from '../components/icons'
 import { GrantsEditor } from '../components/grants-editor'
+import { ChatPanel } from '../components/chat-panel'
+import { Link } from '../router'
 import { api } from '../lib/api'
 import { useAuth } from '../auth'
-import type { Agent, AgentVersion, GrantsSnapshot, ToolGrant, User } from '../lib/types'
+import type { Agent, AgentVersion, Chat, GrantsSnapshot, RunListItem, ToolGrant, User } from '../lib/types'
 import { absTime, ago, domainLabel, money, num, policyModeLabel, toolLabel } from '../lib/format'
+
+type AgentTab = 'overview' | 'talk' | 'grants' | 'activity' | 'settings' | 'advanced'
 
 export default function AgentDetailScreen({
   agentId,
   tab,
+  chatId,
 }: {
   agentId: string
-  tab: 'overview' | 'grants' | 'settings'
+  tab: AgentTab
+  chatId?: string
 }) {
   const { user } = useAuth()
   const [agent, setAgent] = useState<Agent | null | undefined>(undefined)
   const [grants, setGrants] = useState<ToolGrant[] | null>(null)
   const [users, setUsers] = useState<User[]>([])
+  const [chats, setChats] = useState<Chat[]>([])
+  const [runs, setRuns] = useState<RunListItem[]>([])
 
   useEffect(() => {
     api.getAgent(agentId).then(a => setAgent(a ?? null))
     api.getGrants(agentId).then(setGrants)
     api.listUsers().then(setUsers)
+    api.listRuns({ limit: 100 }).then(r => setRuns(r.items.filter(it => it.agent_id === agentId)))
   }, [agentId])
+
+  useEffect(() => {
+    if (!user) return
+    api.listChats({ id: user.id, role: user.role }, { agent_id: agentId, limit: 50 })
+      .then(res => setChats(res.items))
+  }, [agentId, user])
 
   const userName = (id: string | null | undefined) =>
     (id && users.find(u => u.id === id)?.name) || '—'
 
   if (agent === null) {
     return (
-      <AppShell crumbs={[{ label: 'home', to: '/' }, { label: 'agents', to: '/agents' }, { label: 'not found' }]}>
+      <AppShell crumbs={[{ label: 'home', to: '/' }, { label: 'team', to: '/agents' }, { label: 'not found' }]}>
         <div className="page">
           <NoAccessState
-            requiredRole="visibility into this agent"
-            body={`Agent ${agentId} could not be loaded.`}
+            requiredRole="access to this agent"
+            body="This agent could not be loaded. It may have been deleted or you may not have access."
           />
         </div>
       </AppShell>
@@ -46,7 +61,7 @@ export default function AgentDetailScreen({
 
   if (agent === undefined) {
     return (
-      <AppShell crumbs={[{ label: 'home', to: '/' }, { label: 'agents', to: '/agents' }, { label: 'loading…' }]}>
+      <AppShell crumbs={[{ label: 'home', to: '/' }, { label: 'team', to: '/agents' }, { label: 'loading…' }]}>
         <div className="page"><LoadingList rows={6} /></div>
       </AppShell>
     )
@@ -54,149 +69,474 @@ export default function AgentDetailScreen({
 
   const canEdit = !!user && (user.role === 'admin' || user.role === 'domain_admin')
   const activeVersion = agent.active_version
+  const canTalk = agent.status === 'active' && activeVersion != null
 
-  const tabs = [
+  const tabs: { key: AgentTab; label: string; count?: number | string; href: string; dataTour?: string }[] = [
     { key: 'overview', label: 'Overview', href: `/agents/${agent.id}` },
-    { key: 'grants', label: 'Tool grants', count: grants?.length ?? '—', href: `/agents/${agent.id}/grants` },
+    { key: 'talk', label: 'Talk to', count: chats.length || undefined, href: `/agents/${agent.id}/talk` },
+    { key: 'grants', label: 'Permissions', count: grants?.length ?? '—', href: `/agents/${agent.id}/grants`, dataTour: 'agent-tab-grants' },
+    { key: 'activity', label: 'Activity', count: runs.length || undefined, href: `/agents/${agent.id}/activity` },
     { key: 'settings', label: 'Settings', href: `/agents/${agent.id}/settings` },
+    { key: 'advanced', label: 'Advanced', href: `/agents/${agent.id}/advanced` },
   ]
 
   return (
     <AppShell
       crumbs={[
         { label: 'home', to: '/' },
-        { label: 'agents', to: '/agents' },
+        { label: 'team', to: '/agents' },
         { label: agent.name },
       ]}
     >
       <div className="page page--wide">
         <PageHeader
-          eyebrow={
-            <>
-              AGENT{' '}
-              <InfoHint>
-                Loaded via <Code variant="ghost">GET /agents/{'{id}'}</Code>. The active version is embedded in the response.
-              </InfoHint>
-            </>
+          eyebrow="AGENT"
+          title={
+            <Flex align="center" gap="3">
+              <Avatar initials={agent.name.slice(0, 2).toUpperCase()} size={36} />
+              <span>{agent.name}</span>
+            </Flex>
           }
-          title={agent.name}
           subtitle={agent.description ?? ''}
           actions={
             <>
               <Status status={agent.status} />
-              {activeVersion && <Badge color="blue" variant="soft" radius="full" size="1">v{activeVersion.version}</Badge>}
-              <Button asChild disabled={agent.status !== 'active'}>
-                <a href={`#/chats/new?agent=${agent.id}`}>
+              <Button asChild disabled={!canTalk}>
+                <a href={canTalk ? `#/agents/${agent.id}/talk` : undefined} data-tour="agent-talk-cta">
                   <IconChat />
-                  Start chat
+                  Talk to {agent.name.split(' ')[0]}
                 </a>
               </Button>
             </>
           }
         />
 
-        <CommandBar
-          parts={[
-            { label: 'DOMAIN', value: domainLabel(agent.domain_id) },
-            { label: 'OWNER', value: userName(agent.owner_user_id) },
-            { label: 'ACTIVE VER', value: activeVersion ? `v${activeVersion.version}` : '—', tone: activeVersion ? 'accent' : 'warn' },
-            { label: 'UPDATED', value: ago(agent.updated_at) },
-          ]}
-        />
-
-        <div style={{ height: 20 }} />
-
         <Tabs items={tabs} active={tab} />
+        <Box mt="5" />
 
-        {/* Breathing room between the tab strip (which has its own bottom-border
-            anchor from Radix TabNav) and the tab content. Without it the
-            content visually glues to the tabs; with a too-large gap the tabs
-            float disconnected. 24px hits a comfortable middle. */}
-        <div style={{ height: 24 }} />
-
-        {tab === 'overview' && <OverviewTab agent={agent} version={activeVersion} canEdit={canEdit} authorName={userName(activeVersion?.created_by)} />}
-        {tab === 'grants' && (
-          <Flex direction="column" gap="3">
-            <GrantsEditor agent={agent} grants={grants} canEdit={canEdit} onChange={setGrants} />
-            <PolicySnapshotPanel agentId={agent.id} grantsVersion={grants?.length ?? 0} />
-          </Flex>
+        {tab === 'overview' && (
+          <OverviewTab
+            agent={agent}
+            version={activeVersion}
+            recentRuns={runs.slice(0, 4)}
+            canEdit={canEdit}
+          />
         )}
-        {tab === 'settings' && <SettingsTab agent={agent} ownerName={userName(agent.owner_user_id)} />}
+        {tab === 'talk' && <TalkToTab agent={agent} chats={chats} canTalk={canTalk} chatId={chatId} />}
+        {tab === 'grants' && (
+          <GrantsEditor agent={agent} grants={grants} canEdit={canEdit} onChange={setGrants} />
+        )}
+        {tab === 'activity' && <ActivityTab agent={agent} runs={runs} />}
+        {tab === 'settings' && (
+          <SettingsTab agent={agent} ownerName={userName(agent.owner_user_id)} canEdit={canEdit} />
+        )}
+        {tab === 'advanced' && (
+          <AdvancedTab
+            agent={agent}
+            version={activeVersion}
+            grantsVersion={grants?.length ?? 0}
+            authorName={userName(activeVersion?.created_by)}
+            canEdit={canEdit}
+          />
+        )}
       </div>
     </AppShell>
   )
 }
 
-function OverviewTab({ agent, version, canEdit, authorName }: { agent: Agent; version: AgentVersion | null; canEdit: boolean; authorName: string }) {
-  const hasStats = agent.total_spend_usd != null || agent.runs_count != null
+// ────────────────────────────────────────────────────────── Overview tab
+// Slimmed down: status hero + last activity preview + apps used + Talk-to CTA.
+// Heavy config detail moved to Advanced.
+
+function OverviewTab({
+  agent,
+  version,
+  recentRuns,
+  canEdit,
+}: {
+  agent: Agent
+  version: AgentVersion | null
+  recentRuns: RunListItem[]
+  canEdit: boolean
+}) {
+  if (!version) {
+    return (
+      <div className="card">
+        <div className="card__head">
+          <Text as="div" size="2" weight="medium" className="card__title">Not configured yet</Text>
+          {canEdit && (
+            <Button asChild size="1"><a href={`#/agents/${agent.id}/versions/new`}><IconPlus />Create v1</a></Button>
+          )}
+        </div>
+        <div className="card__body">
+          <Text as="div" size="2" color="gray" mb="4">
+            This agent doesn't have a setup yet. {canEdit ? 'Create one to make it runnable.' : 'An admin needs to create one.'}
+          </Text>
+        </div>
+      </div>
+    )
+  }
+
+  const stats: { label: string; value: string }[] = [
+    { label: 'Total spent', value: agent.total_spend_usd != null ? money(agent.total_spend_usd, { compact: true }) : '—' },
+    { label: 'Activities', value: agent.runs_count != null ? num(agent.runs_count) : '—' },
+    { label: 'Team', value: domainLabel(agent.domain_id) },
+  ]
+
   return (
     <Flex direction="column" gap="4">
-      {hasStats && (
-        <Grid columns={{ initial: '1', md: '2' }} gap="4">
-          <MetricCard
-            label="Total spend"
-            value={agent.total_spend_usd != null ? money(agent.total_spend_usd, { compact: true }) : '—'}
-            unit={agent.total_spend_usd != null ? 'USD' : undefined}
-            delta="across all runs"
-            icon={<IconSpend />}
-          />
-          <MetricCard
-            label="Runs"
-            value={agent.runs_count != null ? num(agent.runs_count) : '—'}
-            delta={agent.runs_count != null ? `${agent.runs_count === 1 ? 'run' : 'runs'} attributed to this agent` : 'no run history'}
-            icon={<IconTask />}
-          />
-        </Grid>
-      )}
+      <div className="card">
+        <Box p="4">
+          <Caption mb="2">What this agent does</Caption>
+          <Text as="div" size="2" style={{ lineHeight: 1.6, whiteSpace: 'pre-wrap' }}>
+            {version.instruction_spec.length > 320
+              ? version.instruction_spec.slice(0, 320).trim() + '…'
+              : version.instruction_spec}
+          </Text>
+          {version.instruction_spec.length > 320 && (
+            <Button asChild variant="ghost" size="1" mt="3">
+              <a href={`#/agents/${agent.id}/advanced`}>
+                Read full brief
+                <IconArrowRight className="ic ic--sm" />
+              </a>
+            </Button>
+          )}
+        </Box>
+      </div>
 
-      {version ? (
-        <>
-          <ActiveVersionCard
-            version={version}
-            authorName={authorName}
-            canEdit={canEdit}
-            agentId={agent.id}
-          />
-          <InstructionsCard text={version.instruction_spec} />
-          <Grid columns={{ initial: '1', md: '2' }} gap="4">
-            <ModelChainCard config={version.model_chain_config} />
-            <MemoryScopeCard config={version.memory_scope_config} />
-          </Grid>
-          <Grid columns={{ initial: '1', md: '2' }} gap="4">
-            <ToolScopeCard config={version.tool_scope_config} agentId={agent.id} />
-            <ApprovalRulesCard config={version.approval_rules} />
-          </Grid>
-        </>
+      <Grid columns={{ initial: '1', sm: '3' }} gap="3">
+        {stats.map(s => (
+          <Box key={s.label} className="card" p="4">
+            <Text as="div" size="1" color="gray" style={{ textTransform: 'uppercase', letterSpacing: '0.12em' }}>
+              {s.label}
+            </Text>
+            <Text as="div" size="6" weight="medium" mt="2">{s.value}</Text>
+          </Box>
+        ))}
+      </Grid>
+
+      <div className="card">
+        <div className="card__head">
+          <Text as="div" size="2" weight="medium" className="card__title">
+            <IconRun className="ic" />
+            Recent activity
+          </Text>
+          <Button asChild variant="ghost" color="gray" size="1">
+            <a href={`#/agents/${agent.id}/activity`}>
+              <IconArrowRight className="ic ic--sm" />
+              All activity
+            </a>
+          </Button>
+        </div>
+        {recentRuns.length === 0 ? (
+          <Box p="4">
+            <Text as="div" size="2" color="gray">No activity yet.</Text>
+          </Box>
+        ) : (
+          <Flex direction="column">
+            {recentRuns.map((r, i) => (
+              <Link
+                key={r.id}
+                to={`/activity/${r.id}`}
+                className="agent-row"
+                style={{
+                  gridTemplateColumns: 'minmax(0, 1fr) auto auto 24px',
+                  gap: '14px',
+                  borderBottom: i === recentRuns.length - 1 ? 0 : '1px solid var(--gray-a3)',
+                }}
+              >
+                <Box minWidth="0">
+                  <Text as="div" size="2" className="truncate">
+                    {r.suspended_stage ? 'Waiting for your approval' : 'Activity'}
+                  </Text>
+                  <Text as="div" size="1" color="gray" mt="1">
+                    {ago(r.created_at)}
+                  </Text>
+                </Box>
+                <Status status={r.status} />
+                <Text as="span" size="1" color="gray">
+                  {money(r.total_cost_usd, { cents: r.total_cost_usd < 100 })}
+                </Text>
+                <IconArrowRight className="ic" />
+              </Link>
+            ))}
+          </Flex>
+        )}
+      </div>
+    </Flex>
+  )
+}
+
+// ────────────────────────────────────────────────────────── Talk-to tab
+// Recent chats with this agent + "Start new chat" CTA.
+
+function TalkToTab({ agent, chats, canTalk, chatId }: { agent: Agent; chats: Chat[]; canTalk: boolean; chatId?: string }) {
+  if (!canTalk) {
+    return (
+      <Banner tone="warn" title={agent.status !== 'active' ? `${agent.name} is paused` : 'Not configured yet'}>
+        {agent.status !== 'active'
+          ? 'Resume the agent in Settings to start a chat.'
+          : 'Create a setup before talking to this agent.'}
+      </Banner>
+    )
+  }
+
+  // Embedded mode — a specific chat is selected via /agents/:id/talk/:chatId.
+  // Render the chat panel inline above the past-chats list so the user can
+  // both keep talking and jump to other conversations.
+  if (chatId) {
+    return (
+      <Flex direction="column" gap="3">
+        <Flex align="center" justify="between" gap="2" wrap="wrap">
+          <Caption>Conversation</Caption>
+          <Button asChild variant="ghost" color="gray" size="1">
+            <Link to={`/agents/${agent.id}/talk`}>← All chats with {agent.name.split(' ')[0]}</Link>
+          </Button>
+        </Flex>
+        <div className="chat-detail chat-detail--embed">
+          {/* `key` forces a fresh mount when chat changes, so loading state
+              shows immediately instead of briefly displaying the previous
+              chat's messages. */}
+          <ChatPanel key={chatId} chatId={chatId} mode="embed" />
+        </div>
+      </Flex>
+    )
+  }
+
+  return (
+    <Flex direction="column" gap="3">
+      <div className="card" data-tour="agent-talk-tab-content" style={{ borderColor: 'var(--accent-a6)' }}>
+        <Flex align="center" gap="3" p="4" wrap="wrap">
+          <Box style={{ color: 'var(--accent-9)' }}>
+            <IconChat size={22} />
+          </Box>
+          <Box flexGrow="1" minWidth="0">
+            <Text as="div" size="3" weight="medium">Start a new chat</Text>
+            <Text as="div" size="2" color="gray" mt="1">
+              Replies stream in real time. Each chat is locked to one model — open a new one to switch.
+            </Text>
+          </Box>
+          <Button asChild size="2">
+            <a href={`#/chats/new?agent=${agent.id}`}>
+              <IconChat />
+              New chat
+            </a>
+          </Button>
+        </Flex>
+      </div>
+
+      {chats.length === 0 ? (
+        <EmptyState
+          icon={<IconChat />}
+          title="No chats yet"
+          body={`Open a new chat to talk to ${agent.name}.`}
+        />
       ) : (
-        <div className="card">
+        <div className="card card--flush">
           <div className="card__head">
-            <Text as="div" size="2" weight="medium" className="card__title">Active version</Text>
-            {canEdit
-              ? <Button asChild size="1"><a href={`#/agents/${agent.id}/versions/new`}><IconPlus />Create v1</a></Button>
-              : <Badge color="amber" variant="soft" radius="full" size="1">no active version</Badge>}
+            <Text as="div" size="2" weight="medium" className="card__title">Past chats</Text>
+            <Text size="1" color="gray">{chats.length}</Text>
           </div>
-          <div className="card__body">
-            <div style={{ padding: '20px 0', textAlign: 'center' }}>
-              <Text as="div" size="2" color="gray" mb="4">
-                This agent has no active version. {canEdit ? 'Create one to make it runnable.' : 'An admin needs to create one.'}
-              </Text>
-              {canEdit && (
-                <Button asChild><a href={`#/agents/${agent.id}/versions/new`}>Create v1</a></Button>
-              )}
-            </div>
-          </div>
+          <Flex direction="column">
+            {chats.map((c, i) => (
+              <Link
+                key={c.id}
+                to={`/agents/${agent.id}/talk/${c.id}`}
+                className="agent-row"
+                style={{
+                  gridTemplateColumns: 'minmax(0, 1fr) auto auto auto 24px',
+                  gap: '14px',
+                  borderBottom: i === chats.length - 1 ? 0 : '1px solid var(--gray-a3)',
+                }}
+              >
+                <Box minWidth="0">
+                  <Text as="div" size="2" weight="medium" className="truncate">
+                    {c.title ?? `Conversation`}
+                  </Text>
+                  <Text as="div" size="1" color="gray" mt="1">
+                    {ago(c.updated_at)}
+                  </Text>
+                </Box>
+                <Badge color="gray" variant="soft" radius="full" size="1" style={{ fontFamily: 'var(--font-mono)' }}>
+                  {c.model}
+                </Badge>
+                <Status status={c.status} />
+                <Text size="1" color="gray">{money(c.total_cost_usd, { cents: c.total_cost_usd < 100 })}</Text>
+                <IconArrowRight className="ic" />
+              </Link>
+            ))}
+          </Flex>
         </div>
       )}
+    </Flex>
+  )
+}
 
-      <Banner tone="info" title="Only the active version is exposed">
-        Version history isn't listable in this build. You can still create a new version and activate it.
+// ────────────────────────────────────────────────────────── Activity tab
+// Per-agent run feed. Same vocabulary as /activity.
+
+function ActivityTab({ agent, runs }: { agent: Agent; runs: RunListItem[] }) {
+  if (runs.length === 0) {
+    return (
+      <EmptyState
+        icon={<IconRun />}
+        title="No activity yet"
+        body={`Once ${agent.name} starts working, its activity will appear here.`}
+      />
+    )
+  }
+  return (
+    <div className="card card--flush">
+      <Flex direction="column">
+        {runs.map((r, i) => (
+          <Link
+            key={r.id}
+            to={`/activity/${r.id}`}
+            className="agent-row"
+            style={{
+              gridTemplateColumns: 'minmax(0, 1fr) auto auto 24px',
+              gap: '14px',
+              borderBottom: i === runs.length - 1 ? 0 : '1px solid var(--gray-a3)',
+            }}
+          >
+            <Box minWidth="0">
+              <Text as="div" size="2" className="truncate">
+                {r.suspended_stage ? 'Waiting for your approval' : 'Activity'}
+              </Text>
+              <Text as="div" size="1" color="gray" mt="1">
+                {ago(r.created_at)}
+              </Text>
+            </Box>
+            <Status status={r.status} />
+            <Text as="span" size="1" color="gray">
+              {money(r.total_cost_usd, { cents: r.total_cost_usd < 100 })}
+            </Text>
+            <IconArrowRight className="ic" />
+          </Link>
+        ))}
+      </Flex>
+    </div>
+  )
+}
+
+// ────────────────────────────────────────────────────────── Settings tab
+// Profile-ish card + Pause / Fire actions (planned).
+
+function SettingsTab({
+  agent,
+  ownerName,
+  canEdit,
+}: {
+  agent: Agent
+  ownerName: string
+  canEdit: boolean
+}) {
+  return (
+    <Flex direction="column" gap="4">
+      <div className="card">
+        <div className="card__head"><Text as="div" size="2" weight="medium" className="card__title">Agent details</Text></div>
+        <div className="card__body">
+          <DataList.Root size="2">
+            <MetaRow label="name" value={agent.name} />
+            <MetaRow label="description" value={agent.description ?? <Text color="gray">—</Text>} />
+            <MetaRow label="status" value={<Status status={agent.status} />} />
+            <MetaRow label="team" value={domainLabel(agent.domain_id)} />
+            <MetaRow label="owner" value={ownerName} />
+            <MetaRow label="created" value={absTime(agent.created_at)} />
+            <MetaRow label="updated" value={`${absTime(agent.updated_at)} · ${ago(agent.updated_at)}`} />
+          </DataList.Root>
+        </div>
+      </div>
+
+      <div className="card">
+        <div className="card__head">
+          <Flex align="center" gap="2">
+            <Text as="div" size="2" weight="medium" className="card__title">Manage employment</Text>
+            <MockBadge kind="design" hint="Pause / Fire transitions don't exist in the gateway spec yet — buttons are disabled placeholders. Backend needs PATCH /agents/{id} (or POST /agents/{id}/pause + DELETE /agents/{id})." />
+          </Flex>
+          {!canEdit && <Badge color="gray" variant="soft" radius="full" size="1"><IconLock />admins only</Badge>}
+        </div>
+        <div className="card__body">
+          <Flex align="center" justify="between" gap="3" py="2">
+            <Box>
+              <Text as="div" size="2">Pause this agent</Text>
+              <Text as="div" size="1" color="gray" mt="1">
+                Pausing stops new activity. You can resume any time. Planned for the next release.
+              </Text>
+            </Box>
+            <Button color="amber" variant="soft" disabled>
+              <IconStop />
+              Pause (planned)
+            </Button>
+          </Flex>
+          <Flex align="center" justify="between" gap="3" py="2" style={{ borderTop: '1px dashed var(--gray-a3)' }}>
+            <Box>
+              <Text as="div" size="2">Fire this agent</Text>
+              <Text as="div" size="1" color="gray" mt="1">
+                Removes the agent from your team. The activity history is kept for audit. Planned.
+              </Text>
+            </Box>
+            <Button color="red" disabled>
+              Fire (planned)
+            </Button>
+          </Flex>
+        </div>
+      </div>
+    </Flex>
+  )
+}
+
+// ────────────────────────────────────────────────────────── Advanced tab
+// All the technical config knobs power users care about: model chain, memory,
+// tool scope, approval rules, raw brief, policy snapshot.
+
+function AdvancedTab({
+  agent,
+  version,
+  grantsVersion,
+  authorName,
+  canEdit,
+}: {
+  agent: Agent
+  version: AgentVersion | null
+  grantsVersion: number
+  authorName: string
+  canEdit: boolean
+}) {
+  if (!version) {
+    return (
+      <Banner tone="info" title="No setup to inspect">
+        This agent hasn't been configured yet. Once a setup exists, advanced details appear here.
+      </Banner>
+    )
+  }
+  return (
+    <Flex direction="column" gap="4">
+      <ActiveVersionCard
+        version={version}
+        authorName={authorName}
+        canEdit={canEdit}
+        agentId={agent.id}
+      />
+      <InstructionsCard text={version.instruction_spec} />
+      <Grid columns={{ initial: '1', md: '2' }} gap="4">
+        <ModelChainCard config={version.model_chain_config} />
+        <MemoryScopeCard config={version.memory_scope_config} />
+      </Grid>
+      <Grid columns={{ initial: '1', md: '2' }} gap="4">
+        <ToolScopeCard config={version.tool_scope_config} agentId={agent.id} />
+        <ApprovalRulesCard config={version.approval_rules} />
+      </Grid>
+      <PolicySnapshotPanel agentId={agent.id} grantsVersion={grantsVersion} />
+      <Banner tone="info" title="Setup history is single-version for now">
+        Only the current setup is shown. Re-creating a setup activates the new one and archives the previous.
       </Banner>
     </Flex>
   )
 }
 
 // ─────────────────────────────────────────────────────────────────
-// Overview cards
+// Config cards (kept from the previous Overview tab, now used in Advanced)
 // ─────────────────────────────────────────────────────────────────
 
 function ActiveVersionCard({
@@ -210,12 +550,12 @@ function ActiveVersionCard({
   return (
     <div className="card">
       <div className="card__head">
-        <Text as="div" size="2" weight="medium" className="card__title">Active version</Text>
+        <Text as="div" size="2" weight="medium" className="card__title">Current setup</Text>
         <Flex align="center" gap="2">
           <Badge color="blue" variant="soft" radius="full" size="1">v{version.version}</Badge>
           {canEdit && (
             <Button asChild variant="ghost" size="1">
-              <a href={`#/agents/${agentId}/versions/new`}><IconPlus />New version</a>
+              <a href={`#/agents/${agentId}/versions/new`}><IconPlus />New setup</a>
             </Button>
           )}
         </Flex>
@@ -236,8 +576,8 @@ function InstructionsCard({ text }: { text: string }) {
   return (
     <div className="card">
       <div className="card__head">
-        <Text as="div" size="2" weight="medium" className="card__title">Instructions</Text>
-        <Text size="1" color="gray">system prompt</Text>
+        <Text as="div" size="2" weight="medium" className="card__title">Brief</Text>
+        <Text size="1" color="gray">setup brief</Text>
       </div>
       <div className="card__body">
         <Text
@@ -300,11 +640,11 @@ function ModelChainCard({ config }: { config: Record<string, unknown> }) {
             )}
           </Flex>
           <Flex align="center" justify="between" gap="3">
-            <Caption>Max tokens</Caption>
+            <Caption>Response length limit</Caption>
             <Text size="2">{maxTokens != null ? num(maxTokens) : '—'}</Text>
           </Flex>
           <Flex align="center" justify="between" gap="3">
-            <Caption>Temperature</Caption>
+            <Caption>Creativity</Caption>
             <Flex align="center" gap="2">
               <Text size="2">{temperature != null ? temperature.toFixed(1) : '—'}</Text>
               {tempHint && <Text size="1" color="gray">· {tempHint}</Text>}
@@ -345,7 +685,7 @@ function MemoryScopeCard({ config }: { config: Record<string, unknown> }) {
         <Flex direction="column" gap="3">
           <ToggleRow on={userFacts} label="Remembers user facts" hint="Saves things the user shares about themselves between sessions." />
           <ToggleRow on={sessionOnly} label="Session-only" hint="If on, memory is wiped when the session ends." />
-          <ToggleRow on={domainShared} label="Shared across domain" hint="Other agents in the same domain can read what this one remembers." />
+          <ToggleRow on={domainShared} label="Shared across team" hint="Other agents on the same team can read what this one remembers." />
           <Flex align="center" justify="between" gap="3">
             <Caption>Retention</Caption>
             <Text size="2">
@@ -384,17 +724,17 @@ function ToolScopeCard({ config, agentId }: { config: Record<string, unknown>; a
   return (
     <div className="card">
       <div className="card__head">
-        <Text as="div" size="2" weight="medium" className="card__title">Tools</Text>
+        <Text as="div" size="2" weight="medium" className="card__title">Apps</Text>
         <Button asChild variant="ghost" size="1">
-          <a href={`#/agents/${agentId}/grants`}>Open grants</a>
+          <a href={`#/agents/${agentId}/grants`}>Open permissions</a>
         </Button>
       </div>
       <div className="card__body">
         <Flex direction="column" gap="3">
           <ToggleRow
             on={inherits}
-            label="Uses agent's tool grants"
-            hint="When on, this version sees every tool granted to the agent unless explicitly overridden below."
+            label="Uses agent's permissions"
+            hint="When on, this setup sees every app permission granted to the agent unless explicitly overridden below."
           />
           <Flex align="center" justify="between" gap="3" wrap="wrap">
             <Caption>Overrides</Caption>
@@ -465,8 +805,6 @@ function ApprovalRulesCard({ config }: { config: Record<string, unknown> }) {
 
 function ApprovalRuleRow({ rule }: { rule: ApprovalRule }) {
   const when = rule.when ?? '—'
-  // `when` can be a bare tool name like "email.send" or a guard expression like
-  // "stripe.refund > 200". Render the tool part with its friendly label.
   const m = /^([a-z0-9_]+(?:\.[a-z0-9_]+)+)(.*)$/i.exec(when)
   const toolPart = m?.[1] ?? null
   const conditionPart = m?.[2]?.trim() ?? null
@@ -507,51 +845,6 @@ function ApprovalRuleRow({ rule }: { rule: ApprovalRule }) {
   )
 }
 
-function SettingsTab({ agent, ownerName }: { agent: Agent; ownerName: string }) {
-  return (
-    <Flex direction="column" gap="4">
-      <div className="card">
-        <div className="card__head"><Text as="div" size="2" weight="medium" className="card__title">Agent details</Text></div>
-        <div className="card__body">
-          <DataList.Root size="2">
-            <MetaRow label="name" value={agent.name} />
-            <MetaRow label="description" value={agent.description ?? <Text color="gray">—</Text>} />
-            <MetaRow label="status" value={<Status status={agent.status} />} />
-            <MetaRow label="domain" value={domainLabel(agent.domain_id)} />
-            <MetaRow label="owner" value={ownerName} />
-            <MetaRow label="created" value={absTime(agent.created_at)} />
-            <MetaRow label="updated" value={`${absTime(agent.updated_at)} · ${ago(agent.updated_at)}`} />
-          </DataList.Root>
-        </div>
-      </div>
-
-      <Banner tone="warn" title="Editing and archiving are not yet available">
-        Agent records can be created and viewed in this build. Editing, archiving, and deletion are planned.
-      </Banner>
-
-      <div className="card">
-        <div className="card__body">
-          <Flex align="center" justify="between" gap="3" py="2">
-            <div>
-              <Text as="div" size="2">Archive agent</Text>
-              <Text as="div" size="1" color="gray" mt="1">Planned.</Text>
-            </div>
-            <Button color="red" disabled>Archive (planned)</Button>
-          </Flex>
-          <Flex align="center" justify="between" gap="3" py="2">
-            <div>
-              <Text as="div" size="2">Delete agent</Text>
-              <Text as="div" size="1" color="gray" mt="1">Planned.</Text>
-            </div>
-            <Button color="red" disabled>Delete (planned)</Button>
-          </Flex>
-        </div>
-      </div>
-    </Flex>
-  )
-}
-
-
 function PolicySnapshotPanel({ agentId, grantsVersion }: { agentId: string; grantsVersion: number }) {
   const [snapshot, setSnapshot] = useState<GrantsSnapshot | null>(null)
   const [tick, setTick] = useState(0)
@@ -564,7 +857,6 @@ function PolicySnapshotPanel({ agentId, grantsVersion }: { agentId: string; gran
     return () => { cancelled = true }
   }, [agentId, grantsVersion, tick])
 
-  // Derived: covers initial load AND stale snapshot after agentId changes.
   const loading = !snapshot || snapshot.agent_id !== agentId
 
   return (
@@ -581,12 +873,7 @@ function PolicySnapshotPanel({ agentId, grantsVersion }: { agentId: string; gran
           Policy snapshot{' '}
           <Badge color="gray" variant="outline" radius="small" size="1">internal</Badge>{' '}
           <InfoHint>
-            Rendered from <Code variant="ghost">GET /internal/agents/{'{id}'}/grants/snapshot</Code>{' '}
-            (<Code variant="ghost">x-internal: true</Code>, service-to-service only).
-            The orchestrator calls this at run start to pin policy for the lifetime of a run.
-            <br /><br />
-            Shown here only so operators can preview what the orchestrator sees.
-            Not reachable from end-user clients.
+            The exact set of permissions and rules pinned for one activity at the moment it starts. Useful for admins verifying what an agent is operating under. Most users never need this view.
           </InfoHint>
         </Text>
         <Flex align="center" gap="2">
@@ -599,7 +886,7 @@ function PolicySnapshotPanel({ agentId, grantsVersion }: { agentId: string; gran
           <div style={{ padding: 20 }}><LoadingList rows={3} /></div>
         ) : snapshot.grants.length === 0 ? (
           <Text as="div" size="1" color="gray" align="center" style={{ padding: 20 }}>
-            No effective policy entries — this agent has no grants.
+            No effective policy entries — this agent has no permissions.
           </Text>
         ) : (
           <>
@@ -615,7 +902,7 @@ function PolicySnapshotPanel({ agentId, grantsVersion }: { agentId: string; gran
                 letterSpacing: '0.14em',
               }}
             >
-              <Text as="span" size="1" color="gray">tool</Text>
+              <Text as="span" size="1" color="gray">app</Text>
               <Text as="span" size="1" color="gray">policy</Text>
               <Text as="span" size="1" color="gray">scopes</Text>
             </div>
@@ -667,4 +954,3 @@ function PolicySnapshotPanel({ agentId, grantsVersion }: { agentId: string; gran
     </div>
   )
 }
-

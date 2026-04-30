@@ -69,9 +69,9 @@ export function ActivityHeatmap() {
         <Flex align="center" gap="2">
           <Text as="div" size="2" weight="medium" className="card__title">
             <IconAgent className="ic" />
-            Fleet activity · 7 days
+            Team activity · 7 days
           </Text>
-          <MockBadge kind="design" hint="Run-volume heatmap is synthesized client-side. Backend doesn't expose hourly run aggregates yet." />
+          <MockBadge kind="design" hint="Activity heatmap is synthesized client-side. Backend doesn't expose hourly action aggregates yet." />
         </Flex>
         <div className="heatmap__legend">
           <span>less</span>
@@ -101,7 +101,7 @@ export function ActivityHeatmap() {
               {row.map((count, hour) => (
                 <Tooltip
                   key={hour}
-                  content={`${count} runs · ${dayLabels[day]} ${hour.toString().padStart(2, '0')}:00`}
+                  content={`${count} actions · ${dayLabels[day]} ${hour.toString().padStart(2, '0')}:00`}
                 >
                   <span
                     className="heatmap__cell"

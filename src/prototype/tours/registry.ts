@@ -3,6 +3,7 @@ import { sidebarTour } from './sidebar-tour'
 import { approvalReviewTour } from './approval-review-tour'
 import { startAChatTour } from './start-a-chat-tour'
 import { configureToolGrantsTour } from './configure-tool-grants-tour'
+import { hireAnAgentTour } from './hire-an-agent-tour'
 
 /**
  * Single source of truth for "what tours exist". Consumed by the Learning
@@ -31,8 +32,8 @@ export const TOURS: TourEntry[] = [
     tour: sidebarTour,
     audience: 'all',
     group: 'getting-started',
-    description: 'Quick tour of the sidebar nav and what each section is for.',
-    durationLabel: '~1 min · 5 steps',
+    description: 'Quick tour of the main menu and what each section is for.',
+    durationLabel: '~2 min · 9 steps',
     scenarioId: null,
   },
   {
@@ -49,17 +50,26 @@ export const TOURS: TourEntry[] = [
     audience: 'all',
     group: 'getting-started',
     description:
-      'Learn how to choose an active agent, confirm its version and model, then open a new chat.',
+      'Learn how to choose an active agent, open their Talk area, and start a new chat.',
     durationLabel: '~2 min · 5 steps',
     scenarioId: 'start-a-chat',
+  },
+  {
+    tour: hireAnAgentTour,
+    audience: 'domain_admin',
+    group: 'getting-started',
+    description:
+      'Learn how to choose a starter role and understand what happens before an agent joins your team.',
+    durationLabel: '~2 min · 5 steps',
+    scenarioId: null,
   },
   {
     tour: configureToolGrantsTour,
     audience: 'domain_admin',
     group: 'admin-setup',
     description:
-      'Learn how to grant an agent a tool, choose its scope and access level, and decide when approval is required.',
-    durationLabel: '~3 min · 7 steps',
+      'Learn how to set what an agent can access — pick a permission, choose its access level, and decide when human approval is required.',
+    durationLabel: '~2 min · 7 steps',
     scenarioId: 'configure-tool-grants',
   },
 ]

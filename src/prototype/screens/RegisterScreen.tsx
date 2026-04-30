@@ -143,8 +143,8 @@ export default function RegisterScreen() {
           Keep agents <em>accountable.</em>
         </Heading>
         <Text as="div" size="1" color="gray" className="login__meta">
-          <span>Tenant / new workspace</span>
-          <span>Role / tenant admin</span>
+          <span>Workspace</span>
+          <span>Role / workspace admin</span>
           <span>Session / local mock</span>
         </Text>
       </div>

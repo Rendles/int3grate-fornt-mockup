@@ -1,6 +1,124 @@
 # AGENTS.md
 
-This file provides guidance to Codex (Codex.ai/code) when working with code in this repository.
+This file provides guidance to Codex (or any other AI coding agent) working in this repository. It reflects the **current state** of the prototype, aligned with `docs/ux-spec.md`.
+
+# Agent Working Agreement
+
+These rules are mandatory for all AI agents working in this repository.
+
+## Core behavior
+
+- Do not jump directly into implementation for non-trivial work.
+- Before implementing anything, inspect the current repository state and verify that your assumptions match the actual codebase.
+- Prefer evidence from the current files over prior memory, model knowledge, or user assumptions.
+- Be strict, skeptical, and direct. If the user's idea is risky, inconsistent with the codebase, over-engineered, under-specified, or likely to create maintenance problems, say so clearly and propose a better alternative.
+- Do not agree just to be helpful. Push back when needed.
+
+## When a plan is required
+
+Create a written plan before implementation when the task involves any of the following:
+
+- more than one file;
+- architectural or state-management changes;
+- routing, data loading, authentication, payments, permissions, forms, or API integration;
+- refactoring;
+- new dependencies;
+- changes that may affect UX, performance, accessibility, SEO, or build behavior;
+- any task where the correct approach is not obvious from a quick inspection.
+
+For trivial one-line fixes, typo fixes, or purely mechanical changes, a written plan is not required, but the agent must still briefly state what it is going to do.
+
+## Plan file requirements
+
+For every planned task, create a new plan file under:
+
+`docs/agent-plans/`
+
+Use this naming format:
+
+`YYYY-MM-DD-HHMM-short-task-name.md`
+
+The plan file must be a living document and must include:
+
+1. Task summary
+2. Current repository state
+3. Relevant files inspected
+4. Assumptions and uncertainties
+5. Proposed approach
+6. Risks and trade-offs
+7. Step-by-step implementation plan
+8. Verification checklist
+9. Browser testing instructions for the user
+10. Progress log
+
+Before implementing the first step, the agent must verify that the plan still matches the real current codebase.
+
+## One-step-at-a-time execution
+
+When working from a plan:
+
+- Do exactly one plan step per work cycle.
+- After completing one step, stop and report:
+  - what was changed;
+  - which files were touched;
+  - why this step was done this way;
+  - how the user can verify the result locally in the browser;
+  - what the next step in the plan is.
+- Do not continue to the next step until the user explicitly asks to continue, unless the user has clearly asked for autonomous execution.
+
+## Repository state check
+
+Before creating or executing a plan, inspect the project state. At minimum:
+
+- check the current git status;
+- inspect package scripts and available commands;
+- inspect relevant routes/components/modules before changing them;
+- identify the framework and key conventions actually used in this repo;
+- check for existing patterns before introducing new ones.
+
+Do not rely on stale assumptions.
+
+## Frontend verification
+
+For frontend changes, always include browser verification instructions.
+
+The report after each step must explain:
+
+- which page or route to open;
+- what the user should click or interact with;
+- what visual or behavioral result should be expected;
+- what edge case should be checked, if relevant.
+
+If a browser check is not possible or not relevant, explain why.
+
+## Pushback policy
+
+The agent must challenge the user when appropriate.
+
+Push back when:
+
+- the requested change conflicts with existing architecture;
+- the requested approach is more complex than necessary;
+- the change is likely to introduce bugs or regressions;
+- the requirement is ambiguous;
+- the requested UX is inconsistent or harmful;
+- there is a simpler, safer, or more maintainable option.
+
+When pushing back:
+
+1. State the concern clearly.
+2. Explain the technical reason.
+3. Offer a better alternative.
+4. Ask for confirmation only if the trade-off is genuinely a product decision.
+
+Do not be rude, but be firm.
+
+## Read first
+
+Before touching any UI text or making product decisions, read in this order:
+
+1. **`docs/ux-spec.md`** — canonical spec for the target user (Maria, agent-curious owner). Everything user-facing should align with this. § 11 has explicit instructions for AI agents reviewing the project.
+2. **`docs/backend-gaps.md`** — catalogue of mock-only surfaces and missing backend endpoints. Don't try to "fix" these from the frontend.
 
 ## Commands
 
@@ -11,12 +129,24 @@ This file provides guidance to Codex (Codex.ai/code) when working with code in t
 
 There is no test runner configured.
 
+### Local launch and visual verification
+
+- The current app mounts the prototype directly. Use `http://localhost:5173/#/` as the default local URL.
+- Do **not** use the old `#/app/...` prefix. Real routes are direct hash routes such as `#/agents`, `#/approvals`, `#/activity`, `#/settings/team`, and `#/agents/new`.
+- If the user says the app is already running, verify against that live server instead of trying to start another dev server.
+- If `npm run dev` fails from Codex with a Vite/Rolldown `spawn EPERM`-style error while the user's app works, treat it as a local sandbox/runtime issue, not a project bug.
+- For isolated headless checks, seed the admin session in localStorage before loading routes: `localStorage.setItem('proto.session.v1', JSON.stringify({ token: 'mock_usr_ada', userId: 'usr_ada' }))`.
+- If Browser Use / `node_repl` fails because it resolves an old system Node, do not chase app problems. The project can still be checked through the already-running browser or an isolated headless Edge pass against `localhost:5173`.
+- For vocabulary/UI-copy passes, visually check at least: Home, Approvals list/detail, Activity list + expanded row, Team, Apps, Costs, Tasks, all Settings tabs, and Hire wizard welcome → success.
+- A successful vocabulary pass should find no visible `Assistant` / `Assistants` / `AI worker` copy in those routes. Internal IDs like `assistants`, `/agents`, `role: 'assistant'`, and `data-tour="nav-assistants"` can remain.
+
 ## Architecture
 
-This is a **Vite + React 19 + TypeScript** single-page app that ships *two* UIs from a single bundle, switched by URL hash:
+This is a **Vite + React 19 + TypeScript** single-page app. The current app mounts the prototype directly:
 
-- `src/App.tsx` is the public landing page (Vite/React starter look).
-- When `window.location.hash` starts with `#/app`, `App.tsx` mounts `src/prototype/` instead and toggles a `prototype-active` class on `<body>`. This is the actual product mockup — a "control plane" operator UI for managing AI agents, chats, runs, approvals, and spend.
+- `src/App.tsx` returns `<PrototypeApp />`.
+- `src/prototype/` is the actual product mockup — a control plane operator UI for managing AI agents, conversations, activity, approvals, apps, costs, and settings.
+- Old notes about a public landing page or `#/app`-gated prototype are stale. Do not route or test through `#/app`.
 
 ### The prototype (`src/prototype/`)
 
@@ -24,53 +154,78 @@ Self-contained mock of a multi-tenant agent control plane. **No backend** — ev
 
 #### Backend contract
 
-The canonical contract is `gateway (5).yaml` at the repo root (latest spec from the backend team). Older specs are kept for diffing: `gateway_new.yaml` (v0.2.0), `gateway.yaml` (v0.1). The diff between v0.1 and v0.2 is in `GATEWAY_DIFF.md`. The migration plan to the latest spec — and what's still open with the backend — is in `GATEWAY_NEXT_PLAN.md`. The data-source map (every UI surface → endpoint that should feed it) is in `BACKEND_DATA_SOURCES.md`. **Read these before invoking new endpoints or extending the type model.**
+Canonical backend contract: **`docs/gateway.yaml`** (OpenAPI 3.1). Single source of truth for endpoint shapes, request/response schemas, and `x-mvp-deferred` flags. Sync against this file when backend behavior is in question.
 
-Three endpoints are *known gaps* — the UI uses them, but the gateway doesn't expose them yet: `POST /auth/register`, `GET /users` (used everywhere for resolving names), `GET /approvals/{id}`. These are noted in the docs above as open questions for the backend team.
+`docs/backend-gaps.md` catalogues every place the UI promises functionality the backend doesn't yet expose. **Read it before invoking new endpoints or proposing backend wiring.**
+
+Key gaps (already flagged with `<MockBadge>` on the relevant surfaces):
+
+- `POST /auth/register` — missing entirely.
+- `GET /users` — missing entirely (used everywhere for resolving owner / requested_by / approver names).
+- `GET /approvals/{id}` — missing (deep-link single-fetch).
+- Integration registry / OAuth flow — missing (Apps page Connect modal is a placeholder).
+- Per-week spend buckets — backend exposes only aggregate ranges; 4-week trend is split client-side.
+- Activity sentence summaries — backend doesn't return per-run summary; headlines on /activity are derived client-side from RunStatus.
+- Pause / Fire agent transitions — no `PATCH /agents/{id}` for status flip; the wizard mock-hacks `agent.status = 'active'` after activation.
 
 #### Routing (`router.tsx`, `index.tsx`)
 
-Hand-rolled hash router. Routes are declared as a flat list in `index.tsx` using `matchRoute(pattern, path)` with `:param` segments. **Always navigate via the `<Link>` component or `useRouter().navigate`** — they prepend `/app` to the hash automatically. The router strips the `/app` prefix before matching, so route patterns are written without it (e.g. `/agents/:agentId`, `/chats/:chatId`).
+Hand-rolled hash router. Routes are declared as a flat list in `index.tsx` using `matchRoute(pattern, path)` with `:param` segments. **Always navigate via the `<Link>` component or `useRouter().navigate`**. They write direct hash routes such as `#/agents` and `#/settings/history`; there is no `/app` prefix in the current app.
 
-Current route map:
-- `/` Home, `/login`, `/register`, `/profile`, `/404`-style fallback
-- `/agents`, `/agents/new`, `/agents/:agentId` (+ `/grants`, `/settings` tabs), `/agents/:agentId/versions/new`
-- `/chats`, `/chats/new`, `/chats/:chatId`
-- `/tasks`, `/tasks/new`, `/tasks/:taskId` *(MVP-deferred backend, kept in UI for design continuity)*
-- `/runs`, `/runs/:runId`
+Current route map (after Phase 11):
+
+- `/`, `/login`, `/register`, `/profile`, `/learn`, `/404`-style fallback
+- `/agents`, `/agents/new`, `/agents/:agentId` (Overview default), `/agents/:agentId/{talk,grants,activity,settings,advanced}`, `/agents/:agentId/talk/:chatId` (embedded chat), `/agents/:agentId/versions/new`
 - `/approvals`, `/approvals/:approvalId`
-- `/audit` *(admin-only)*
-- `/tools`, `/spend`
-- `/learn` *(Learning Center — hub for guided tours; see "Guided tours" section)*
+- `/activity`, `/activity/:runId` (Technical view — labelled `advanced` in UI)
+- `/apps`, `/costs`
+- `/settings`, `/settings/{team,history,developer,diagnostic}`
+- `/tasks`, `/tasks/new`, `/tasks/:taskId` *(MVP-deferred backend, kept in UI for design continuity, banner explains)*
+- Legacy redirects: `/runs` → `/activity`, `/tools` → `/apps`, `/spend` → `/costs`, `/audit` → `/settings/history`, `/chats` → `/agents`, `/chats/:chatId` → resolves agent_id and forwards to `/agents/:agentId/talk/:chatId`.
 
-> ⚠️ **`Link` props pass-through**: the `Link` component accepts the full `AnchorHTMLAttributes` surface (minus `href`/`onClick`, which it owns) and spreads it onto the inner `<a>`. This is what makes Radix Themes `asChild` composition work — e.g. `<Text size="1" asChild><Link to="…">…</Link></Text>` correctly forwards `data-accent-color` / class names onto the anchor so Radix-driven styles apply. Don't tighten the props back to a fixed list.
+`/chats/new` still exists as a chat-creation form; after createChat it navigates to the embedded path.
+
+> ⚠️ **`Link` props pass-through**: the `Link` component accepts the full `AnchorHTMLAttributes` surface (minus `href`/`onClick`, which it owns) and spreads it onto the inner `<a>`. This is what makes Radix Themes `asChild` composition work. Don't tighten the props back to a fixed list.
+
+#### Sidebar (`components/shell.tsx`)
+
+7 items (admins see all 7, members see 6 — Settings is admin-only):
+
+1. **Home** (`/`) — operational dashboard.
+2. **Approvals** (`/approvals`) — pending decisions, with badge count.
+3. **Activity** (`/activity`) — ribbon of what agents did.
+4. **Team** (`/agents`) — list of agents. Route key / URL remain `agents`; only the user-facing sidebar label is `Team`.
+5. **Apps** (`/apps`) — connected services.
+6. **Costs** (`/costs`) — spend overview (admin-only restriction inside).
+7. **Settings** (`/settings`) — workspace, team members, history log, developer details, diagnostic mode (admin-only).
 
 #### Auth (`auth.tsx`)
 
 `AuthProvider` + three seeded users in `lib/fixtures.ts` (`admin`, `domain_admin`, `member`). Demo logins:
+
 - `frontend@int3grate.ai` (Ada — admin, L4)
 - `domain@int3grate.ai` (Marcelo — domain_admin, L3)
 - `member@int3grate.ai` (Priya — member, L1)
 
 Any password works; the login screen pre-fills `demo`.
 
-**Two-step login flow** mirrors the spec: `POST /auth/login` returns `LoginResponse { token, expires_at }`, then the client calls `GET /me` with the bearer to fetch the `User`. The mock generates a `mock_<userId>` token and decodes it back. Session is `{ token, userId }` in `localStorage` under `proto.session.v1` (legacy `{ userId }`-only sessions still resolve).
+**Two-step login flow** mirrors the spec: `POST /auth/login` returns `LoginResponse { token, expires_at }`, then the client calls `GET /me` with the bearer to fetch the `User`. The mock generates a `mock_<userId>` token and decodes it back. Session is `{ token, userId }` in `localStorage` under `proto.session.v1`.
 
 The `Router` in `index.tsx` gates everything behind `useAuth()` and renders `LoginScreen` when `!user || path === '/login'`.
 
 #### Mock API (`lib/api.ts`)
 
-The `api` object is the single data layer used by every screen. Each call awaits a 120–380 ms `delay()` to simulate latency, then mutates fixture arrays directly (e.g. `fxAgents.unshift(...)`, `grantsByAgent[id] = next`). Mutations persist for the lifetime of the page load only.
+The `api` object is the single data layer used by every screen. Each call awaits a 120–380 ms `delay()` to simulate latency, then mutates fixture arrays directly. Mutations persist for the lifetime of the page load only.
 
-**Pagination envelope**: list endpoints return `{ items, total, limit, offset }` (matching the spec) — `listAgents`, `listTasks`, `listApprovals`, `listChats`, `listChatMessages`, `listRuns`, `listAudit`. Always read `.items` at the call site. The `paginate(...)` helper at the top of `api.ts` honours optional `limit`/`offset`.
+**Pagination envelope**: list endpoints return `{ items, total, limit, offset }` (matching the spec). Always read `.items` at the call site.
 
-**Chat streaming**: `api.sendChatMessage(chatId, req)` returns an `AsyncIterable<ChatStreamFrame>` mirroring the SSE frames the real gateway emits (`turn_start`, `text_delta`, `tool_call`, `tool_result`, `turn_end`, `done`, `error`). UI code consumes it with `for await (const frame of stream)`. When swapping to a real backend, replace the producer with a fetch+ReadableStream reader; the consumer doesn't change.
+**Chat streaming**: `api.sendChatMessage(chatId, req)` returns an `AsyncIterable<ChatStreamFrame>` mirroring SSE frames. UI consumes via `for await (const frame of stream)`. When swapping to a real backend, replace the producer; the consumer doesn't change.
 
 **When adding new entities or screens**: extend `lib/types.ts`, seed in `lib/fixtures.ts`, and expose through `lib/api.ts` — do not call fixtures from screens directly.
 
 #### Domain model (`lib/types.ts`)
 
-Canonical entities, aligned 1:1 with `gateway (5).yaml` schemas. Keep this file the single source of truth for shape.
+Canonical entities, aligned 1:1 with `docs/gateway.yaml` schemas. Keep this file the single source of truth for shape.
 
 Auth: `LoginRequest`, `LoginResponse`, `User`, `Role`, `ApprovalLevel`.
 Agents: `Agent`, `AgentStatus`, `AgentList`, `CreateAgentRequest`, `AgentVersion`, `CreateAgentVersionRequest`.
@@ -82,63 +237,64 @@ Audit: `AuditEvent`, `AuditList`, `AuditStepType`.
 Approvals: `ApprovalRequest`, `ApprovalStatus`, `ApprovalList`, `ApprovalDecisionRequest`, `ApprovalDecisionAccepted`, `CreateApprovalInternalRequest`.
 Spend: `SpendDashboard`, `SpendRow`, `SpendRange`, `SpendGroupBy`.
 
-#### Shell (`components/shell.tsx`)
+**Type names stay even when UI labels change.** `Agent` is the canonical type name and matches the gateway spec. Don't rename internal types when changing user-facing copy.
 
-`AppShell({ crumbs, children })` wraps every authenticated screen with `Sidebar` + `Topbar`. Sidebar nav badges are computed from `api.listApprovals` / `api.listTasks` / `api.listChats` on mount. The "Audit" item is shown only to admins.
+#### Templates (`lib/templates.ts`)
+
+7 starter agent templates used by the Hire wizard at `/agents/new`: Sales, Marketing, Reports, Customer Support, Finance, Operations, Custom. Each carries `defaultName`, `shortPitch`, `longPitch`, `defaultInstructions`, `defaultGrants` (linking tool keys), `approvalCopy`, `featured` flag (top-4 on Welcome). Edit this file to add or change templates — it's the single source of truth for the wizard.
 
 #### Styling (`prototype.css`)
 
-All prototype styles are scoped under `.prototype-root` (the wrapper in `index.tsx`) so they don't leak into the landing page. Dark "instrument-panel" aesthetic on top of Radix Themes — colours come from Radix CSS variables (`--gray-*`, `--accent-*`, `--amber-*`, `--green-*`, `--red-*`, including alpha scales `--gray-a*`). Use Radix tokens rather than hardcoding colors. Inter is the only font family (resolved via `--font-sans` / `--font-serif` / `--font-mono`).
+All prototype styles are scoped under `.prototype-root` (the wrapper in `index.tsx`). Dark "instrument-panel" aesthetic on top of Radix Themes — colours come from Radix CSS variables (`--gray-*`, `--accent-*`, `--amber-*`, `--green-*`, `--red-*`, including alpha scales `--gray-a*`). Use Radix tokens rather than hardcoding colors. Inter is the only font family.
 
-Radix component overrides (e.g. catalog Select items, MetaRow first-letter capitalization) live at the bottom of `prototype.css` with explanatory comments — read before changing them.
+Layout escape hatches:
 
-Two layout escape hatches:
-- **`.page` / `.page--wide` / `.page--narrow`** — standard page padding for screens with body-scroll behaviour.
-- **`.chat-detail`** — fixed-height layout (`100svh - 48px`) with internal scroll on the messages section, used by `ChatDetailScreen` so the composer stays pinned at the bottom.
+- **`.page` / `.page--wide` / `.page--narrow`** — standard page padding.
+- **`.chat-detail`** (full-screen mode, `100svh - 48px`) and **`.chat-detail.chat-detail--embed`** (embed mode, `min-height: 480px; max-height: calc(100svh - 280px)`) — used by `ChatPanel` in two contexts.
 
 > ⚠️ **Anchor styling specificity**: the global `<a>` reset uses `:where(.prototype-root) a { color: inherit }` (zero-specificity wrapper). Without `:where()`, Radix Button styles like `<Button asChild color="gray">` would lose their color when wrapping a `<Link>`. Don't drop the `:where()`.
 
-> ⚠️ **Portaled Radix content** (`Select.Content`, dropdowns, popovers) renders **outside `.prototype-root`** via `<body>` portals. Selectors targeting popup contents (e.g. `.catalog-item` for the grants catalog Select) must NOT be prefixed with `.prototype-root` or they won't match. There's a comment block at the top of those rules in `prototype.css`.
+> ⚠️ **Portaled Radix content** (`Select.Content`, dropdowns, popovers, dialogs) renders **outside `.prototype-root`** via `<body>` portals. Selectors targeting popup contents must NOT be prefixed with `.prototype-root` or they won't match.
 
-> ⚠️ **`--color-panel-solid` override**: at the top of `.prototype-root` we redefine `--color-panel-solid: var(--gray-2)`. Radix Themes' default resolution (with `panelBackground="solid"` + `grayColor="slate"` in light mode) collapses to `--gray-1` — i.e. the same as `--color-page-background` — so all card / sidebar / sticky-topbar / chat-message surfaces became invisible against the page in the light theme. The `--gray-2` override gives a faint tint in light mode and is visually identical to the previous behaviour in dark mode. Don't remove it without a replacement strategy.
+> ⚠️ **`--color-panel-solid` override**: at the top of `.prototype-root` we redefine `--color-panel-solid: var(--gray-2)`. Don't remove it without a replacement strategy.
 
 ### Adding a screen
 
 1. Create `src/prototype/screens/MyScreen.tsx` exporting a default component.
 2. Wrap its return in `<AppShell crumbs={[...]}>`.
 3. Register the route in the `routes` array in `src/prototype/index.tsx`.
-4. Reuse existing primitives before adding new ones (see below).
+4. Reuse existing primitives before adding new ones.
 
 ### Component primitives (`components/common/*`)
 
 All exported through the `components/common.tsx` barrel:
 
-- **`PageHeader`** — `eyebrow / title / subtitle / actions`. Actions area is `<Flex wrap="wrap" gap="2">` — pass actions as direct children (Fragment) so they wrap independently when the title eats the width.
-- **`CommandBar`** — labelled chips strip (`{ label, value, tone? }[]`). Use for at-a-glance metadata strips below `PageHeader`.
-- **`Tabs`** — Radix `TabNav` wrapper. Has a built-in bottom border; pair with ~24px breathing space before content (see `AgentDetailScreen`).
-- **`MetaRow`** — DataList row. **Must be wrapped in `<DataList.Root size="2">`** by the caller (without it the grid template breaks). The label automatically gets first-letter-capitalized via CSS, so call sites can write `label="created by"` and it renders as `Created by`.
-- **`MetricCard`** — KPI tile with label / value / unit / delta / icon, optional `href` to make it clickable.
-- **`Status`** — coloured pill mapping enum status → friendly label. Accepts the union of all status enums (Agent / Run / Task / Approval / Chat / etc.). For places that need a string instead of the pill (e.g. `CommandBar` `value` field, inline banner copy), import **`statusLabel(s)`** from `components/common/status-label` — it shares the underlying map and falls back to `humanKey()` for unknown values.
-- **`Pagination`** — page + pageSize controls. Used at the bottom of `card--table` lists.
-- **`InfoHint`** — info ⓘ tooltip for technical / API hints inline in copy.
-- **`Caption`** — small uppercase tracked label (UI section labels).
-- **`Avatar`** — initials avatar.
-- **`MockBadge`** — small dashed pill marking surfaces unbacked by the real backend. Two kinds: `kind="design"` (no endpoint exists in spec at all — pure mock) and `kind="deferred"` (endpoint exists but `x-mvp-deferred`). Hover shows full explanation. Use whenever a screen, widget, or sidebar item shows synthesized data.
+- **`PageHeader`** — `eyebrow / title / subtitle / actions`. Actions area is `<Flex wrap="wrap" gap="2">`.
+- **`CommandBar`** — labelled chips strip (`{ label, value, tone? }[]`).
+- **`Tabs`** — Radix `TabNav` wrapper. Has a built-in bottom border; pair with ~24px breathing space before content.
+- **`MetaRow`** — DataList row. **Must be wrapped in `<DataList.Root size="2">`** by the caller.
+- **`MetricCard`** — KPI tile.
+- **`Status`** — coloured pill mapping enum status → friendly label. For string-only contexts use `statusLabel(s)` from `components/common/status-label`.
+- **`Pagination`** — page + pageSize controls.
+- **`InfoHint`** — info ⓘ tooltip.
+- **`Caption`** — small uppercase tracked label.
+- **`Avatar`** — initials avatar (planned upgrade to realistic photos per `docs/ux-spec.md` § 9 — not yet done).
+- **`MockBadge`** — small dashed pill marking surfaces unbacked by the real backend. Two kinds: `kind="design"` (no endpoint exists in spec at all) and `kind="deferred"` (endpoint exists but `x-mvp-deferred`). Hover shows full explanation.
 
 ### Icons (`components/icon.tsx` + `components/icons.tsx`)
 
 Two-tier wrapper over `@hugeicons/react` + `@hugeicons/core-free-icons`:
 
-- **`<Icon icon={SomeIcon} />`** (`components/icon.tsx`) — preferred for new code. Pair with a direct named import from `@hugeicons/core-free-icons`.
-- **Legacy named exports** (`components/icons.tsx`) — `IconHome`, `IconAgent`, `IconChat`, `IconTask`, `IconApproval`, `IconRun`, `IconTool`, `IconSpend`, `IconAudit`, `IconPlus`, `IconArrowLeft`, `IconArrowRight`, `IconCheck`, `IconX`, `IconAlert`, `IconInfo`, `IconPlay`, `IconStop`, `IconSearch`, `IconLock`, `IconEye`, `IconEyeOff`, `IconLogout`, `IconSun`, `IconMoon`, `IconHelp`. These are now thin wrappers over the same Hugeicons set, kept so existing call-sites still work; new code should prefer `<Icon>`.
+- **`<Icon icon={SomeIcon} />`** (`components/icon.tsx`) — preferred for new code.
+- **Legacy named exports** (`components/icons.tsx`) — `IconHome`, `IconAgent`, `IconChat`, `IconTask`, `IconApproval`, `IconRun`, `IconTool`, `IconSpend`, `IconAudit`, `IconSettings`, `IconPlus`, `IconArrowLeft`, `IconArrowRight`, `IconCheck`, `IconX`, `IconAlert`, `IconInfo`, `IconPlay`, `IconStop`, `IconSearch`, `IconLock`, `IconEye`, `IconEyeOff`, `IconLogout`, `IconSun`, `IconMoon`, `IconHelp`. New code prefers `<Icon>`.
 
-Both wrappers default `className="ic"`. Sizing comes from the `.ic` class in `prototype.css` (14px default; `.ic--sm` 12px, `.ic--lg` 18px). All icons inherit `currentColor`, so colour them via the surrounding `<Text color="…">` / Radix Theme tokens — don't pass `primaryColor` props.
+Both wrappers default `className="ic"`. Sizing: 14px default; `.ic--sm` 12px, `.ic--lg` 18px. All icons inherit `currentColor`.
 
 ### Form fields (`components/fields.tsx`)
 
-`TextInput`, `TextAreaField`, `PasswordField`, `SelectField` — Radix Themes wrappers with chrome for label / hint / error / required. Use these for forms.
+`TextInput`, `TextAreaField`, `PasswordField`, `SelectField` — Radix Themes wrappers. Use these for forms.
 
-For inline selects inside dense table cells, **don't** use `SelectField` — its `<Flex direction="column" gap="1">` chrome breaks vertical alignment with adjacent buttons / switches. Build a thin direct `<Select.Root>` instead (see `InlineSelect` / `CatalogPicker` in `components/grants-editor.tsx`). The trigger needs `style={{ width: '100%' }}` and the content needs `position="popper"` for stable anchoring.
+For inline selects inside dense table cells, **don't** use `SelectField` — its chrome breaks vertical alignment with adjacent buttons. Build a thin direct `<Select.Root>` instead (see `InlineSelect` / `CatalogPicker` in `components/grants-editor.tsx`).
 
 ### State + empty / error / loading (`components/states.tsx`)
 
@@ -149,69 +305,121 @@ For inline selects inside dense table cells, **don't** use `SelectField` — its
 Centralised. **Always reach for these before formatting inline.**
 
 Numbers / dates: `money`, `num`, `pct`, `ago`, `absTime`, `shortDate`, `durationMs`.
-ID / reference: `shortRef` (entity_id → `#<tail>` for breadcrumbs/refs), `humanKey` (`snake_case` → `Sentence case`).
+ID / reference: `shortRef`, `humanKey`.
 Domain labels: `roleLabel`, `domainLabel`, `tenantLabel`, `approverRoleLabel`.
-Tool catalog: `TOOL_LABELS`, `toolLabel(name)`, `prettifyRequestedAction(s)` (parses `service.action` prefix from `requested_action` strings and replaces with friendly tool label).
-Enum → friendly: `grantModeLabel` (`read_write` → "Read & write"), `policyModeLabel` (`requires_approval` → "Requires approval"), `errorKindLabel` (`tool_error` → "Tool error"), `toolErrorStatusLabel`, `stageLabel` (run.suspended_stage parser), `runStepStatusLabel` (`ok` → "OK", others via `humanKey`).
+Tool catalog: `TOOL_LABELS`, `toolLabel`, `prettifyRequestedAction`, `appPrefix`, `appLabel`, `APP_LABELS`.
+Enum → friendly: `grantModeLabel`, `policyModeLabel`, `errorKindLabel`, `toolErrorStatusLabel`, `stageLabel`, `runStepStatusLabel`.
 
 Rule of thumb: never display raw enums (`requires_approval`, `domain_admin`, `tool_error`) or raw IDs (`agt_xxx`, `usr_xxx`) directly in the UI — always go through one of the helpers above.
 
-### Keeping the UI human-friendly
+### Vocabulary (canonical, per `docs/ux-spec.md` § 8)
 
-The prototype's design constraint is that **end users are not engineers** — they shouldn't see snake_case keys, raw enum values, opaque IDs, or JSON dumps. Conventions:
+End users are not engineers. The product is "my little digital team" — agents are employees, not workflow nodes. Use business language, not engineering terms.
 
-- Render names, not IDs. `Agent.name` not `agent.id`. For nav references use `shortRef(id)` (`#4081`) in breadcrumbs / chips, not full opaque IDs.
-- Replace tool keys with `toolLabel(name)` everywhere (`stripe.refund` → `Stripe · Refund`).
-- Replace role keys with `roleLabel` / `approverRoleLabel` (`domain_admin` → `Domain Admin`).
-- Replace policy / grant / error enums via the helpers above.
-- Render JSON-ish backend objects as structured key/value lists, not `<pre>` dumps. See `EvidenceList` in `ApprovalDetailScreen`, `ToolParameters` in `ToolsScreen`, the four config cards in `AgentDetailScreen.OverviewTab` (Model / Memory / Tools / Approval rules) for examples of how to flatten a nested object into readable rows.
+**Keep:**
 
-### Mock-only surfaces
+- `Agent` — the central concept Maria came for. Don't hide it.
+- `Hire` (instead of Deploy / Create).
+- `Brief` / `Train` (instead of Configure).
+- `Playbook` (instead of Workflow).
+- `Ask` / `Assign` (instead of Run / Execute).
+- `What they can access` (instead of Tools / Connectors — but the page can be called `Apps`).
+- `Got stuck — needs help` (instead of Error / Failed).
+- `Activity` (instead of Logs / Traces).
+- `Hours worked` / `Monthly bill` (instead of Tokens / Costs — pragmatically, `$X spent` is acceptable on the dashboard hero).
+- `Instruction` / `Brief` (instead of Prompt).
 
-Whenever a UI surface displays data that isn't backed by a real endpoint, mark it with `<MockBadge>` so reviewers and demoers know what's synthesized. Currently flagged:
-- **Register screen** — no `POST /auth/register` in spec.
-- **All Tasks screens** + **Tasks sidebar item** + **Recent tasks / Task outcomes / My tasks** dashboard cards — backend exists in spec but `x-mvp-deferred`.
-- **Activity heatmap** + **Savings banner** on the Home dashboard — synthesized client-side, no backend aggregates.
+**Don't show in the UI:** workflow, MCP, tokens, model, prompt, JSON, run, execution, trace, context window, orchestration, system prompt, temperature.
 
-Three documented endpoints have *known gaps* on the backend side (used by the UI but missing from the spec): `GET /users`, `GET /approvals/{id}`, `POST /auth/register`. These are tracked in `BACKEND_DATA_SOURCES.md` as open questions; don't try to "fix" them from the frontend.
+**Render names, not IDs.** `Agent.name` not `agent.id`. For nav references use `shortRef(id)` (`#4081`) in breadcrumbs / chips, not full opaque IDs.
+
+**These rules apply to user-facing strings only.** The internal type `Agent` in `lib/types.ts`, the file `AgentNewScreen.tsx`, the URL pattern `/agents/*`, the variable `tokenCount` — all stay. Per `docs/ux-spec.md` § 11.2: ask yourself "will the user see this?" If no, leave it alone.
+
+> **Internal-only "assistant" matches:** user-facing UI uses `Agent / agents`; the `/agents` sidebar item is labelled `Team`. Remaining `Assistant` / `assistants` matches in code are intentional and internal (e.g. `ChatMessageRole = 'assistant'`, nav key `assistants`, the `AssistantTemplate` interface).
+
+### Mock-only surfaces (visually flagged)
+
+Whenever a UI surface displays data that isn't backed by a real endpoint, mark it with `<MockBadge>`. Currently flagged:
+
+- **RegisterScreen** — no `POST /auth/register` in spec.
+- **ApprovalDetailScreen PageHeader** — no `GET /approvals/{id}`.
+- **RunsScreen PageHeader** — activity sentence headlines synthesized from RunStatus.
+- **ToolsScreen PageHeader + Connect new app modal** — connection status derived from grants; OAuth is a placeholder.
+- **AgentDetailScreen Settings tab → Manage employment** — Pause/Fire endpoints don't exist.
+- **AgentNewScreen step 2 (Connect apps)** — fake OAuth toggles in the wizard.
+- **SpendScreen 4-week trend** — week buckets split client-side.
+- **SettingsScreen Workspace card** — Workspace edit endpoints missing.
+- **SettingsScreen Team members** — `GET /users` missing.
+- **SettingsScreen Developer details** — reference doc.
+- **SettingsScreen Diagnostic mode** — toggle wired without rendering.
+- **All Tasks screens** + Task-related dashboard widgets — backend exists in spec but `x-mvp-deferred` (use `kind="deferred"`).
+
+The full mapping (every gap → its UI flag) lives in `docs/backend-gaps.md` § "Сводная таблица приоритета".
 
 ### Guided tours (`src/prototype/tours/`)
 
-Game-style interactive walkthroughs: dim overlay, spotlight on a target element, floating tooltip with step copy, optional Training mode that swaps real backend data for tour-specific fixtures. The engine is feature-complete; growing the tour catalog from here is purely data work — write a tour file, add `data-tour="…"` attributes to the screens it walks, register in `registry.ts`. See `TOURS_PLAN.md` (design / scenarios / what's left) and `TOURS_IMPLEMENTATION_PLAN.md` (build status per phase).
+Game-style interactive walkthroughs: dim overlay, spotlight on a target element, floating tooltip with step copy, optional Training mode that swaps real backend data for tour-specific fixtures.
+
+**Status:** the engine is feature-complete. Tour copy is **stale** — selectors mostly still resolve, but step bodies reference removed UI (CommandBar, scope_type selects, etc.). Tour rebuild under new vocabulary is **deferred** by user decision. Don't auto-suggest tour rebuild work.
+
+Before adding or changing tours, read **`docs/tours-guide.md`**. It is the practical authoring guide for targets, scenarios, registry entries, and browser verification.
 
 #### Engine pieces
 
-- **`types.ts`** — `Tour` (`{ id, name, steps[] }`) and `TourStep` (`{ id, target, title, body, placement?, spotlightPadding?, navigateTo? }`). `target` is a CSS selector — **prefer `[data-tour="…"]` attributes over class selectors** so refactors to `prototype.css` don't silently break tours. `navigateTo` (optional) is a hash route the engine routes to before resolving the target; if absent, the engine inherits the most recent prior step's `navigateTo`, so Back / prev navigation always restores the right page.
-- **`TourProvider.tsx` + `tour-context.ts` + `useTour.ts`** — context with `startTour`, `next`, `prev`, `endTour(markCompleted?)`, `isCompleted`, plus the welcome-toast flag (`welcomePromptShown`, `markWelcomePromptShown`). Persists `completed: string[]` and `welcomePromptShown: boolean` in `localStorage["proto.tours.v1"]`. Reaching the last step (`Done`) marks completed; `Skip tour` / `Esc` ends without marking, so the tour can be retried. Body scroll is locked while a tour is active.
-- **`TourOverlay.tsx`** — single mounted overlay. Spotlight is a fixed-position rect with `box-shadow: 0 0 0 9999px rgba(0,0,0,.65)` (the shadow paints the dim outside — no SVG mask). Tooltip placement (`top` / `bottom` / `left` / `right`) is computed from `target.getBoundingClientRect()` and clamped to the viewport. The same DOM nodes for spotlight + tooltip persist across step changes (no `key={step.id}` on the inner view), so CSS transitions on `top` / `left` / `width` / `height` interpolate smoothly between steps. Listens to window `resize` + capture-phase `scroll` (RAF-throttled) and `ResizeObserver` on the tooltip. Hotkeys: `→`/`Enter` next, `←` back, `Esc` skip-tour. If the target selector doesn't resolve within the retry budget (~500 ms same-screen, ~1.5 s when `navigateTo` is set), the tooltip shows a fallback message instead of getting stuck.
-- **`registry.ts`** — `TOURS: TourEntry[]`, the single source of truth for "what tours exist". Each entry carries `audience` (`'all' | 'admin' | 'domain_admin'`), `group` (`'getting-started' | 'core-workflows' | 'admin-setup'`), `description`, `durationLabel`, and `scenarioId | null`.
-- **Tour data files** — one per tour (`sidebar-tour.tsx`, `approval-review-tour.tsx`, …). Pure data.
+- **`types.ts`** — `Tour` and `TourStep`. `target` is a CSS selector — **prefer `[data-tour="…"]` attributes** over class selectors.
+- **`TourProvider.tsx` + `tour-context.ts` + `useTour.ts`** — context with start/next/prev/end, persisted in `localStorage["proto.tours.v1"]`.
+- **`TourOverlay.tsx`** — single mounted overlay. Spotlight = `box-shadow: 0 0 0 9999px rgba(0,0,0,.65)` (no SVG mask). Tooltip placement computed from `target.getBoundingClientRect()`. RAF-throttled `resize` + capture-phase `scroll`. Hotkeys: `→`/`Enter` next, `←` back, `Esc` skip-tour. Falls back to a friendly message if the target doesn't resolve in ~500 ms (or ~1.5 s with `navigateTo`).
+- **`registry.ts`** — `TOURS: TourEntry[]`, single source of truth for "what tours exist".
+- **Tour data files** — pure data: `sidebar-tour.tsx`, `approval-review-tour.tsx`, `configure-tool-grants-tour.tsx`.
 
 #### Training mode (data-dependent tours)
 
-A real new tenant has no agents / approvals / runs, so data-dependent tours seed their own fixtures via Training mode:
+Provider in `TrainingModeProvider.tsx` swaps fixtures at the `api.*` layer when active. Sandboxed mutations don't touch real fixture arrays. Auto-exits after 15 min idle. Tours that need pre-seeded data (e.g. `approval-review`) declare a `scenarioId` in the registry. The pilot `approval-review` is the canonical example.
 
-- **`TrainingModeProvider.tsx` + `training-context.ts` + `useTrainingMode.ts`** — context with `{ active, scenarioId, enter, exit }`. On `enter(id)` it calls a private `__setTrainingMode(id)` setter on `lib/api.ts`; reads inside `api.*` consult `_trainingScenario()` and serve from the active scenario's fixtures instead of the real `fxAgents` / `fxApprovals` / etc. Mutations on training-mode entities (`api.decideApproval`) return synthetic queued responses without touching real fixtures. Auto-exits after 15 min idle.
-- **`training-fixtures.ts`** — `TRAINING_SCENARIOS: Record<string, TrainingScenario>`. One scenario per data-dependent tour, with stable IDs exported (e.g. `APPROVAL_REVIEW_IDS`) so tour data can write literal `navigateTo: '/approvals/${id}'`.
-- **`TrainingBanner.tsx`** — sticky amber bar pinned to the top of the viewport while training is active. Adds a `with-training-banner` class on `.prototype-root` so `.shell` reserves layout space via the `--training-banner-height` CSS variable.
-- **`TrainingAutoExit.tsx`** — invisible bridge inside `TourProvider`. Watches `activeTour`; when a tour transitions from active to inactive (Done / Skip / Esc / last-step completion) it calls `exit()` if training was active and navigates to `/learn` so the user lands back on the hub.
+#### Discovery
 
-The pilot data-dependent tour (`approval-review`) demonstrates the full pattern: scenario fixture, `data-tour=` attributes on `ApprovalsScreen` + `ApprovalDetailScreen`, cross-screen `navigateTo`, sandboxed `decideApproval`. Use it as the template when adding the rest from `TOURS_PLAN.md`.
-
-#### Discovery + entry points
-
-- **`/learn` route** (`screens/LearnScreen.tsx`) — single hub listing every tour from `TOURS`, grouped by `TourGroup`. Cards show audience, duration, status (read via `isCompleted`), Start / Restart button. Cards for tours the current user can't run (e.g. admin-only when user is `member`) render disabled with a tooltip.
-- **Topbar `?` button** repointed at `/learn` (used to launch the sidebar tour directly). Global `?` hotkey also opens `/learn`, ignored while a tour is active or focus is in an editable field.
-- **`WelcomeToast.tsx`** — bottom-right pinned, non-blocking; renders once per browser on the first authenticated mount where `welcomePromptShown !== true`. Click "Open Learning Center" or X dismisses, both flip the flag.
+- **`/learn`** route — single hub. Cards show audience, duration, completion status.
+- **Topbar `?` button** + global `?` hotkey — opens `/learn`. Ignored while a tour is active or focus is in an editable field.
+- **`WelcomeToast.tsx`** — bottom-right pinned, non-blocking; appears once per browser on first authenticated mount.
 
 Mounted in `index.tsx` as: `RouterProvider` → `TrainingModeProvider` → (`TrainingBanner`, `TourProvider` → (`Router`, `TourOverlay`, `WelcomeToast`, `TrainingAutoExit`)).
 
-CSS lives at the bottom of `prototype.css` under `TRAINING MODE BANNER`, `WELCOME TOAST`, and `TOUR / GUIDED ONBOARDING` blocks (`.tour`, `.tour__spot`, `.tour__tooltip`, `.tour__backdrop`, `.training-banner*`, `.welcome-toast`) with `prefers-reduced-motion` honoured.
-
 #### Adding a new tour
 
-1. If data-dependent: add a `TrainingScenario` to `training-fixtures.ts` with stable IDs. Wire any new `api.*` reads it depends on to consult `_trainingScenario()` (most are already wired from `approval-review`).
-2. Add `data-tour="…"` attributes to the screens the tour walks. Wrap composite components (e.g. `<PageHeader>`) in a `<div data-tour="…">` if you need to anchor on a region rather than a single leaf.
-3. Write the tour file (`tours/my-tour.tsx`) exporting a `Tour`. Steps that need a specific page declare `navigateTo`; subsequent same-page steps inherit it.
-4. Register in `registry.ts` `TOURS` with audience, group, description, durationLabel, and `scenarioId` (or `null`).
-5. Verify on `/learn`: card appears, Start launches it (with banner if scenario is set), Done returns to `/learn` and flips the card to Completed. `npm run lint && npm run build` clean.
+1. If data-dependent: add a `TrainingScenario` to `training-fixtures.ts` with stable IDs.
+2. Add `data-tour="…"` attributes to the screens the tour walks.
+3. Write the tour file (`tours/my-tour.tsx`) exporting a `Tour`.
+4. Register in `registry.ts`.
+5. Verify: card on `/learn`, Start launches, Done returns. `npm run lint && npm run build` clean.
+
+## How to approach a new task in this codebase
+
+1. **Read the relevant doc first.**
+   - UI text or vocab change → `docs/ux-spec.md` § 8.
+   - Layout / new screen → `docs/ux-spec.md` § 4 (three key screens).
+   - Backend wiring → `docs/backend-gaps.md`.
+
+2. **Check the spec for anti-patterns.** `docs/ux-spec.md` § 10 has a checklist: workflow / MCP / tokens / "Hey friend! 👋" / mascots / etc. Don't introduce them.
+
+3. **Sort findings by hierarchy** (`docs/ux-spec.md` § 11.1): control & approvals → team mental model → business language → three screens → aha moment → trust ladder → tone & visuals.
+
+4. **Distinguish visible from internal.** § 11.2 — type names, file names, comments, internal vars are not subject to vocab rules.
+
+5. **Don't silently fix.** § 11.3 — if you find a divergence, surface it to the owner before mass refactoring. Cosmetic fixes are fine; semantic changes ask first.
+
+6. **Lint + build clean before declaring done.** `noUnusedLocals` and `noUnusedParameters` are strict — clean stale imports.
+
+## Useful greps
+
+```bash
+# Find every place that still uses pre-spec vocabulary:
+grep -rn "AI worker\|AI workers\|\bAssistant\b\|\bAssistants\b\|\bassistant\b\|\bassistants\b" \
+  --include="*.tsx" --include="*.ts" \
+  src/prototype/screens src/prototype/components src/prototype/tours
+
+# Find every MockBadge usage:
+grep -rn "MockBadge" src/prototype --include="*.tsx"
+
+# Find disabled "(planned)" buttons:
+grep -rn "(planned)\|(coming soon)\|(placeholder)" src/prototype --include="*.tsx"
+```

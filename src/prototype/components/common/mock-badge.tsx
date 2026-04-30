@@ -3,7 +3,7 @@ import { Tooltip } from '@radix-ui/themes'
 type MockKind =
   // No backend endpoint exists at all — pure design surface.
   | 'design'
-  // Endpoint exists in gateway (5).yaml but marked x-mvp-deferred —
+  // Endpoint exists in docs/gateway.yaml but marked x-mvp-deferred —
   // backend has not implemented it yet.
   | 'deferred'
 

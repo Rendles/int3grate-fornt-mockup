@@ -8,9 +8,9 @@ export default function NotFoundScreen() {
     <AppShell crumbs={[{ label: 'home', to: '/' }, { label: '404' }]}>
       <div className="page">
         <EmptyState
-          title="Route not found"
-          body={`No screen matched "${path}". Pick a destination from the sidebar.`}
-          action={{ label: 'Back to home', href: '/' }}
+          title="Page not found"
+          body={`We couldn't find anything at "${path}". Try the sidebar or jump back home.`}
+          action={{ label: 'Back to Home', href: '/' }}
         />
       </div>
     </AppShell>

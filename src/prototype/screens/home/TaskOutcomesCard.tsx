@@ -2,6 +2,7 @@ import { useMemo } from 'react'
 import { Flex, Text } from '@radix-ui/themes'
 import { IconTask } from '../../components/icons'
 import { MockBadge } from '../../components/common'
+import { statusLabel } from '../../components/common/status-label'
 import type { Task, TaskStatus } from '../../lib/types'
 
 const TASK_OUTCOME_COLORS: Record<TaskStatus, string> = {
@@ -80,7 +81,7 @@ export function TaskOutcomesCard({ tasks }: { tasks: Task[] }) {
             <Flex key={s.key} align="center" justify="between" gap="2">
               <Flex align="center" gap="2" minWidth="0">
                 <span className="legend-dot" style={{ background: s.color }} />
-                <Text size="1" style={{ textTransform: 'capitalize' }}>{s.key}</Text>
+                <Text size="1">{statusLabel(s.key)}</Text>
               </Flex>
               <Text size="1" color="gray">{s.value}</Text>
             </Flex>
