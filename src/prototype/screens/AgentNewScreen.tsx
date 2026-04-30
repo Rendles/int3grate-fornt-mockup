@@ -1,5 +1,5 @@
 import { useMemo, useState } from 'react'
-import { Badge, Box, Button, Flex, Grid, Heading, Slider, Text } from '@radix-ui/themes'
+import { Badge, Box, Button, Flex, Grid, Heading, Slider, Spinner, Text } from '@radix-ui/themes'
 
 import { AppShell } from '../components/shell'
 import { Avatar, Caption, MockBadge, PageHeader } from '../components/common'
@@ -12,7 +12,6 @@ import {
   IconCheck,
   IconChat,
   IconHome,
-  IconPlus,
 } from '../components/icons'
 import { useRouter } from '../router'
 import { useAuth } from '../auth'
@@ -27,6 +26,7 @@ import {
 } from '../lib/templates'
 
 type Phase = 'welcome' | 'preview' | 'name' | 'apps' | 'review' | 'success'
+type WizardPhase = Extract<Phase, 'preview' | 'name' | 'apps' | 'review'>
 
 const MODEL_OPTIONS = [
   { value: 'claude-opus-4-7', label: 'Claude Opus 4.7 — heavy reasoning' },
@@ -93,6 +93,8 @@ export default function AgentNewScreen() {
   }
 
   const goToWizard = () => setPhase('name')
+
+  const goBackToPreview = () => setPhase('preview')
 
   const goBackToWelcome = () => {
     setTemplate(null)
@@ -167,7 +169,15 @@ export default function AgentNewScreen() {
     return (
       <AppShell crumbs={[{ label: 'home', to: '/' }, { label: 'team', to: '/agents' }, { label: 'hire' }]}>
         <div className="page page--narrow">
-          <Flex direction="column" align="center" gap="3" mb="6" mt="4" style={{ textAlign: 'center' }}>
+          <Flex
+            direction="column"
+            align="center"
+            gap="3"
+            mb="6"
+            mt="4"
+            style={{ textAlign: 'center' }}
+            data-tour="hire-welcome-intro"
+          >
             <Box style={{ color: 'var(--accent-9)' }}>
               <IconAgent size={36} />
             </Box>
@@ -179,9 +189,15 @@ export default function AgentNewScreen() {
             </Text>
           </Flex>
 
-          <Grid columns={{ initial: '1', sm: '2' }} gap="3">
-            {FEATURED_TEMPLATES.map(t => (
-              <RoleCard key={t.id} template={t} onPick={pickTemplate} prominent />
+          <Grid columns={{ initial: '1', sm: '2' }} gap="3" data-tour="hire-featured-roles">
+            {FEATURED_TEMPLATES.map((t, index) => (
+              <RoleCard
+                key={t.id}
+                template={t}
+                onPick={pickTemplate}
+                prominent
+                dataTour={index === 0 ? 'hire-featured-role-card' : undefined}
+              />
             ))}
           </Grid>
 
@@ -198,12 +214,16 @@ export default function AgentNewScreen() {
 
           <Flex justify="center" gap="4" mt="5" wrap="wrap">
             {!showAllRoles && (
-              <Button variant="ghost" onClick={() => setShowAllRoles(true)}>
+              <Button
+                variant="ghost"
+                onClick={() => setShowAllRoles(true)}
+                data-tour="hire-see-all-roles"
+              >
                 See all roles
               </Button>
             )}
             <Button asChild variant="ghost" color="gray">
-              <a href="#/agents">Skip and explore</a>
+              <a href="#/agents" data-tour="hire-skip-explore">Skip and explore</a>
             </Button>
           </Flex>
         </div>
@@ -216,14 +236,24 @@ export default function AgentNewScreen() {
     return (
       <AppShell crumbs={[{ label: 'home', to: '/' }, { label: 'team', to: '/agents' }, { label: 'hire' }, { label: template.defaultName }]}>
         <div className="page page--narrow">
-          <Flex direction="column" align="center" gap="3" mb="5" mt="3" style={{ textAlign: 'center' }}>
-            <Avatar initials={template.initials} size={48} />
-            <Heading size="8" weight="regular" className="page__title">
-              {template.defaultName}
-            </Heading>
-            <Text size="3" color="gray" style={{ maxWidth: 580, lineHeight: 1.6 }}>
-              {template.longPitch}
-            </Text>
+          <Flex direction="column" gap="3" mb="5">
+            <Flex align="center" justify="between" wrap="wrap" gap="3">
+              <StepProgress phase={phase} />
+              <Button asChild variant="ghost" color="gray" size="1">
+                <a href="#/agents">Cancel</a>
+              </Button>
+            </Flex>
+            <Flex align="center" gap="3" wrap="wrap">
+              <Avatar initials={template.initials} size={44} />
+              <Box minWidth="0" flexGrow="1">
+                <Heading size="8" weight="regular" className="page__title">
+                  {template.defaultName}
+                </Heading>
+                <Text as="div" size="3" color="gray" mt="2" style={{ maxWidth: 580, lineHeight: 1.6 }}>
+                  {template.longPitch}
+                </Text>
+              </Box>
+            </Flex>
           </Flex>
 
           <Flex direction="column" gap="4">
@@ -264,14 +294,14 @@ export default function AgentNewScreen() {
             </PreviewSection>
           </Flex>
 
-          <Flex justify="center" gap="3" mt="6" wrap="wrap">
+          <Flex justify="between" gap="3" mt="6" wrap="wrap">
             <Button variant="ghost" color="gray" onClick={goBackToWelcome}>
               <IconArrowLeft className="ic ic--sm" />
               Back
             </Button>
             <Button size="3" onClick={goToWizard}>
-              <IconPlus />
-              Hire {template.defaultName}
+              Set up {template.defaultName}
+              <IconArrowRight className="ic ic--sm" />
             </Button>
           </Flex>
         </div>
@@ -285,24 +315,34 @@ export default function AgentNewScreen() {
       <AppShell crumbs={[{ label: 'home', to: '/' }, { label: 'team', to: '/agents' }, { label: 'hire' }, { label: template.defaultName }]}>
         <div className="page page--narrow">
           <Flex direction="column" gap="3" mb="5">
-            <StepProgress phase={phase} />
-            <Heading size="6" weight="regular">
+            <Flex align="center" justify="between" wrap="wrap" gap="3">
+              <StepProgress phase={phase} />
+              <Button asChild variant="ghost" color="gray" size="1">
+                <a href="#/agents">Cancel</a>
+              </Button>
+            </Flex>
+            <Heading size="8" weight="regular" className="page__title">
               {phase === 'name' && <>Name your <em>agent.</em></>}
               {phase === 'apps' && (
                 <>
-                  Connect <em>apps.</em>{' '}
-                  <Text as="span" size="2" weight="regular" style={{ verticalAlign: 'middle' }}>
-                    <MockBadge kind="design" hint="Real OAuth wiring needs a backend integration registry that isn't in the spec yet. The Connect button below is a placeholder — clicking it just toggles a local state flag." />
-                  </Text>
+                  Connect <em>apps.</em>
                 </>
               )}
               {phase === 'review' && <>Review and <em>hire.</em></>}
             </Heading>
-            <Text size="2" color="gray">
-              {phase === 'name' && 'You can rename later.'}
-              {phase === 'apps' && `${template.defaultName} works best when its apps are connected. You can skip and connect later.`}
-              {phase === 'review' && 'Last look before this agent joins your team.'}
-            </Text>
+            {phase === 'apps' ? (
+              <Flex align="center" gap="2" wrap="wrap">
+                <Text size="2" color="gray">
+                  {template.defaultName} works best when its apps are connected. You can skip and connect later.
+                </Text>
+                <MockBadge kind="design" hint="Real OAuth wiring needs a backend integration registry that isn't in the spec yet. The Connect button below is a placeholder — clicking it just toggles a local state flag." />
+              </Flex>
+            ) : (
+              <Text size="2" color="gray">
+                {phase === 'name' && 'You can rename later.'}
+                {phase === 'review' && 'Last look before this agent joins your team.'}
+              </Text>
+            )}
           </Flex>
 
           {phase === 'name' && (
@@ -311,7 +351,7 @@ export default function AgentNewScreen() {
               onName={setName}
               templateName={template.defaultName}
               onNext={goToApps}
-              onBack={goBackToWelcome}
+              onBack={goBackToPreview}
             />
           )}
 
@@ -409,29 +449,27 @@ function RoleCard({
   template,
   onPick,
   prominent,
+  dataTour,
 }: {
   template: AssistantTemplate
   onPick: (t: AssistantTemplate) => void
   prominent: boolean
+  dataTour?: string
 }) {
   return (
     <button
+      className="role-card"
+      data-tour={dataTour}
       onClick={() => onPick(template)}
       style={{
         textAlign: 'left',
         padding: prominent ? 20 : 14,
         borderRadius: 14,
-        border: '1px solid var(--gray-a3)',
-        background: 'var(--color-panel-solid)',
         color: 'inherit',
-        cursor: 'pointer',
-        transition: 'border-color 120ms, background 120ms',
         display: 'flex',
         flexDirection: 'column',
         gap: 12,
       }}
-      onMouseOver={e => { (e.currentTarget as HTMLButtonElement).style.borderColor = 'var(--accent-a7)' }}
-      onMouseOut={e => { (e.currentTarget as HTMLButtonElement).style.borderColor = 'var(--gray-a3)' }}
     >
       <Flex align="center" gap="3">
         <Avatar initials={template.initials} size={prominent ? 36 : 28} />
@@ -470,9 +508,10 @@ function PreviewBullet({ children }: { children: React.ReactNode }) {
   )
 }
 
-function StepProgress({ phase }: { phase: 'name' | 'apps' | 'review' }) {
-  const steps: Array<'name' | 'apps' | 'review'> = ['name', 'apps', 'review']
-  const labels: Record<typeof steps[number], string> = {
+function StepProgress({ phase }: { phase: WizardPhase }) {
+  const steps: WizardPhase[] = ['preview', 'name', 'apps', 'review']
+  const labels: Record<WizardPhase, string> = {
+    preview: 'Overview',
     name: 'Name',
     apps: 'Apps',
     review: 'Review',
@@ -620,16 +659,12 @@ function AppsStep({
                   </Text>
                 </Box>
                 {connected ? (
-                  <Flex gap="2" align="center">
-                    <Badge color="green" variant="soft" radius="full" size="1">
-                      <IconCheck className="ic ic--sm" /> Connected
-                    </Badge>
-                    <Button variant="ghost" color="gray" size="1" onClick={() => onToggle(prefix)}>
-                      Disconnect
-                    </Button>
-                  </Flex>
+                  <Button variant="soft" color="gray" size="2" onClick={() => onToggle(prefix)}>
+                    <IconCheck className="ic ic--sm" />
+                    Disconnect
+                  </Button>
                 ) : (
-                  <Button onClick={() => onToggle(prefix)}>
+                  <Button size="2" onClick={() => onToggle(prefix)}>
                     Connect
                   </Button>
                 )}
@@ -761,28 +796,35 @@ function ReviewStep({
           </Banner>
         )}
 
-        <details className="card" style={{ padding: '14px 18px' }}>
-          <summary style={{ cursor: 'pointer', listStyle: 'none' }}>
-            <Flex align="center" justify="between">
+        <div className="card">
+          <Box p="4">
+            <Text as="div" size="2" weight="medium" mb="2">
+              Brief: what {name.trim() || template.defaultName} should do
+            </Text>
+            <TextAreaField
+              value={instructions}
+              onChange={e => onInstructions(e.target.value)}
+              placeholder={template.defaultInstructions}
+              style={{ minHeight: 180 }}
+            />
+            <Text as="div" size="1" color="gray" mt="1">
+              The brief your agent follows. Edit if you want a different tone or scope.
+            </Text>
+          </Box>
+        </div>
+
+        <details className="card advanced-toggle" style={{ padding: '14px 18px' }}>
+          <summary className="advanced-toggle__summary">
+            <Flex align="center" justify="between" gap="3">
               <Text as="span" size="2" weight="medium">Advanced settings</Text>
-              <Text as="span" size="1" color="gray">brief, model, creativity, response length</Text>
+              <Flex align="center" justify="end" gap="2" wrap="wrap">
+                <Text as="span" size="1" color="gray">model, creativity, response length</Text>
+                <IconArrowRight className="advanced-toggle__chevron ic ic--sm" />
+              </Flex>
             </Flex>
           </summary>
           <Box mt="4">
             <Flex direction="column" gap="4">
-              <Box>
-                <Text as="div" size="2" weight="medium" mb="2">Brief</Text>
-                <TextAreaField
-                  value={instructions}
-                  onChange={e => onInstructions(e.target.value)}
-                  placeholder={template.defaultInstructions}
-                  style={{ minHeight: 180 }}
-                />
-                <Text as="div" size="1" color="gray" mt="1">
-                  The brief your agent follows. Edit if you want a different tone or scope.
-                </Text>
-              </Box>
-
               <Box>
                 <Text as="div" size="2" weight="medium" mb="2">Model</Text>
                 <SelectField
@@ -843,7 +885,14 @@ function ReviewStep({
           <IconArrowLeft className="ic ic--sm" /> Back
         </Button>
         <Button size="3" onClick={onHire} disabled={busy}>
-          {busy ? 'Hiring…' : <>Hire {name.trim() || template.defaultName}</>}
+          {busy ? (
+            <>
+              <Spinner size="1" />
+              Hiring…
+            </>
+          ) : (
+            <>Hire <span className="cta-name">{name.trim() || template.defaultName}</span></>
+          )}
         </Button>
       </Flex>
     </>

@@ -48,7 +48,7 @@ export const startAChatTour: Tour = {
       placement: 'bottom',
       title: 'You’re set',
       body:
-        'Replies stream in real time. The conversation is private to you and the agent — open a new chat any time you want a fresh thread.',
+        'Replies appear as the agent works. The conversation is private to you and the agent — start a new chat any time you want a clean conversation.',
     },
   ],
 }

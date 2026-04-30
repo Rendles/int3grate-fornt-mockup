@@ -58,7 +58,7 @@ export const sidebarTour: Tour = {
       target: '[data-tour="nav-settings"]',
       placement: 'right',
       title: 'Settings',
-      body: 'Workspace details, team members, history log. Admin-only — members won’t see this item.',
+      body: 'Workspace details, team members, and admin preferences. Admin-only — members won’t see this item.',
     },
     {
       id: 'footer',

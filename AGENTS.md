@@ -362,6 +362,8 @@ Game-style interactive walkthroughs: dim overlay, spotlight on a target element,
 
 **Status:** the engine is feature-complete. Tour copy is **stale** — selectors mostly still resolve, but step bodies reference removed UI (CommandBar, scope_type selects, etc.). Tour rebuild under new vocabulary is **deferred** by user decision. Don't auto-suggest tour rebuild work.
 
+Before adding or changing tours, read **`docs/tours-guide.md`**. It is the practical authoring guide for targets, scenarios, registry entries, and browser verification.
+
 #### Engine pieces
 
 - **`types.ts`** — `Tour` and `TourStep`. `target` is a CSS selector — **prefer `[data-tour="…"]` attributes** over class selectors.

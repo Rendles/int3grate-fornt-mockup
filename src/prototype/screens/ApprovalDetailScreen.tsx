@@ -7,10 +7,12 @@ import { statusLabel } from '../components/common/status-label'
 import { TextAreaField } from '../components/fields'
 import { Banner, LoadingList, NoAccessState } from '../components/states'
 import {
+  IconAgent,
   IconAlert,
   IconApproval,
   IconArrowLeft,
   IconArrowRight,
+  IconChat,
   IconCheck,
   IconLock,
   IconPlay,
@@ -141,10 +143,10 @@ export default function ApprovalDetailScreen({ approvalId }: { approvalId: strin
   const agentName = agent?.name ?? 'Agent'
   const actionVerb = prettifyRequestedAction(approval.requested_action)
 
-  const doDecide = async () => {
-    setReasonTouched(true)
-    if (!decision || !user) return
-    if (reasonRequired && reason.trim().length < 4) return
+  const doDecide = async (d: Decision, reasonText: string) => {
+    if (!user) return
+    const requiresReason = d === 'rejected'
+    if (requiresReason && reasonText.length < 4) return
 
     setBusy(true)
     setSaveError(null)
@@ -158,7 +160,7 @@ export default function ApprovalDetailScreen({ approvalId }: { approvalId: strin
         setBusy(false)
         return
       }
-      const ack = await api.decideApproval(approval.id, decision, reason.trim() || null, user.id)
+      const ack = await api.decideApproval(approval.id, d, reasonText || null, user.id)
       setResume(ack)
       setDecision(null)
       setReason('')
@@ -175,6 +177,12 @@ export default function ApprovalDetailScreen({ approvalId }: { approvalId: strin
     } finally {
       setBusy(false)
     }
+  }
+
+  const submitFromConfirmCard = () => {
+    setReasonTouched(true)
+    if (!decision) return
+    void doDecide(decision, reason.trim())
   }
 
   const cancelDecision = () => {
@@ -202,7 +210,32 @@ export default function ApprovalDetailScreen({ approvalId }: { approvalId: strin
               </>
             }
             title={<><Text as="span">{agentName} wants to </Text><em>{actionVerb.toLowerCase()}</em></>}
-            actions={<Status status={approval.status} />}
+            subtitle={
+              taskContext?.title ? (
+                <>In task: <Link to={`/tasks/${taskContext.id}`}>{taskContext.title}</Link></>
+              ) : undefined
+            }
+            actions={
+              <>
+                {agent && (
+                  <Button asChild size="1" variant="ghost" color="gray">
+                    <Link to={`/agents/${agent.id}`}>
+                      <IconAgent className="ic ic--sm" />
+                      View agent
+                    </Link>
+                  </Button>
+                )}
+                {agent && (
+                  <Button asChild size="1" variant="ghost" color="gray">
+                    <Link to={`/agents/${agent.id}/talk`}>
+                      <IconChat className="ic ic--sm" />
+                      Open chat
+                    </Link>
+                  </Button>
+                )}
+                <Status status={approval.status} />
+              </>
+            }
           />
         </div>
 
@@ -236,8 +269,10 @@ export default function ApprovalDetailScreen({ approvalId }: { approvalId: strin
               approval={approval}
               run={runContext}
               agentName={agentName}
+              busy={busy}
               onApprove={() => setDecision('approved')}
               onReject={() => setDecision('rejected')}
+              onQuickApprove={() => doDecide('approved', '')}
             />
           </div>
         )}
@@ -256,7 +291,7 @@ export default function ApprovalDetailScreen({ approvalId }: { approvalId: strin
             onChangeReason={v => { setReason(v); setReasonTouched(true) }}
             onBlurReason={() => setReasonTouched(true)}
             onCancel={cancelDecision}
-            onConfirm={doDecide}
+            onConfirm={submitFromConfirmCard}
           />
         )}
 
@@ -265,9 +300,9 @@ export default function ApprovalDetailScreen({ approvalId }: { approvalId: strin
           <ResolvedCard approval={approval} approverName={userName(approval.approver_user_id)} />
         )}
 
-        {/* What the agent did before pausing — collapsible */}
+        {/* What the agent did so far — inline, always visible */}
         <div data-tour="approval-evidence">
-          <PriorActivityAccordion run={runContext} task={taskContext} />
+          <PriorActivitySection run={runContext} />
         </div>
 
         {/* Backend metadata + raw evidence — collapsible */}
@@ -286,14 +321,18 @@ function ReviewCard({
   approval,
   run,
   agentName,
+  busy,
   onApprove,
   onReject,
+  onQuickApprove,
 }: {
   approval: ApprovalRequest
   run: RunDetail | null
   agentName: string
+  busy: boolean
   onApprove: () => void
   onReject: () => void
+  onQuickApprove: () => void
 }) {
   const policyReason = useMemo(() => {
     if (!run) return null
@@ -314,7 +353,22 @@ function ReviewCard({
 
   return (
     <div className="card" style={{ borderColor: 'var(--amber-a6)' }}>
-      <div className="card__body" style={{ padding: '24px 24px 8px' }}>
+      <Flex justify="end" px="4" pt="3">
+        <Button
+          size="1"
+          variant="ghost"
+          color="green"
+          onClick={onQuickApprove}
+          disabled={busy}
+          title="Approve without adding a reason"
+          aria-label="Quick approve — submit without adding a reason"
+          style={{ minHeight: 24 }}
+        >
+          <IconCheck className="ic ic--sm" />
+          Quick approve
+        </Button>
+      </Flex>
+      <div className="card__body" style={{ padding: '16px 24px 8px' }}>
         <Section title="Why approval is needed">
           <Text as="p" size="2" style={{ lineHeight: 1.6 }}>
             {policyReason ?? `This kind of action is set to require your approval before ${agentName} can run it.`}
@@ -655,12 +709,12 @@ function ResumeBanner({
   )
 }
 
-// ────────────────────────────────────────────── PriorActivityAccordion
-// What the agent has done so far on this task. Kept collapsed by
-// default — the supervisor doesn't need it to make the decision, but power
-// users sometimes want to see the lead-up.
+// ────────────────────────────────────────────── PriorActivitySection
+// What the agent has done so far on this task. Always visible (no accordion);
+// the parent task is surfaced in the page hero, so this section only renders
+// when there are real steps to show.
 
-function PriorActivityAccordion({ run, task }: { run: RunDetail | null; task: Task | null }) {
+function PriorActivitySection({ run }: { run: RunDetail | null }) {
   const leadingSteps = useMemo(
     () =>
       (run?.steps ?? []).filter(
@@ -668,24 +722,20 @@ function PriorActivityAccordion({ run, task }: { run: RunDetail | null; task: Ta
       ),
     [run],
   )
-  if (leadingSteps.length === 0 && !task) return null
+  if (leadingSteps.length === 0) return null
   return (
     <Box mt="5">
-      <details className="card" style={{ padding: '14px 18px' }}>
-        <Flex asChild align="center" justify="between">
-          <summary style={{ cursor: 'pointer', listStyle: 'none' }}>
-            <Text as="span" size="2" weight="medium">What the agent did before pausing</Text>
-            <Text as="span" size="1" color="gray">
-              {leadingSteps.length} step{leadingSteps.length === 1 ? '' : 's'}
-            </Text>
-          </summary>
+      <div className="card" style={{ padding: '14px 18px' }}>
+        <Flex align="center" justify="between" mb="3">
+          <Text as="span" size="2" weight="medium">What the agent did so far</Text>
+          <Text as="span" size="1" color="gray">
+            {leadingSteps.length} step{leadingSteps.length === 1 ? '' : 's'}
+          </Text>
         </Flex>
-        <Box mt="3">
-          <Flex direction="column" gap="2">
-            {leadingSteps.map(s => <StepLine key={s.id} step={s} />)}
-          </Flex>
-        </Box>
-      </details>
+        <Flex direction="column" gap="2">
+          {leadingSteps.map(s => <StepLine key={s.id} step={s} />)}
+        </Flex>
+      </div>
     </Box>
   )
 }

@@ -3,6 +3,7 @@ import { sidebarTour } from './sidebar-tour'
 import { approvalReviewTour } from './approval-review-tour'
 import { startAChatTour } from './start-a-chat-tour'
 import { configureToolGrantsTour } from './configure-tool-grants-tour'
+import { hireAnAgentTour } from './hire-an-agent-tour'
 
 /**
  * Single source of truth for "what tours exist". Consumed by the Learning
@@ -31,7 +32,7 @@ export const TOURS: TourEntry[] = [
     tour: sidebarTour,
     audience: 'all',
     group: 'getting-started',
-    description: 'Quick tour of the sidebar nav and what each section is for.',
+    description: 'Quick tour of the main menu and what each section is for.',
     durationLabel: '~2 min · 9 steps',
     scenarioId: null,
   },
@@ -49,9 +50,18 @@ export const TOURS: TourEntry[] = [
     audience: 'all',
     group: 'getting-started',
     description:
-      'Learn how to choose an active agent, confirm its version and model, then open a new chat.',
+      'Learn how to choose an active agent, open their Talk area, and start a new chat.',
     durationLabel: '~2 min · 5 steps',
     scenarioId: 'start-a-chat',
+  },
+  {
+    tour: hireAnAgentTour,
+    audience: 'domain_admin',
+    group: 'getting-started',
+    description:
+      'Learn how to choose a starter role and understand what happens before an agent joins your team.',
+    durationLabel: '~2 min · 5 steps',
+    scenarioId: null,
   },
   {
     tour: configureToolGrantsTour,

@@ -12,7 +12,7 @@ import type { Role } from '../lib/types'
 
 const GROUPS: { id: TourGroup; label: string }[] = [
   { id: 'getting-started', label: 'Getting started' },
-  { id: 'core-workflows', label: 'Core workflows' },
+  { id: 'core-workflows', label: 'Key moments' },
   { id: 'admin-setup', label: 'Admin setup' },
 ]
 
