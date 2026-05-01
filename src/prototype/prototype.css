@@ -266,6 +266,15 @@
   display: flex;
   flex-direction: column;
 }
+/* Subtle hover highlight for clickable list rows (Activity, etc.).
+   Apply via the .card--hover modifier — generic .card stays inert. */
+.card--hover {
+  transition: background 120ms ease, border-color 120ms ease;
+}
+.card--hover:hover {
+  background: var(--gray-a3);
+  border-color: var(--gray-a6);
+}
 .card__head {
   padding: 14px 18px;
   display: flex;

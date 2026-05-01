@@ -10,15 +10,19 @@ import logo from '../../assets/logo.svg'
 import {
   IconAgent,
   IconApproval,
+  // IconAudit — restore when re-enabling the Audit nav item below.
+  // IconAudit,
   IconHelp,
   IconHome,
   IconLogout,
   IconMoon,
   IconRun,
-  IconSettings,
+  // IconSettings — restore when re-enabling Settings nav item below.
+  // IconSettings,
   IconSpend,
   IconSun,
-  IconTool,
+  // IconTool — restore when re-enabling Apps nav item below.
+  // IconTool,
 } from './icons'
 import { Avatar } from './common'
 import { roleLabel } from '../lib/format'
@@ -41,7 +45,8 @@ export function Sidebar() {
     api.listApprovals({ status: 'pending' }).then(list => setPendingApprovals(list.total))
   }, [])
 
-  const isAdmin = user?.role === 'admin' || user?.role === 'domain_admin'
+  // Restore when re-enabling any admin-only nav item below (Settings / Audit).
+  // const isAdmin = user?.role === 'admin' || user?.role === 'domain_admin'
   const items: NavItem[] = [
     { key: 'home', label: 'Home', to: '/', icon: <IconHome /> },
     {
@@ -53,11 +58,25 @@ export function Sidebar() {
     },
     { key: 'activity', label: 'Activity', to: '/activity', icon: <IconRun /> },
     { key: 'assistants', label: 'Team', to: '/agents', icon: <IconAgent /> },
-    { key: 'apps', label: 'Apps', to: '/apps', icon: <IconTool /> },
+    // Apps nav item hidden in MVP — per-agent permissions cover the same need.
+    // See docs/handoff-prep.md (Apps hide entry). Restore together with the
+    // /apps route in index.tsx when re-enabling.
+    // { key: 'apps', label: 'Apps', to: '/apps', icon: <IconTool /> },
     { key: 'costs', label: 'Costs', to: '/costs', icon: <IconSpend /> },
-    ...(isAdmin
-      ? [{ key: 'settings', label: 'Settings', to: '/settings', icon: <IconSettings /> } as NavItem]
-      : []),
+    // Settings is hidden in MVP; the Audit log was extracted into its own
+    // top-level admin route. See docs/handoff-prep.md (Settings hide entry).
+    // Restore this nav item together with the /settings/* routes in
+    // index.tsx when re-enabling.
+    // ...(isAdmin
+    //   ? [{ key: 'settings', label: 'Settings', to: '/settings', icon: <IconSettings /> } as NavItem]
+    //   : []),
+    // Audit nav item rolled back into Activity (no toggle, single grouped
+    // view). The /audit route is commented out in index.tsx; AuditScreen
+    // file is preserved. Restore this nav item if a separate compliance
+    // surface is needed again.
+    // ...(isAdmin
+    //   ? [{ key: 'audit', label: 'Audit', to: '/audit', icon: <IconAudit /> } as NavItem]
+    //   : []),
   ]
 
   const isActive = (to: string) => {

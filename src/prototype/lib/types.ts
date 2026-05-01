@@ -147,41 +147,6 @@ export interface GrantsSnapshot {
   issued_at: string
 }
 
-// ─────────────────────────────────────────────── Task (MVP-deferred per ADR-0003)
-
-export type TaskType = 'chat' | 'one_time' | 'schedule'
-export type TaskStatus = 'pending' | 'running' | 'completed' | 'failed' | 'cancelled'
-
-export interface Task {
-  id: string
-  tenant_id: string
-  domain_id: string | null
-  type: TaskType
-  status: TaskStatus
-  created_by: string | null
-  assigned_agent_id: string | null
-  assigned_agent_version_id: string | null
-  title: string | null
-  created_at: string
-  updated_at: string
-}
-
-// MVP-deferred (ADR-0003) — body for POST /tasks.
-export interface CreateTaskRequest {
-  agent_id: string
-  user_input: string
-  type?: TaskType
-  title?: string
-  domain_id?: string
-}
-
-export interface TaskList {
-  items: Task[]
-  total: number
-  limit?: number
-  offset?: number
-}
-
 // ─────────────────────────────────────────────── Run
 
 export type RunStatus =

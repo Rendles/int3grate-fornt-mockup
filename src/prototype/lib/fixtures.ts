@@ -14,7 +14,6 @@ import type {
   SpendGroupBy,
   SpendRange,
   SpendRow,
-  Task,
   ToolDefinition,
   ToolGrant,
   User,
@@ -120,7 +119,7 @@ export const agentVersions: AgentVersion[] = [
       'You are an Access Provisioner. Onboard and offboard SaaS accounts per role template.',
     memory_scope_config: defaultMemoryScope(),
     tool_scope_config: defaultToolScope(),
-    approval_rules: { rules: [{ id: 'rule_ap_1', when: 'aws.revoke_user', required_approver_level: 4 }] },
+    approval_rules: { rules: [] },
     model_chain_config: defaultModelChain('claude-opus-4-7'),
     is_active: true,
     created_by: 'usr_ada',
@@ -277,16 +276,6 @@ function grant(
 
 export const grantsByAgent: Record<string, ToolGrant[]> = {
   agt_lead_qualifier: [
-    // Tenant-wide grant inherited by every agent on this tenant.
-    {
-      id: 'grt_tenant_memory',
-      scope_type: 'tenant',
-      scope_id: 'ten_acme',
-      tool_name: 'memory.read',
-      mode: 'read',
-      approval_required: false,
-      config: {},
-    },
     // Domain-wide grant shared by all sales-domain agents.
     {
       id: 'grt_domain_sales_crm',
@@ -300,7 +289,6 @@ export const grantsByAgent: Record<string, ToolGrant[]> = {
     grant('grt_lq_2', 'agt_lead_qualifier', 'zoho_crm.write_deal', 'write', false),
     grant('grt_lq_3', 'agt_lead_qualifier', 'apollo.enrich_contact', 'read', false),
     grant('grt_lq_4', 'agt_lead_qualifier', 'email.send', 'write', true, { max_per_day: 50 }),
-    grant('grt_lq_5', 'agt_lead_qualifier', 'memory.write', 'write', false),
   ],
   agt_refund_resolver: [
     grant('grt_rr_1', 'agt_refund_resolver', 'stripe.read_charge', 'read', false),
@@ -313,7 +301,6 @@ export const grantsByAgent: Record<string, ToolGrant[]> = {
   agt_access_provisioner: [
     grant('grt_ap_1', 'agt_access_provisioner', 'okta.create_user', 'write', true),
     grant('grt_ap_2', 'agt_access_provisioner', 'okta.read_user', 'read', false),
-    grant('grt_ap_3', 'agt_access_provisioner', 'aws.revoke_user', 'write', true),
     grant('grt_ap_4', 'agt_access_provisioner', 'hris.read_employee', 'read', false),
   ],
   agt_invoice_reconciler: [
@@ -435,18 +422,6 @@ export const fxTools: ToolDefinition[] = [
     },
   },
   {
-    name: 'aws.revoke_user',
-    description: 'Detach all attached IAM policies from a user and disable console access.',
-    default_mode: 'denied',
-    input_schema: {
-      type: 'object',
-      required: ['iam_user'],
-      properties: {
-        iam_user: { type: 'string' },
-      },
-    },
-  },
-  {
     name: 'irs.verify_ein',
     description: 'Verify a US Employer Identification Number against the IRS TIN match service.',
     default_mode: 'read_only',
@@ -512,158 +487,6 @@ export const fxTools: ToolDefinition[] = [
       },
     },
   },
-]
-
-// ══════════════════════════════════════════════════ TASKS
-
-function task(p: {
-  id: string
-  domain: string
-  type: Task['type']
-  status: Task['status']
-  created_by: string
-  agent: string
-  version: string
-  title: string
-  created_minutes_ago?: number
-  updated_minutes_ago?: number
-}): Task {
-  return {
-    id: p.id,
-    tenant_id: 'ten_acme',
-    domain_id: p.domain,
-    type: p.type,
-    status: p.status,
-    created_by: p.created_by,
-    assigned_agent_id: p.agent,
-    assigned_agent_version_id: p.version,
-    title: p.title,
-    created_at: mins(p.created_minutes_ago ?? 60),
-    updated_at: mins(p.updated_minutes_ago ?? 10),
-  }
-}
-
-export const tasks: Task[] = [
-  task({
-    id: 'tsk_4081',
-    domain: 'dom_support',
-    type: 'one_time',
-    status: 'running',
-    created_by: 'usr_priya',
-    agent: 'agt_refund_resolver',
-    version: 'ver_rr_08',
-    title: 'Refund #SR-2204 — Eliza Voss',
-    created_minutes_ago: 12,
-    updated_minutes_ago: 1,
-  }),
-  task({
-    id: 'tsk_4080',
-    domain: 'dom_sales',
-    type: 'one_time',
-    status: 'running',
-    created_by: 'usr_marcelo',
-    agent: 'agt_lead_qualifier',
-    version: 'ver_lq_14',
-    title: 'Triage batch · inbound forms 10:00–11:00',
-    created_minutes_ago: 8,
-    updated_minutes_ago: 2,
-  }),
-  task({
-    id: 'tsk_4079',
-    domain: 'dom_hq',
-    type: 'one_time',
-    status: 'completed',
-    created_by: 'usr_ada',
-    agent: 'agt_invoice_reconciler',
-    version: 'ver_ir_05',
-    title: 'Reconcile Oct batch · 38 invoices',
-    created_minutes_ago: 120,
-    updated_minutes_ago: 60,
-  }),
-  task({
-    id: 'tsk_4077',
-    domain: 'dom_hq',
-    type: 'one_time',
-    status: 'running',
-    created_by: 'usr_ada',
-    agent: 'agt_access_provisioner',
-    version: 'ver_ap_02',
-    title: 'Offboard L.Chu — revoke all access',
-    created_minutes_ago: 300,
-    updated_minutes_ago: 240,
-  }),
-  task({
-    id: 'tsk_4076',
-    domain: 'dom_hq',
-    type: 'one_time',
-    status: 'failed',
-    created_by: 'usr_ada',
-    agent: 'agt_invoice_reconciler',
-    version: 'ver_ir_05',
-    title: 'Vendor onboarding — Fieldston Partners',
-    created_minutes_ago: 360,
-    updated_minutes_ago: 300,
-  }),
-  task({
-    id: 'tsk_4074',
-    domain: 'dom_support',
-    type: 'one_time',
-    status: 'completed',
-    created_by: 'usr_priya',
-    agent: 'agt_refund_resolver',
-    version: 'ver_rr_08',
-    title: 'Refund #SR-2201 — $89 broken in transit',
-    created_minutes_ago: 420,
-    updated_minutes_ago: 360,
-  }),
-  task({
-    id: 'tsk_4070',
-    domain: 'dom_sales',
-    type: 'schedule',
-    status: 'pending',
-    created_by: 'usr_marcelo',
-    agent: 'agt_lead_qualifier',
-    version: 'ver_lq_14',
-    title: 'Rescore stalled leads · daily 08:00',
-    created_minutes_ago: 1440,
-    updated_minutes_ago: 1440,
-  }),
-  task({
-    id: 'tsk_4068',
-    domain: 'dom_support',
-    type: 'schedule',
-    status: 'pending',
-    created_by: 'usr_priya',
-    agent: 'agt_kb_sync',
-    version: 'ver_kb_03',
-    title: 'Nightly KB diff · 03:00 UTC',
-    created_minutes_ago: 4320,
-    updated_minutes_ago: 4320,
-  }),
-  task({
-    id: 'tsk_4075',
-    domain: 'dom_support',
-    type: 'chat',
-    status: 'running',
-    created_by: 'usr_priya',
-    agent: 'agt_refund_resolver',
-    version: 'ver_rr_08',
-    title: 'Chat · customer follow-up on SR-2197',
-    created_minutes_ago: 18,
-    updated_minutes_ago: 3,
-  }),
-  task({
-    id: 'tsk_4071',
-    domain: 'dom_hq',
-    type: 'one_time',
-    status: 'cancelled',
-    created_by: 'usr_ada',
-    agent: 'agt_access_provisioner',
-    version: 'ver_ap_02',
-    title: 'Offboard V.Ramos — cancelled (employee re-hired)',
-    created_minutes_ago: 2880,
-    updated_minutes_ago: 2600,
-  }),
 ]
 
 // ══════════════════════════════════════════════════ RUN STEPS / RUNS
@@ -1313,6 +1136,50 @@ export const runs: Record<string, Run> = {
   },
 }
 
+// ──────────────────────────────────────────────────────────────────────
+// Synthetic backfill so the Activity timeline has enough entries for
+// pagination / scroll testing. Deterministic (no Math.random — i-based)
+// so subsequent renders see stable values. Agent versions / statuses /
+// timestamps cycle through realistic combinations.
+const GEN_AGENT_VERSIONS: string[] = ['ver_lq_14', 'ver_rr_08', 'ver_kb_03', 'ver_id_05', 'ver_ap_02', 'ver_cd_01']
+const GEN_STATUSES: Run['status'][] = [
+  'completed', 'completed', 'completed', 'completed', 'completed',
+  'completed_with_errors',
+  'failed',
+  'suspended',
+  'cancelled',
+  'running',
+]
+
+for (let i = 1; i <= 80; i++) {
+  // Spread entries across last ~30 days; tighter clustering near today.
+  const minutesAgo = 25 + i * 35 + Math.floor(i / 8) * 240
+  const status = GEN_STATUSES[i % GEN_STATUSES.length]!
+  const ver = GEN_AGENT_VERSIONS[i % GEN_AGENT_VERSIONS.length]!
+  const isTerminal = status === 'completed'
+    || status === 'completed_with_errors'
+    || status === 'failed'
+    || status === 'cancelled'
+  const id = `run_gen_${i.toString().padStart(4, '0')}`
+  runs[id] = {
+    id,
+    tenant_id: 'ten_acme',
+    domain_id: null,
+    task_id: null,
+    agent_version_id: ver,
+    status,
+    suspended_stage: status === 'suspended' ? 'approval_gate · email.send' : null,
+    started_at: status === 'pending' ? null : mins(minutesAgo),
+    ended_at: isTerminal ? mins(Math.max(1, minutesAgo - 4 - (i % 7))) : null,
+    total_cost_usd: ((i * 7) % 47 + 1) / 100,
+    total_tokens_in: 500 + (i * 137) % 5000,
+    total_tokens_out: 100 + (i * 53) % 1000,
+    error_message: status === 'failed' ? 'Tool call timed out after 30s' : null,
+    created_at: mins(minutesAgo),
+    steps: [],
+  }
+}
+
 // ══════════════════════════════════════════════════ APPROVALS
 
 export const approvals: ApprovalRequest[] = [
@@ -1337,28 +1204,6 @@ export const approvals: ApprovalRequest[] = [
     expires_at: future(230),
     resolved_at: null,
     created_at: mins(9),
-  },
-  {
-    id: 'apv_9022',
-    run_id: 'run_4077',
-    task_id: 'tsk_4077',
-    tenant_id: 'ten_acme',
-    requested_action: 'aws.revoke_user · IAM user lchu@acme (12 attached policies)',
-    requested_by: 'usr_ada',
-    requested_by_name: 'Ada Fernsby',
-    approver_role: 'admin',
-    approver_user_id: null,
-    status: 'pending',
-    reason: null,
-    evidence_ref: {
-      iam_user: 'lchu@acme',
-      attached_policies: 12,
-      active_sessions: 0,
-      last_login: '8 days ago',
-    },
-    expires_at: future(120),
-    resolved_at: null,
-    created_at: hrs(4),
   },
   // Approval for a standalone run (task_id is null per ADR-0003).
   {
@@ -1454,23 +1299,6 @@ export const approvals: ApprovalRequest[] = [
     expires_at: days(4),
     resolved_at: null,
     created_at: days(5),
-  },
-  {
-    id: 'apv_9001',
-    run_id: 'run_4078',
-    task_id: 'tsk_4071',
-    tenant_id: 'ten_acme',
-    requested_action: 'aws.revoke_user · IAM user vramos@acme (offboarding)',
-    requested_by: 'usr_ada',
-    requested_by_name: 'Ada Fernsby',
-    approver_role: 'admin',
-    approver_user_id: null,
-    status: 'cancelled',
-    reason: 'Cancelled — employee re-hired before offboarding completed.',
-    evidence_ref: { iam_user: 'vramos@acme', attached_policies: 8 },
-    expires_at: hrs(47),
-    resolved_at: hrs(47.8),
-    created_at: hrs(48),
   },
 ]
 

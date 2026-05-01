@@ -40,25 +40,11 @@ export const sidebarTour: Tour = {
       body: 'Hire, train, and monitor your agents here. Each agent has its own setup, app permissions, and approval rules.',
     },
     {
-      id: 'apps',
-      target: '[data-tour="nav-apps"]',
-      placement: 'right',
-      title: 'Apps',
-      body: 'Connected services your agents can access. Manage which apps each agent is permitted to use.',
-    },
-    {
       id: 'costs',
       target: '[data-tour="nav-costs"]',
       placement: 'right',
       title: 'Costs',
       body: 'What your agents are spending. See the trend, top spenders, and break it down by agent.',
-    },
-    {
-      id: 'settings',
-      target: '[data-tour="nav-settings"]',
-      placement: 'right',
-      title: 'Settings',
-      body: 'Workspace details, team members, and admin preferences. Admin-only — members won’t see this item.',
     },
     {
       id: 'footer',

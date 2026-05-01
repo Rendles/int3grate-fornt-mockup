@@ -2,7 +2,7 @@ import { useEffect, useMemo, useState } from 'react'
 import { Badge, Box, Button, Code, Flex, Text } from '@radix-ui/themes'
 
 import { AppShell } from '../components/shell'
-import { Caption, MockBadge, PageHeader, Status } from '../components/common'
+import { Caption, PageHeader, Status } from '../components/common'
 import { statusLabel } from '../components/common/status-label'
 import { TextAreaField } from '../components/fields'
 import { Banner, LoadingList, NoAccessState } from '../components/states'
@@ -30,10 +30,8 @@ import type {
   RunDetail,
   RunStatus,
   RunStep,
-  Task,
-  User,
 } from '../lib/types'
-import { absTime, ago, approverRoleLabel, humanKey, prettifyRequestedAction, shortRef, toolLabel } from '../lib/format'
+import { absTime, ago, approverRoleLabel, prettifyRequestedAction, shortRef, toolLabel } from '../lib/format'
 
 type Decision = 'approved' | 'rejected'
 
@@ -53,9 +51,7 @@ export default function ApprovalDetailScreen({ approvalId }: { approvalId: strin
   // Async resume (gateway v0.2.0): decision is queued, we poll approval + run.
   const [resume, setResume] = useState<ApprovalDecisionAccepted | null>(null)
   const [runAfter, setRunAfter] = useState<Run | null>(null)
-  const [users, setUsers] = useState<User[]>([])
   const [runContext, setRunContext] = useState<RunDetail | null>(null)
-  const [taskContext, setTaskContext] = useState<Task | null>(null)
   const [agents, setAgents] = useState<Agent[]>([])
 
   useEffect(() => {
@@ -73,18 +69,11 @@ export default function ApprovalDetailScreen({ approvalId }: { approvalId: strin
       }
       if (a) {
         api.getRun(a.run_id).then(r => { if (!cancelled && r) setRunContext(r) })
-        if (a.task_id) {
-          api.getTask(a.task_id).then(t => { if (!cancelled && t) setTaskContext(t) })
-        }
       }
     })
-    api.listUsers().then(u => { if (!cancelled) setUsers(u) })
     api.listAgents().then(res => { if (!cancelled) setAgents(res.items) })
     return () => { cancelled = true }
   }, [approvalId, search])
-
-  const userName = (id: string | null | undefined) =>
-    (id && users.find(u => u.id === id)?.name) || null
 
   // Polling: after 202-ack, wait for approval to flip, then run terminal.
   useEffect(() => {
@@ -203,41 +192,28 @@ export default function ApprovalDetailScreen({ approvalId }: { approvalId: strin
       <div className="page page--narrow">
         <div data-tour="approval-action">
           <PageHeader
-            eyebrow={
-              <>
-                APPROVAL REQUEST{' '}
-                <MockBadge kind="design" hint="GET /approvals/{id} isn't in the gateway spec yet — single-fetch is mocked locally. The list endpoint is real." />
-              </>
-            }
+            eyebrow="APPROVAL REQUEST"
             title={<><Text as="span">{agentName} wants to </Text><em>{actionVerb.toLowerCase()}</em></>}
-            subtitle={
-              taskContext?.title ? (
-                <>In task: <Link to={`/tasks/${taskContext.id}`}>{taskContext.title}</Link></>
-              ) : undefined
-            }
-            actions={
-              <>
-                {agent && (
-                  <Button asChild size="1" variant="ghost" color="gray">
-                    <Link to={`/agents/${agent.id}`}>
-                      <IconAgent className="ic ic--sm" />
-                      View agent
-                    </Link>
-                  </Button>
-                )}
-                {agent && (
-                  <Button asChild size="1" variant="ghost" color="gray">
-                    <Link to={`/agents/${agent.id}/talk`}>
-                      <IconChat className="ic ic--sm" />
-                      Open chat
-                    </Link>
-                  </Button>
-                )}
-                <Status status={approval.status} />
-              </>
-            }
+            actions={<Status status={approval.status} />}
           />
         </div>
+
+        {agent && (
+          <Flex gap="2" wrap="wrap" mt="3" mb="4">
+            <Button asChild variant="soft" color="gray" size="2">
+              <Link to={`/agents/${agent.id}`}>
+                <IconAgent className="ic ic--sm" />
+                View agent
+              </Link>
+            </Button>
+            <Button asChild variant="soft" color="gray" size="2">
+              <Link to={`/agents/${agent.id}/talk`}>
+                <IconChat className="ic ic--sm" />
+                Open chat
+              </Link>
+            </Button>
+          </Flex>
+        )}
 
         {conflict && (
           <>
@@ -246,10 +222,8 @@ export default function ApprovalDetailScreen({ approvalId }: { approvalId: strin
               title={`Already ${conflict.status}`}
               action={<Button variant="ghost" onClick={() => setConflict(null)}>Dismiss</Button>}
             >
-              Another approver decided this while you were reviewing.
-              {conflict.approver_user_id && (
-                <> Decided by <strong>{userName(conflict.approver_user_id) ?? '—'}</strong> at {absTime(conflict.resolved_at)}.</>
-              )}
+              Another approver decided this while you were reviewing
+              {conflict.resolved_at && <> at {absTime(conflict.resolved_at)}</>}.
             </Banner>
             <Box mt="4" />
           </>
@@ -295,27 +269,25 @@ export default function ApprovalDetailScreen({ approvalId }: { approvalId: strin
           />
         )}
 
-        {/* Resolved state */}
+        {/* Resolved state · ReviewCard isn't rendered here, so the
+            agent-step list comes back as a sibling card. */}
         {approval.status !== 'pending' && !conflict && (
-          <ResolvedCard approval={approval} approverName={userName(approval.approver_user_id)} />
+          <>
+            <ResolvedCard approval={approval} />
+            <PriorActivitySection run={runContext} />
+          </>
         )}
 
-        {/* What the agent did so far — inline, always visible */}
-        <div data-tour="approval-evidence">
-          <PriorActivitySection run={runContext} />
-        </div>
-
         {/* Backend metadata + raw evidence — collapsible */}
-        <TechnicalDetailsAccordion approval={approval} userName={userName} />
+        <TechnicalDetailsAccordion approval={approval} />
       </div>
     </AppShell>
   )
 }
 
 // ────────────────────────────────────────────── ReviewCard
-// Plan section 7.2 — the main "supervisor decision" panel. Structured copy
-// (Why / What to check / What happens if approve / What happens if reject)
-// and two big primary buttons: "Approve action" / "Reject action".
+// The supervisor's decision panel. Shows what the agent has done so far,
+// the consequences of approving / rejecting, and the action buttons.
 
 function ReviewCard({
   approval,
@@ -334,22 +306,7 @@ function ReviewCard({
   onReject: () => void
   onQuickApprove: () => void
 }) {
-  const policyReason = useMemo(() => {
-    if (!run) return null
-    for (let i = run.steps.length - 1; i >= 0; i--) {
-      const s = run.steps[i]
-      if (s.step_type !== 'validation') continue
-      const out = s.output_ref as { verdict?: string; reason?: string } | null
-      if (out?.verdict === 'approval_required' && typeof out.reason === 'string') {
-        return out.reason
-      }
-    }
-    return null
-  }, [run])
-
-  const evidenceEntries = approval.evidence_ref
-    ? Object.entries(approval.evidence_ref).filter(([, v]) => v != null)
-    : []
+  const hasLeadingSteps = getLeadingSteps(run).length > 0
 
   return (
     <div className="card" style={{ borderColor: 'var(--amber-a6)' }}>
@@ -369,31 +326,12 @@ function ReviewCard({
         </Button>
       </Flex>
       <div className="card__body" style={{ padding: '16px 24px 8px' }}>
-        <Section title="Why approval is needed">
-          <Text as="p" size="2" style={{ lineHeight: 1.6 }}>
-            {policyReason ?? `This kind of action is set to require your approval before ${agentName} can run it.`}
-          </Text>
-        </Section>
-
-        {evidenceEntries.length > 0 && (
-          <Section title="What you should check">
-            <Flex direction="column" gap="2">
-              {evidenceEntries.map(([k, v]) => (
-                <Flex
-                  key={k}
-                  align="start"
-                  gap="3"
-                  py="2"
-                  style={{ borderTop: '1px dashed var(--gray-a3)' }}
-                >
-                  <Text size="2" color="gray" style={{ flex: '0 0 35%' }}>{humanKey(k)}</Text>
-                  <Box style={{ flex: '1 1 auto', minWidth: 0 }}>
-                    <FactValue value={v} />
-                  </Box>
-                </Flex>
-              ))}
-            </Flex>
-          </Section>
+        {hasLeadingSteps && (
+          <div data-tour="approval-evidence">
+            <Section title="What the agent did so far">
+              <AgentStepsList run={run} />
+            </Section>
+          </div>
         )}
 
         <Section title="What happens if you approve">
@@ -470,19 +408,6 @@ function Section({ title, children }: { title: string; children: React.ReactNode
       </Text>
       {children}
     </Box>
-  )
-}
-
-function FactValue({ value }: { value: unknown }) {
-  if (typeof value === 'boolean') return <Text size="2">{value ? 'Yes' : 'No'}</Text>
-  if (typeof value === 'number') return <Text size="2">{value.toLocaleString('en-US')}</Text>
-  if (typeof value === 'string') {
-    return <Text size="2" style={{ wordBreak: 'break-word', whiteSpace: 'pre-wrap' }}>{value}</Text>
-  }
-  return (
-    <Code variant="ghost" size="1" style={{ whiteSpace: 'pre-wrap' }}>
-      {JSON.stringify(value)}
-    </Code>
   )
 }
 
@@ -586,7 +511,7 @@ function DecisionConfirmCard({
 // ────────────────────────────────────────────── ResolvedCard
 // Already-decided approvals just show the outcome inline.
 
-function ResolvedCard({ approval, approverName }: { approval: ApprovalRequest; approverName: string | null }) {
+function ResolvedCard({ approval }: { approval: ApprovalRequest }) {
   const toneColor =
     approval.status === 'approved' ? 'var(--green-11)' :
     approval.status === 'rejected' ? 'var(--red-11)' :
@@ -617,11 +542,6 @@ function ResolvedCard({ approval, approverName }: { approval: ApprovalRequest; a
             <Text as="div" size="6" style={{ color: toneColor }}>
               {statusLabel(approval.status)}
             </Text>
-            {approverName && (
-              <Text as="div" size="1" color="gray" mt="1">
-                by {approverName}
-              </Text>
-            )}
             {approval.resolved_at && (
               <Text as="div" size="1" color="gray" mt="1">
                 {absTime(approval.resolved_at)}
@@ -714,27 +634,35 @@ function ResumeBanner({
 // the parent task is surfaced in the page hero, so this section only renders
 // when there are real steps to show.
 
-function PriorActivitySection({ run }: { run: RunDetail | null }) {
-  const leadingSteps = useMemo(
-    () =>
-      (run?.steps ?? []).filter(
-        s => s.step_type === 'tool_call' || s.step_type === 'validation' || s.step_type === 'llm_call',
-      ),
-    [run],
+function getLeadingSteps(run: RunDetail | null): RunStep[] {
+  return (run?.steps ?? []).filter(
+    s => s.step_type === 'tool_call' || s.step_type === 'validation' || s.step_type === 'llm_call',
   )
-  if (leadingSteps.length === 0) return null
+}
+
+function AgentStepsList({ run }: { run: RunDetail | null }) {
+  const steps = useMemo(() => getLeadingSteps(run), [run])
+  if (steps.length === 0) return null
+  return (
+    <Flex direction="column" gap="2">
+      {steps.map(s => <StepLine key={s.id} step={s} />)}
+    </Flex>
+  )
+}
+
+function PriorActivitySection({ run }: { run: RunDetail | null }) {
+  const steps = useMemo(() => getLeadingSteps(run), [run])
+  if (steps.length === 0) return null
   return (
     <Box mt="5">
       <div className="card" style={{ padding: '14px 18px' }}>
         <Flex align="center" justify="between" mb="3">
           <Text as="span" size="2" weight="medium">What the agent did so far</Text>
           <Text as="span" size="1" color="gray">
-            {leadingSteps.length} step{leadingSteps.length === 1 ? '' : 's'}
+            {steps.length} step{steps.length === 1 ? '' : 's'}
           </Text>
         </Flex>
-        <Flex direction="column" gap="2">
-          {leadingSteps.map(s => <StepLine key={s.id} step={s} />)}
-        </Flex>
+        <AgentStepsList run={run} />
       </div>
     </Box>
   )
@@ -839,10 +767,8 @@ function stepDetail(step: RunStep): string | null {
 
 function TechnicalDetailsAccordion({
   approval,
-  userName,
 }: {
   approval: ApprovalRequest
-  userName: (id: string | null | undefined) => string | null
 }) {
   return (
     <Box mt="3">
@@ -862,9 +788,6 @@ function TechnicalDetailsAccordion({
             )}
             <DetailRow label="Action key" value={approval.requested_action} />
             <DetailRow label="Approver role" value={approverRoleLabel(approval.approver_role)} />
-            {approval.approver_user_id && (
-              <DetailRow label="Approver" value={userName(approval.approver_user_id) ?? '—'} />
-            )}
             <DetailRow label="Created" value={absTime(approval.created_at)} />
             {approval.expires_at && <DetailRow label="Expires" value={absTime(approval.expires_at)} />}
             {approval.resolved_at && <DetailRow label="Resolved" value={absTime(approval.resolved_at)} />}

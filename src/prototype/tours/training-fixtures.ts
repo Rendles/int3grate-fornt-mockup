@@ -4,7 +4,6 @@ import type {
   ApprovalRequest,
   Chat,
   RunDetail,
-  Task,
   ToolGrant,
   User,
 } from '../lib/types'
@@ -25,7 +24,6 @@ export interface TrainingScenario {
   chats: Chat[]
   approvals: ApprovalRequest[]
   runs: RunDetail[]
-  tasks: Task[]
   grantsByAgent?: Record<string, ToolGrant[]>
 }
 
@@ -187,7 +185,6 @@ export const APPROVAL_REVIEW: TrainingScenario = {
     },
   ],
   chats: [],
-  tasks: [],
 }
 
 // ─────────────────────────────────────────────── start-a-chat scenario
@@ -288,7 +285,6 @@ export const START_A_CHAT: TrainingScenario = {
   approvals: [],
   runs: [],
   chats: [],
-  tasks: [],
 }
 
 // configure-tool-grants scenario
@@ -354,7 +350,6 @@ export const CONFIGURE_TOOL_GRANTS: TrainingScenario = {
   approvals: [],
   runs: [],
   chats: [],
-  tasks: [],
   grantsByAgent: {
     [CONFIGURE_GRANTS_AGENT_ID]: [
       {

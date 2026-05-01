@@ -7,40 +7,40 @@ import { ErrorState, LoadingList } from '../components/states'
 import { IconChat } from '../components/icons'
 import { useAuth } from '../auth'
 import { api } from '../lib/api'
-import type { Agent, ApprovalRequest, SpendDashboard, Task } from '../lib/types'
+import type { Agent, ApprovalRequest, RunListItem, SpendDashboard } from '../lib/types'
 import { AdminView } from './home/AdminView'
 
 export default function HomeScreen() {
   const { user } = useAuth()
 
-  const [tasks, setTasks] = useState<Task[] | null>(null)
   const [approvals, setApprovals] = useState<ApprovalRequest[] | null>(null)
   const [agents, setAgents] = useState<Agent[] | null>(null)
   const [spend, setSpend] = useState<SpendDashboard | null>(null)
+  const [recentRuns, setRecentRuns] = useState<RunListItem[] | null>(null)
   const [errored, setErrored] = useState(false)
   const [reloadKey, setReloadKey] = useState(0)
 
   useEffect(() => {
     let cancelled = false
     const run = async () => {
-      const [t, a, ag, s] = await Promise.all([
-        api.listTasks(),
+      const [a, ag, s, r] = await Promise.all([
         api.listApprovals(),
         api.listAgents(),
         api.getSpend('7d', 'agent'),
+        api.listRuns({ limit: 5 }),
       ])
       if (cancelled) return
       setErrored(false)
-      setTasks(t.items)
       setApprovals(a.items)
       setAgents(ag.items)
       setSpend(s)
+      setRecentRuns(r.items)
     }
     run().catch(() => { if (!cancelled) setErrored(true) })
     return () => { cancelled = true }
   }, [reloadKey])
 
-  const loading = !errored && (!tasks || !approvals || !agents || !spend)
+  const loading = !errored && (!approvals || !agents || !spend || !recentRuns)
 
   const nowDate = new Date()
 
@@ -48,15 +48,10 @@ export default function HomeScreen() {
     () => (approvals ?? []).filter(a => a.status === 'pending'),
     [approvals],
   )
-  const failedTasks = useMemo(
-    () => (tasks ?? []).filter(t => t.status === 'failed'),
-    [tasks],
-  )
   const activeAgents = useMemo(
     () => (agents ?? []).filter(a => a.status === 'active'),
     [agents],
   )
-  const recentTasks = useMemo(() => (tasks ?? []).slice(0, 6), [tasks])
 
   if (errored) {
     return (
@@ -94,10 +89,8 @@ export default function HomeScreen() {
           <AdminView
             agents={agents!}
             activeAgents={activeAgents}
-            tasks={tasks!}
-            failedTasks={failedTasks}
             pendingApprovals={pendingApprovals}
-            recentTasks={recentTasks}
+            recentRuns={recentRuns!}
             spend={spend!}
           />
         )}

@@ -1,8 +1,8 @@
-import { useMemo, useState } from 'react'
-import { Badge, Box, Button, Flex, Grid, Heading, Slider, Spinner, Text } from '@radix-ui/themes'
+import { useState } from 'react'
+import { Box, Button, Flex, Grid, Heading, Slider, Spinner, Text } from '@radix-ui/themes'
 
 import { AppShell } from '../components/shell'
-import { Avatar, Caption, MockBadge, PageHeader } from '../components/common'
+import { Avatar, Caption, PageHeader } from '../components/common'
 import { SelectField, TextAreaField, TextInput } from '../components/fields'
 import { Banner, NoAccessState } from '../components/states'
 import {
@@ -13,20 +13,19 @@ import {
   IconChat,
   IconHome,
 } from '../components/icons'
+import { GrantsForm, type GrantDraft } from '../components/grants-editor'
 import { useRouter } from '../router'
 import { useAuth } from '../auth'
 import { api } from '../lib/api'
 import type { Agent } from '../lib/types'
-import { appLabel, appPrefix, toolLabel } from '../lib/format'
 import {
   FEATURED_TEMPLATES,
   NON_FEATURED_TEMPLATES,
   type AssistantTemplate,
-  type TemplateGrant,
 } from '../lib/templates'
 
-type Phase = 'welcome' | 'preview' | 'name' | 'apps' | 'review' | 'success'
-type WizardPhase = Extract<Phase, 'preview' | 'name' | 'apps' | 'review'>
+type Phase = 'welcome' | 'name' | 'apps' | 'review' | 'success'
+type WizardPhase = Extract<Phase, 'name' | 'apps' | 'review'>
 
 const MODEL_OPTIONS = [
   { value: 'claude-opus-4-7', label: 'Claude Opus 4.7 — heavy reasoning' },
@@ -44,7 +43,11 @@ export default function AgentNewScreen() {
   const [phase, setPhase] = useState<Phase>('welcome')
   const [template, setTemplate] = useState<AssistantTemplate | null>(null)
   const [name, setName] = useState('')
-  const [connectedApps, setConnectedApps] = useState<Set<string>>(new Set())
+  // pickedGrants is the live draft the wizard collects across steps. Initialised
+  // from the chosen template's defaultGrants on pickTemplate; the user can
+  // tweak per-tool levels and add/remove rows in step 2 ("Allow access").
+  // Flushed via api.setGrants on Hire (after createAgent + activateVersion).
+  const [pickedGrants, setPickedGrants] = useState<GrantDraft[]>([])
   const [showAllRoles, setShowAllRoles] = useState(false)
 
   // Advanced settings (initialised when template is picked).
@@ -57,13 +60,6 @@ export default function AgentNewScreen() {
   const [busy, setBusy] = useState(false)
   const [hireError, setHireError] = useState<string | null>(null)
   const [hiredAgent, setHiredAgent] = useState<Agent | null>(null)
-
-  const requiredAppPrefixes = useMemo<string[]>(() => {
-    if (!template) return []
-    const seen = new Set<string>()
-    for (const g of template.defaultGrants) seen.add(appPrefix(g.tool_name))
-    return [...seen]
-  }, [template])
 
   if (isMember) {
     return (
@@ -87,14 +83,17 @@ export default function AgentNewScreen() {
     setName(t.defaultName)
     setInstructions(t.defaultInstructions)
     setModel(t.defaultModel ?? DEFAULT_MODEL)
-    setConnectedApps(new Set())
+    // Pre-fill grants from the template's curated defaults. Custom template
+    // ships with an empty defaultGrants — in that case the editor opens empty
+    // and the user picks tools manually from the catalog.
+    setPickedGrants(t.defaultGrants.map(g => ({
+      tool_name: g.tool_name,
+      mode: g.mode,
+      approval_required: g.approval_required,
+    })))
     setHireError(null)
-    setPhase('preview')
+    setPhase('name')
   }
-
-  const goToWizard = () => setPhase('name')
-
-  const goBackToPreview = () => setPhase('preview')
 
   const goBackToWelcome = () => {
     setTemplate(null)
@@ -103,20 +102,6 @@ export default function AgentNewScreen() {
 
   const goToApps = () => setPhase('apps')
   const goToReview = () => setPhase('review')
-
-  const toggleApp = (prefix: string) => {
-    setConnectedApps(prev => {
-      const next = new Set(prev)
-      if (next.has(prefix)) next.delete(prefix)
-      else next.add(prefix)
-      return next
-    })
-  }
-
-  // For the wizard's "Hire" CTA — keep enabled even when some apps aren't
-  // connected, but show a warning. Plan section 8 step 2: "Можно пропустить —
-  // будет warning, что без них агент не сможет работать."
-  const skippedApps = requiredAppPrefixes.filter(p => !connectedApps.has(p))
 
   const hire = async () => {
     if (!template || !name.trim()) return
@@ -139,23 +124,18 @@ export default function AgentNewScreen() {
         memory_scope_config: {},
         tool_scope_config: { inherits_from_agent: true },
       })
+      // Backend-confirmed flow (2026-05-02): createAgent → createVersion →
+      // setGrants → activateVersion. Always end on activation — there's no
+      // valid intermediate state, and there's no API path to re-enter setup
+      // for a draft agent without a usable backend list-versions endpoint.
+      if (pickedGrants.length > 0) {
+        await api.setGrants(agent.id, { grants: pickedGrants })
+      }
       await api.activateVersion(agent.id, v.id)
-      const grants: TemplateGrant[] = template.defaultGrants.filter(g =>
-        connectedApps.has(appPrefix(g.tool_name)),
-      )
-      if (grants.length > 0) {
-        await api.setGrants(agent.id, { grants })
-      }
-      // Mock-only: createAgent returns status 'draft'. Activating v1 in the
-      // mock doesn't auto-flip it — flip here so the new agent is usable
-      // immediately (real backend likely transitions on POST /activate).
+      // Re-fetch so the success page sees the post-activation status
+      // (active_version populated, status flipped to 'active').
       const fresh = await api.getAgent(agent.id)
-      if (fresh) {
-        fresh.status = 'active'
-        setHiredAgent(fresh)
-      } else {
-        setHiredAgent(agent)
-      }
+      setHiredAgent(fresh ?? agent)
       setPhase('success')
     } catch (e) {
       setHireError((e as Error).message ?? 'Could not hire agent')
@@ -232,83 +212,6 @@ export default function AgentNewScreen() {
   }
 
   // ─────────────────────────────────────── PREVIEW phase
-  if (phase === 'preview' && template) {
-    return (
-      <AppShell crumbs={[{ label: 'home', to: '/' }, { label: 'team', to: '/agents' }, { label: 'hire' }, { label: template.defaultName }]}>
-        <div className="page page--narrow">
-          <Flex direction="column" gap="3" mb="5">
-            <Flex align="center" justify="between" wrap="wrap" gap="3">
-              <StepProgress phase={phase} />
-              <Button asChild variant="ghost" color="gray" size="1">
-                <a href="#/agents">Cancel</a>
-              </Button>
-            </Flex>
-            <Flex align="center" gap="3" wrap="wrap">
-              <Avatar initials={template.initials} size={44} />
-              <Box minWidth="0" flexGrow="1">
-                <Heading size="8" weight="regular" className="page__title">
-                  {template.defaultName}
-                </Heading>
-                <Text as="div" size="3" color="gray" mt="2" style={{ maxWidth: 580, lineHeight: 1.6 }}>
-                  {template.longPitch}
-                </Text>
-              </Box>
-            </Flex>
-          </Flex>
-
-          <Flex direction="column" gap="4">
-            <PreviewSection title="Will need access to">
-              {requiredAppPrefixes.length === 0 ? (
-                <Text as="div" size="2" color="gray">
-                  Nothing yet — you'll pick apps in the next step.
-                </Text>
-              ) : (
-                <Flex direction="column" gap="2">
-                  {requiredAppPrefixes.map(p => (
-                    <PreviewBullet key={p}>
-                      <Text as="span" size="2" weight="medium">{appLabel(p)}</Text>
-                      {' — '}
-                      <Text as="span" size="2" color="gray">
-                        {appReason(p)}
-                      </Text>
-                    </PreviewBullet>
-                  ))}
-                </Flex>
-              )}
-            </PreviewSection>
-
-            <PreviewSection title="Will ask your approval before">
-              {template.approvalCopy.length === 0 ? (
-                <Text as="div" size="2" color="gray">
-                  No approval gates by default — set them in step 3.
-                </Text>
-              ) : (
-                <Flex direction="column" gap="2">
-                  {template.approvalCopy.map((copy, i) => (
-                    <PreviewBullet key={i}>
-                      <Text as="span" size="2">{copy}</Text>
-                    </PreviewBullet>
-                  ))}
-                </Flex>
-              )}
-            </PreviewSection>
-          </Flex>
-
-          <Flex justify="between" gap="3" mt="6" wrap="wrap">
-            <Button variant="ghost" color="gray" onClick={goBackToWelcome}>
-              <IconArrowLeft className="ic ic--sm" />
-              Back
-            </Button>
-            <Button size="3" onClick={goToWizard}>
-              Set up {template.defaultName}
-              <IconArrowRight className="ic ic--sm" />
-            </Button>
-          </Flex>
-        </div>
-      </AppShell>
-    )
-  }
-
   // ─────────────────────────────────────── WIZARD STEPS
   if (template && (phase === 'name' || phase === 'apps' || phase === 'review')) {
     return (
@@ -323,26 +226,14 @@ export default function AgentNewScreen() {
             </Flex>
             <Heading size="8" weight="regular" className="page__title">
               {phase === 'name' && <>Name your <em>agent.</em></>}
-              {phase === 'apps' && (
-                <>
-                  Connect <em>apps.</em>
-                </>
-              )}
+              {phase === 'apps' && <>Allow <em>access.</em></>}
               {phase === 'review' && <>Review and <em>hire.</em></>}
             </Heading>
-            {phase === 'apps' ? (
-              <Flex align="center" gap="2" wrap="wrap">
-                <Text size="2" color="gray">
-                  {template.defaultName} works best when its apps are connected. You can skip and connect later.
-                </Text>
-                <MockBadge kind="design" hint="Real OAuth wiring needs a backend integration registry that isn't in the spec yet. The Connect button below is a placeholder — clicking it just toggles a local state flag." />
-              </Flex>
-            ) : (
-              <Text size="2" color="gray">
-                {phase === 'name' && 'You can rename later.'}
-                {phase === 'review' && 'Last look before this agent joins your team.'}
-              </Text>
-            )}
+            <Text size="2" color="gray">
+              {phase === 'name' && 'You can rename later.'}
+              {phase === 'apps' && `Choose which apps ${template.defaultName} can use. You can change this on the agent's Permissions tab later.`}
+              {phase === 'review' && 'Last look before this agent joins your team.'}
+            </Text>
           </Flex>
 
           {phase === 'name' && (
@@ -351,26 +242,30 @@ export default function AgentNewScreen() {
               onName={setName}
               templateName={template.defaultName}
               onNext={goToApps}
-              onBack={goBackToPreview}
+              onBack={goBackToWelcome}
             />
           )}
 
           {phase === 'apps' && (
-            <AppsStep
-              template={template}
-              connectedApps={connectedApps}
-              onToggle={toggleApp}
-              onNext={goToReview}
-              onBack={() => setPhase('name')}
-            />
+            <>
+              <GrantsForm grants={pickedGrants} onChange={setPickedGrants} />
+              <Flex justify="between" mt="4" gap="2" wrap="wrap">
+                <Button variant="ghost" color="gray" onClick={() => setPhase('name')}>
+                  <IconArrowLeft className="ic ic--sm" /> Back
+                </Button>
+                <Button size="3" onClick={goToReview}>
+                  Continue
+                  <IconArrowRight className="ic ic--sm" />
+                </Button>
+              </Flex>
+            </>
           )}
 
           {phase === 'review' && (
             <ReviewStep
               template={template}
               name={name}
-              connectedApps={connectedApps}
-              skippedApps={skippedApps}
+              pickedGrants={pickedGrants}
               instructions={instructions}
               onInstructions={setInstructions}
               model={model}
@@ -413,7 +308,7 @@ export default function AgentNewScreen() {
               <Caption mb="3" as="div">What happens next</Caption>
               <Flex direction="column" gap="3">
                 <BulletItem>
-                  {hiredAgent.name} is now part of your team and will start working with the apps you connected.
+                  {hiredAgent.name} is now part of your team with {pickedGrants.length} {pickedGrants.length === 1 ? 'permission' : 'permissions'} ready to use.
                 </BulletItem>
                 <BulletItem>
                   When it wants to do something that needs your approval, you'll see it on the Approvals page.
@@ -484,36 +379,11 @@ function RoleCard({
   )
 }
 
-function PreviewSection({ title, children }: { title: string; children: React.ReactNode }) {
-  return (
-    <div className="card">
-      <Box p="4">
-        <Caption mb="3" as="div">{title}</Caption>
-        {children}
-      </Box>
-    </div>
-  )
-}
-
-function PreviewBullet({ children }: { children: React.ReactNode }) {
-  return (
-    <Flex align="start" gap="2">
-      <Box style={{ color: 'var(--accent-9)', paddingTop: 4 }}>
-        <IconCheck size={12} />
-      </Box>
-      <Box flexGrow="1" style={{ minWidth: 0, lineHeight: 1.55 }}>
-        {children}
-      </Box>
-    </Flex>
-  )
-}
-
 function StepProgress({ phase }: { phase: WizardPhase }) {
-  const steps: WizardPhase[] = ['preview', 'name', 'apps', 'review']
+  const steps: WizardPhase[] = ['name', 'apps', 'review']
   const labels: Record<WizardPhase, string> = {
-    preview: 'Overview',
     name: 'Name',
-    apps: 'Apps',
+    apps: 'Access',
     review: 'Review',
   }
   const activeIndex = steps.indexOf(phase)
@@ -599,120 +469,22 @@ function NameStep({
   )
 }
 
-function AppsStep({
-  template,
-  connectedApps,
-  onToggle,
-  onNext,
-  onBack,
-}: {
-  template: AssistantTemplate
-  connectedApps: Set<string>
-  onToggle: (prefix: string) => void
-  onNext: () => void
-  onBack: () => void
-}) {
-  // Group template grants by app prefix.
-  const groups = useMemo(() => {
-    const map = new Map<string, TemplateGrant[]>()
-    for (const g of template.defaultGrants) {
-      const p = appPrefix(g.tool_name)
-      const existing = map.get(p) ?? []
-      existing.push(g)
-      map.set(p, existing)
-    }
-    return [...map.entries()].map(([prefix, grants]) => ({ prefix, grants }))
-  }, [template])
-
-  if (groups.length === 0) {
-    return (
-      <>
-        <Banner tone="info" title="No apps to connect for this template">
-          A blank agent doesn't need any specific apps. You can grant permissions later from its Permissions tab.
-        </Banner>
-        <Flex justify="between" mt="4" gap="2" wrap="wrap">
-          <Button variant="ghost" color="gray" onClick={onBack}>
-            <IconArrowLeft className="ic ic--sm" /> Back
-          </Button>
-          <Button size="3" onClick={onNext}>
-            Continue
-            <IconArrowRight className="ic ic--sm" />
-          </Button>
-        </Flex>
-      </>
-    )
+function grantsBreakdown(grants: GrantDraft[]) {
+  let read = 0
+  let writeAuto = 0
+  let writeApproval = 0
+  for (const g of grants) {
+    if (g.mode === 'read') read++
+    else if (g.approval_required) writeApproval++
+    else writeAuto++
   }
-
-  return (
-    <>
-      <Flex direction="column" gap="3">
-        {groups.map(({ prefix, grants }) => {
-          const connected = connectedApps.has(prefix)
-          return (
-            <div key={prefix} className="card" style={{ borderColor: connected ? 'var(--green-a6)' : undefined }}>
-              <Flex align="center" gap="3" p="4" wrap="wrap">
-                <Avatar initials={prefix.slice(0, 2).toUpperCase()} size={36} />
-                <Box flexGrow="1" minWidth="0">
-                  <Text as="div" size="3" weight="medium">{appLabel(prefix)}</Text>
-                  <Text as="div" size="1" color="gray" mt="1">
-                    {grants.length === 1 ? '1 permission' : `${grants.length} permissions`} for this agent
-                  </Text>
-                </Box>
-                {connected ? (
-                  <Button variant="soft" color="gray" size="2" onClick={() => onToggle(prefix)}>
-                    <IconCheck className="ic ic--sm" />
-                    Disconnect
-                  </Button>
-                ) : (
-                  <Button size="2" onClick={() => onToggle(prefix)}>
-                    Connect
-                  </Button>
-                )}
-              </Flex>
-              <Box px="4" pb="4">
-                <Flex direction="column" gap="1">
-                  {grants.map(g => (
-                    <Flex key={g.tool_name} align="center" justify="between" gap="2">
-                      <Text as="span" size="2" color="gray">{toolLabel(g.tool_name).replace(`${appLabel(prefix)} · `, '')}</Text>
-                      <Badge
-                        color={g.approval_required ? 'amber' : g.mode === 'read' ? 'cyan' : 'red'}
-                        variant="soft"
-                        radius="full"
-                        size="1"
-                      >
-                        {g.approval_required
-                          ? 'Read & write (with approval)'
-                          : g.mode === 'read'
-                            ? 'Read only'
-                            : 'Read & write (auto)'}
-                      </Badge>
-                    </Flex>
-                  ))}
-                </Flex>
-              </Box>
-            </div>
-          )
-        })}
-      </Flex>
-
-      <Flex justify="between" mt="4" gap="2" wrap="wrap">
-        <Button variant="ghost" color="gray" onClick={onBack}>
-          <IconArrowLeft className="ic ic--sm" /> Back
-        </Button>
-        <Button size="3" onClick={onNext}>
-          Continue
-          <IconArrowRight className="ic ic--sm" />
-        </Button>
-      </Flex>
-    </>
-  )
+  return { read, writeAuto, writeApproval }
 }
 
 function ReviewStep({
   template,
   name,
-  connectedApps,
-  skippedApps,
+  pickedGrants,
   instructions,
   onInstructions,
   model,
@@ -728,8 +500,7 @@ function ReviewStep({
 }: {
   template: AssistantTemplate
   name: string
-  connectedApps: Set<string>
-  skippedApps: string[]
+  pickedGrants: GrantDraft[]
   instructions: string
   onInstructions: (v: string) => void
   model: string
@@ -743,6 +514,7 @@ function ReviewStep({
   busy: boolean
   hireError: string | null
 }) {
+  const b = grantsBreakdown(pickedGrants)
   const creativityLabel =
     creativity <= 0.2 ? 'deterministic'
     : creativity <= 0.5 ? 'focused'
@@ -757,31 +529,25 @@ function ReviewStep({
             <Caption mb="3" as="div">Summary</Caption>
             <Flex direction="column" gap="2">
               <SummaryRow label="Name" value={<Text size="2" weight="medium">{name.trim()}</Text>} />
-              <SummaryRow label="Role" value={<Text size="2">{template.defaultName}</Text>} />
               <SummaryRow
-                label="Connected apps"
+                label="Permissions"
                 value={
-                  connectedApps.size === 0 ? (
-                    <Text size="2" color="gray">none</Text>
-                  ) : (
-                    <Flex gap="1" wrap="wrap" justify="end">
-                      {[...connectedApps].map(p => (
-                        <Badge key={p} color="green" variant="soft" radius="full" size="1">{appLabel(p)}</Badge>
-                      ))}
-                    </Flex>
-                  )
-                }
-              />
-              <SummaryRow
-                label="Approvals"
-                value={
-                  template.approvalCopy.length === 0 ? (
+                  pickedGrants.length === 0 ? (
                     <Text size="2" color="gray">none</Text>
                   ) : (
                     <Flex direction="column" gap="1" align="end">
-                      {template.approvalCopy.map((c, i) => (
-                        <Text key={i} size="1" color="gray" style={{ textAlign: 'right' }}>{c}</Text>
-                      ))}
+                      <Text size="2" weight="medium">
+                        {pickedGrants.length} {pickedGrants.length === 1 ? 'permission' : 'permissions'}
+                      </Text>
+                      {b.read > 0 && (
+                        <Text size="1" color="gray">{b.read} read-only</Text>
+                      )}
+                      {b.writeApproval > 0 && (
+                        <Text size="1" color="gray">{b.writeApproval} write (with approval)</Text>
+                      )}
+                      {b.writeAuto > 0 && (
+                        <Text size="1" color="gray">{b.writeAuto} write (auto)</Text>
+                      )}
                     </Flex>
                   )
                 }
@@ -790,9 +556,9 @@ function ReviewStep({
           </Box>
         </div>
 
-        {skippedApps.length > 0 && (
-          <Banner tone="warn" title={`${skippedApps.length} ${skippedApps.length === 1 ? 'app' : 'apps'} not connected`}>
-            {name || template.defaultName} won't be able to use {skippedApps.map(p => appLabel(p)).join(', ')} until you connect {skippedApps.length === 1 ? 'it' : 'them'} from the Permissions tab. You can hire anyway and connect later.
+        {pickedGrants.length === 0 && (
+          <Banner tone="info" title="No permissions picked">
+            {name || template.defaultName} will be hired without any app permissions. You can allow access from its Permissions tab any time.
           </Banner>
         )}
 
@@ -921,24 +687,3 @@ function BulletItem({ children }: { children: React.ReactNode }) {
   )
 }
 
-// Plain-English explanation of why a template needs a given app prefix. Used
-// on the preview screen — derives from the most-relevant grant for that app
-// in the entire template catalog. Keeps the wizard's preview screen honest
-// without forcing every template to write its own per-app explanation.
-function appReason(prefix: string): string {
-  const REASONS: Record<string, string> = {
-    apollo: 'enrich lead profiles before reaching out',
-    zoho_crm: 'read contact records and update deal pipeline',
-    email: 'send messages on your behalf',
-    web_search: 'pull public information from the web',
-    slack: 'post status updates and messages',
-    memory: 'remember context between sessions',
-    kb: 'look things up in your knowledge base',
-    quickbooks: 'pull invoice and revenue data',
-    stripe: 'read charges and prepare refunds',
-    okta: 'read user accounts and provision new ones',
-    aws: 'revoke unused access',
-    irs: 'verify business identity numbers',
-  }
-  return REASONS[prefix] ?? 'used by this agent'
-}

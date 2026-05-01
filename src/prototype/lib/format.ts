@@ -192,11 +192,9 @@ export const TOOL_LABELS: Record<string, string> = {
   'email.send': 'Email · Send',
   'okta.create_user': 'Okta · Create User',
   'okta.read_user': 'Okta · Read User',
-  'aws.revoke_user': 'AWS · Revoke User',
   'irs.verify_ein': 'IRS · Verify EIN',
   'quickbooks.read_invoice': 'QuickBooks · Read Invoice',
   'slack.post_message': 'Slack · Post Message',
-  'memory.read': 'Memory · Read',
   'web_search': 'Web Search',
   'kb.lookup': 'Knowledge Base · Lookup',
 }

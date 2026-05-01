@@ -149,10 +149,14 @@ export default function LoginScreen() {
             )}
           </Button>
 
+          {/* "Create account" hidden until POST /auth/register exists on the
+              backend. See docs/handoff-prep.md § 1.1. Restore together with
+              the /register route in src/prototype/index.tsx when re-enabling.
           <Flex align="center" justify="between" gap="2">
             <Text size="1" color="gray">New to Int3grate.ai?</Text>
             <Button asChild variant="ghost"><a href="#/register">Create account</a></Button>
           </Flex>
+          */}
         </form>
       </div>
     </div>

@@ -1,16 +1,17 @@
 import { useEffect, useState } from 'react'
 import { Badge, Box, Button, DataList, Flex, Grid, Text } from '@radix-ui/themes'
 import { AppShell } from '../components/shell'
-import { Avatar, Caption, MockBadge, PageHeader, MetaRow, Status, Tabs, InfoHint } from '../components/common'
+import { Avatar, Caption, PageHeader, MetaRow, Status, Tabs, InfoHint } from '../components/common'
 import { Banner, EmptyState, LoadingList, NoAccessState } from '../components/states'
-import { IconArrowRight, IconChat, IconLock, IconPlus, IconRun, IconStop } from '../components/icons'
+import { IconArrowRight, IconChat, IconPlus, IconRun } from '../components/icons'
 import { GrantsEditor } from '../components/grants-editor'
 import { ChatPanel } from '../components/chat-panel'
 import { Link } from '../router'
 import { api } from '../lib/api'
 import { useAuth } from '../auth'
-import type { Agent, AgentVersion, Chat, GrantsSnapshot, RunListItem, ToolGrant, User } from '../lib/types'
-import { absTime, ago, domainLabel, money, num, policyModeLabel, toolLabel } from '../lib/format'
+import type { Agent, AgentVersion, Chat, GrantsSnapshot, RunListItem, ToolGrant } from '../lib/types'
+import { absTime, ago, domainLabel, money, num, policyModeLabel, stageLabel, toolLabel } from '../lib/format'
+import { statusLabel } from '../components/common/status-label'
 
 type AgentTab = 'overview' | 'talk' | 'grants' | 'activity' | 'settings' | 'advanced'
 
@@ -26,14 +27,12 @@ export default function AgentDetailScreen({
   const { user } = useAuth()
   const [agent, setAgent] = useState<Agent | null | undefined>(undefined)
   const [grants, setGrants] = useState<ToolGrant[] | null>(null)
-  const [users, setUsers] = useState<User[]>([])
   const [chats, setChats] = useState<Chat[]>([])
   const [runs, setRuns] = useState<RunListItem[]>([])
 
   useEffect(() => {
     api.getAgent(agentId).then(a => setAgent(a ?? null))
     api.getGrants(agentId).then(setGrants)
-    api.listUsers().then(setUsers)
     api.listRuns({ limit: 100 }).then(r => setRuns(r.items.filter(it => it.agent_id === agentId)))
   }, [agentId])
 
@@ -42,9 +41,6 @@ export default function AgentDetailScreen({
     api.listChats({ id: user.id, role: user.role }, { agent_id: agentId, limit: 50 })
       .then(res => setChats(res.items))
   }, [agentId, user])
-
-  const userName = (id: string | null | undefined) =>
-    (id && users.find(u => u.id === id)?.name) || '—'
 
   if (agent === null) {
     return (
@@ -128,14 +124,13 @@ export default function AgentDetailScreen({
         )}
         {tab === 'activity' && <ActivityTab agent={agent} runs={runs} />}
         {tab === 'settings' && (
-          <SettingsTab agent={agent} ownerName={userName(agent.owner_user_id)} canEdit={canEdit} />
+          <SettingsTab agent={agent} />
         )}
         {tab === 'advanced' && (
           <AdvancedTab
             agent={agent}
             version={activeVersion}
             grantsVersion={grants?.length ?? 0}
-            authorName={userName(activeVersion?.created_by)}
             canEdit={canEdit}
           />
         )}
@@ -401,10 +396,11 @@ function ActivityTab({ agent, runs }: { agent: Agent; runs: RunListItem[] }) {
           >
             <Box minWidth="0">
               <Text as="div" size="2" className="truncate">
-                {r.suspended_stage ? 'Waiting for your approval' : 'Activity'}
+                {statusLabel(r.status)}
               </Text>
               <Text as="div" size="1" color="gray" mt="1">
                 {ago(r.created_at)}
+                {r.suspended_stage && ` · ${stageLabel(r.suspended_stage)}`}
               </Text>
             </Box>
             <Status status={r.status} />
@@ -424,12 +420,8 @@ function ActivityTab({ agent, runs }: { agent: Agent; runs: RunListItem[] }) {
 
 function SettingsTab({
   agent,
-  ownerName,
-  canEdit,
 }: {
   agent: Agent
-  ownerName: string
-  canEdit: boolean
 }) {
   return (
     <Flex direction="column" gap="4">
@@ -441,47 +433,17 @@ function SettingsTab({
             <MetaRow label="description" value={agent.description ?? <Text color="gray">—</Text>} />
             <MetaRow label="status" value={<Status status={agent.status} />} />
             <MetaRow label="team" value={domainLabel(agent.domain_id)} />
-            <MetaRow label="owner" value={ownerName} />
             <MetaRow label="created" value={absTime(agent.created_at)} />
             <MetaRow label="updated" value={`${absTime(agent.updated_at)} · ${ago(agent.updated_at)}`} />
           </DataList.Root>
         </div>
       </div>
 
-      <div className="card">
-        <div className="card__head">
-          <Flex align="center" gap="2">
-            <Text as="div" size="2" weight="medium" className="card__title">Manage employment</Text>
-            <MockBadge kind="design" hint="Pause / Fire transitions don't exist in the gateway spec yet — buttons are disabled placeholders. Backend needs PATCH /agents/{id} (or POST /agents/{id}/pause + DELETE /agents/{id})." />
-          </Flex>
-          {!canEdit && <Badge color="gray" variant="soft" radius="full" size="1"><IconLock />admins only</Badge>}
-        </div>
-        <div className="card__body">
-          <Flex align="center" justify="between" gap="3" py="2">
-            <Box>
-              <Text as="div" size="2">Pause this agent</Text>
-              <Text as="div" size="1" color="gray" mt="1">
-                Pausing stops new activity. You can resume any time. Planned for the next release.
-              </Text>
-            </Box>
-            <Button color="amber" variant="soft" disabled>
-              <IconStop />
-              Pause (planned)
-            </Button>
-          </Flex>
-          <Flex align="center" justify="between" gap="3" py="2" style={{ borderTop: '1px dashed var(--gray-a3)' }}>
-            <Box>
-              <Text as="div" size="2">Fire this agent</Text>
-              <Text as="div" size="1" color="gray" mt="1">
-                Removes the agent from your team. The activity history is kept for audit. Planned.
-              </Text>
-            </Box>
-            <Button color="red" disabled>
-              Fire (planned)
-            </Button>
-          </Flex>
-        </div>
-      </div>
+      {/* "Manage employment" card (Pause / Fire placeholder) hidden until
+          backend ships PATCH /agents/{id} or POST /agents/{id}/pause + DELETE
+          /agents/{id}. See docs/handoff-prep.md § 2.2. Restore the card here
+          when endpoints exist; remove the disabled-buttons pattern in favour
+          of real wiring. */}
     </Flex>
   )
 }
@@ -494,13 +456,11 @@ function AdvancedTab({
   agent,
   version,
   grantsVersion,
-  authorName,
   canEdit,
 }: {
   agent: Agent
   version: AgentVersion | null
   grantsVersion: number
-  authorName: string
   canEdit: boolean
 }) {
   if (!version) {
@@ -514,7 +474,6 @@ function AdvancedTab({
     <Flex direction="column" gap="4">
       <ActiveVersionCard
         version={version}
-        authorName={authorName}
         canEdit={canEdit}
         agentId={agent.id}
       />
@@ -540,10 +499,9 @@ function AdvancedTab({
 // ─────────────────────────────────────────────────────────────────
 
 function ActiveVersionCard({
-  version, authorName, canEdit, agentId,
+  version, canEdit, agentId,
 }: {
   version: AgentVersion
-  authorName: string
   canEdit: boolean
   agentId: string
 }) {
@@ -564,7 +522,6 @@ function ActiveVersionCard({
         <DataList.Root size="2">
           <MetaRow label="version" value={`v${version.version}`} />
           <MetaRow label="status" value={version.is_active ? 'Active' : 'Inactive'} />
-          <MetaRow label="created by" value={authorName} />
           <MetaRow label="created" value={absTime(version.created_at)} />
         </DataList.Root>
       </div>

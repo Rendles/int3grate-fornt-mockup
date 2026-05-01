@@ -13,22 +13,32 @@ import { TrainingBanner } from './tours/TrainingBanner'
 import { TrainingAutoExit } from './tours/TrainingAutoExit'
 import { WelcomeToast } from './tours/WelcomeToast'
 import LoginScreen from './screens/LoginScreen'
-import RegisterScreen from './screens/RegisterScreen'
+// Registration is hidden until POST /auth/register lands on the backend.
+// See docs/handoff-prep.md § 1.1. Restore this import when re-enabling the route below.
+// import RegisterScreen from './screens/RegisterScreen'
 import HomeScreen from './screens/HomeScreen'
 import AgentsScreen from './screens/AgentsScreen'
 import AgentDetailScreen from './screens/AgentDetailScreen'
 import AgentNewScreen from './screens/AgentNewScreen'
 import VersionNewScreen from './screens/VersionNewScreen'
-import TasksScreen from './screens/TasksScreen'
-import TaskNewScreen from './screens/TaskNewScreen'
-import TaskDetailScreen from './screens/TaskDetailScreen'
 import RunDetailScreen from './screens/RunDetailScreen'
 import RunsScreen from './screens/RunsScreen'
-import SettingsScreen from './screens/SettingsScreen'
+// AuditScreen folded back into Activity (RunsScreen is the single grouped view).
+// File preserved for restoration if a dedicated compliance surface is needed.
+// import AuditScreen from './screens/AuditScreen'
+// Settings is hidden in MVP — Audit log was extracted into its own screen.
+// See docs/handoff-prep.md (Settings hide entry). Restore this import together
+// with the /settings/* routes below and the sidebar item in shell.tsx when
+// re-enabling.
+// import SettingsScreen from './screens/SettingsScreen'
 import ChatNewScreen from './screens/ChatNewScreen'
 import ApprovalsScreen from './screens/ApprovalsScreen'
 import ApprovalDetailScreen from './screens/ApprovalDetailScreen'
-import ToolsScreen from './screens/ToolsScreen'
+// Apps page is hidden in MVP — connections are managed per-agent on the
+// agent's permissions tab. See docs/handoff-prep.md (Apps hide entry).
+// Restore this import together with the /apps route below and the sidebar
+// item in shell.tsx when re-enabling.
+// import ToolsScreen from './screens/ToolsScreen'
 import SpendScreen from './screens/SpendScreen'
 import ProfileScreen from './screens/ProfileScreen'
 import LearnScreen from './screens/LearnScreen'
@@ -80,9 +90,12 @@ function Router() {
     )
   }
 
-  if (path === '/register') {
-    return <RegisterScreen />
-  }
+  // Registration route hidden until POST /auth/register exists on the backend.
+  // See docs/handoff-prep.md § 1.1. Restore together with the import above and
+  // the "Create account" button in LoginScreen.tsx when re-enabling.
+  // if (path === '/register') {
+  //   return <RegisterScreen />
+  // }
 
   if (!user || path === '/login') {
     return <LoginScreen />
@@ -100,9 +113,6 @@ function Router() {
     { pattern: '/agents/:agentId/activity', render: p => <AgentDetailScreen agentId={p.agentId} tab="activity" /> },
     { pattern: '/agents/:agentId/settings', render: p => <AgentDetailScreen agentId={p.agentId} tab="settings" /> },
     { pattern: '/agents/:agentId/advanced', render: p => <AgentDetailScreen agentId={p.agentId} tab="advanced" /> },
-    { pattern: '/tasks', render: () => <TasksScreen /> },
-    { pattern: '/tasks/new', render: () => <TaskNewScreen /> },
-    { pattern: '/tasks/:taskId', render: p => <TaskDetailScreen taskId={p.taskId} /> },
     { pattern: '/activity', render: () => <RunsScreen /> },
     { pattern: '/activity/:runId', render: p => <RunDetailScreen runId={p.runId} /> },
     { pattern: '/runs', render: () => <Redirect to="/activity" /> },
@@ -115,17 +125,23 @@ function Router() {
     { pattern: '/chats/:chatId', render: p => <ChatRedirect chatId={p.chatId} /> },
     { pattern: '/approvals', render: () => <ApprovalsScreen /> },
     { pattern: '/approvals/:approvalId', render: p => <ApprovalDetailScreen approvalId={p.approvalId} /> },
-    { pattern: '/apps', render: () => <ToolsScreen /> },
-    { pattern: '/tools', render: () => <Redirect to="/apps" /> },
+    // Apps route hidden in MVP. Per-agent permissions are the canonical place
+    // to manage which apps an agent can use. See docs/handoff-prep.md.
+    // { pattern: '/apps', render: () => <ToolsScreen /> },
+    // { pattern: '/tools', render: () => <Redirect to="/apps" /> },
     { pattern: '/costs', render: () => <SpendScreen /> },
     { pattern: '/spend', render: () => <Redirect to="/costs" /> },
-    { pattern: '/settings', render: () => <SettingsScreen tab="workspace" /> },
-    { pattern: '/settings/team', render: () => <SettingsScreen tab="team" /> },
-    { pattern: '/settings/history', render: () => <SettingsScreen tab="history" /> },
-    { pattern: '/settings/developer', render: () => <SettingsScreen tab="developer" /> },
-    { pattern: '/settings/diagnostic', render: () => <SettingsScreen tab="diagnostic" /> },
-    // /audit was a top-level page in earlier builds; now lives under Settings.
-    { pattern: '/audit', render: () => <Redirect to="/settings/history" /> },
+    // Settings routes are hidden in MVP. Audit log lives at /audit (below);
+    // workspace edit / team / developer / diagnostic surfaces are not
+    // shipping yet. See docs/handoff-prep.md (Settings hide entry).
+    // { pattern: '/settings', render: () => <SettingsScreen tab="workspace" /> },
+    // { pattern: '/settings/team', render: () => <SettingsScreen tab="team" /> },
+    // { pattern: '/settings/history', render: () => <SettingsScreen tab="history" /> },
+    // { pattern: '/settings/developer', render: () => <SettingsScreen tab="developer" /> },
+    // { pattern: '/settings/diagnostic', render: () => <SettingsScreen tab="diagnostic" /> },
+    // /audit folded back into /activity (no toggle). Restore here +
+    // shell.tsx Audit nav item + AuditScreen import above when re-enabling.
+    // { pattern: '/audit', render: () => <AuditScreen /> },
     { pattern: '/profile', render: () => <ProfileScreen /> },
     { pattern: '/learn', render: () => <LearnScreen /> },
   ]

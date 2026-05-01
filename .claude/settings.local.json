@@ -76,7 +76,15 @@
       "Bash(grep -rn \"\\\\\\\\brun\\\\\\\\b\\\\|\\\\\\\\bruns\\\\\\\\b\" src/prototype/screens --include=\"*.tsx\")",
       "Bash(git mv *)",
       "Bash(sed 's/\\\\[data-tour=\"//; s/\"\\\\]$//')",
-      "Bash(grep -rhoE 'data-tour=[\"{`][^\"}`]+[\"}`]' src/prototype/components src/prototype/screens)"
+      "Bash(grep -rhoE 'data-tour=[\"{`][^\"}`]+[\"}`]' src/prototype/components src/prototype/screens)",
+      "Bash(grep -nE \"^export const fxRuns|^\\\\}$\" d:/Work/int3grate-fornt-mockup/src/prototype/lib/fixtures.ts)",
+      "WebFetch(domain:stage.api.int3grate.ai)",
+      "Bash(curl *)",
+      "Bash(grep -nE \"^\\\\}$\" d:/Work/int3grate-fornt-mockup/src/prototype/lib/fixtures.ts)",
+      "Bash(awk -F: '$1>520 && $1<700')",
+      "Bash(awk *)",
+      "Bash(sed -i '493,644d' d:/Work/int3grate-fornt-mockup/src/prototype/lib/fixtures.ts)",
+      "Bash(sed -n '490,498p' d:/Work/int3grate-fornt-mockup/src/prototype/lib/fixtures.ts)"
     ]
   }
 }

@@ -1,49 +1,52 @@
 import { Badge, Box, Button, Flex, Grid, Text } from '@radix-ui/themes'
 import { Link } from '../../router'
-import { MetricCard, MockBadge, Status } from '../../components/common'
+import { MetricCard } from '../../components/common'
+import { statusLabel } from '../../components/common/status-label'
 import {
   IconAgent,
   IconApproval,
   IconArrowRight,
+  IconRun,
   IconSpend,
-  IconTask,
 } from '../../components/icons'
-import type { Agent, ApprovalRequest, SpendDashboard, Task } from '../../lib/types'
-import { ago, approverRoleLabel, humanKey, money, num, prettifyRequestedAction } from '../../lib/format'
+import type { Agent, ApprovalRequest, RunListItem, RunStatus, SpendDashboard } from '../../lib/types'
+import { ago, approverRoleLabel, money, num, prettifyRequestedAction } from '../../lib/format'
 import { SpendByAgentCard } from './SpendByAgentCard'
-import { TaskOutcomesCard } from './TaskOutcomesCard'
-import { ActivityHeatmap } from './ActivityHeatmap'
-import { SavingsBanner } from './SavingsBanner'
+// Hidden 2026-05-01 — purely synthesized surfaces. Restore when backend
+// supplies the underlying real data (per-hour run buckets / time-saved metric).
+// import { ActivityHeatmap } from './ActivityHeatmap'
+// import { SavingsBanner } from './SavingsBanner'
+
+const STATUS_TONE: Record<RunStatus, string> = {
+  completed: 'var(--green-9)',
+  completed_with_errors: 'var(--amber-9)',
+  failed: 'var(--red-9)',
+  suspended: 'var(--amber-9)',
+  running: 'var(--blue-9)',
+  pending: 'var(--blue-9)',
+  cancelled: 'var(--gray-9)',
+}
 
 export function AdminView({
-  agents, activeAgents, tasks, failedTasks, pendingApprovals, recentTasks, spend,
+  agents, activeAgents, pendingApprovals, recentRuns, spend,
 }: {
   agents: Agent[]
   activeAgents: Agent[]
-  tasks: Task[]
-  failedTasks: Task[]
   pendingApprovals: ApprovalRequest[]
-  recentTasks: Task[]
+  recentRuns: RunListItem[]
   spend: SpendDashboard
 }) {
   const agentName = (id: string | null) =>
-    (id && agents.find(a => a.id === id)?.name) || '—'
+    (id && agents.find(a => a.id === id)?.name) || 'Agent'
   return (
     <>
-      <Grid columns="4" gap="4" mb="5">
+      <Grid columns="3" gap="4" mb="5">
         <MetricCard
           label="Active agents"
           value={num(activeAgents.length)}
           delta={`${agents.length} total`}
           href="/agents"
           icon={<IconAgent />}
-        />
-        <MetricCard
-          label="Tasks"
-          value={num(tasks.length)}
-          delta={`${failedTasks.length} got stuck`}
-          href="/tasks"
-          icon={<IconTask />}
         />
         <MetricCard
           label="Pending approvals"
@@ -62,11 +65,7 @@ export function AdminView({
         />
       </Grid>
 
-            <Box mb="5">
-        <SavingsBanner />
-      </Box>
-
-      <Grid columns={{ initial: '1', lg: '1fr 2fr' }} gap="4" mb="5">
+      <Grid columns={{ initial: '1', lg: '1fr 1fr' }} gap="4" mb="5">
         <div className="card card--flush" style={{ borderColor: pendingApprovals.length > 0 ? 'var(--amber-a6)' : undefined }}>
           <div className="card__head">
             <Text as="div" size="2" weight="medium" className="card__title">
@@ -106,62 +105,55 @@ export function AdminView({
 
         <div className="card card--flush">
           <div className="card__head">
-            <Flex align="center" gap="2">
-              <Text as="div" size="2" weight="medium" className="card__title">
-                <IconTask className="ic" />
-                Recent tasks
-              </Text>
-              <MockBadge kind="deferred" />
-            </Flex>
+            <Text as="div" size="2" weight="medium" className="card__title">
+              <IconRun className="ic" />
+              Recent activity
+            </Text>
             <Button asChild variant="ghost" color='gray' size="1">
-              <a href="#/tasks"><IconArrowRight className="ic ic--sm" />All tasks</a>
+              <a href="#/activity"><IconArrowRight className="ic ic--sm" />All activity</a>
             </Button>
           </div>
-          {recentTasks.length === 0 ? (
+          {recentRuns.length === 0 ? (
             <div className="card__body">
-              <Text as="div" size="2" color="gray" align="center" style={{ padding: '30px 0' }}>
-                No tasks yet. <Link to="/tasks/new"><Text color="blue">Assign a task →</Text></Link>
+              <Text as="div" size="2" color="gray" style={{ padding: '14px 0' }}>
+                No activity yet. Your agents haven't run anything.
               </Text>
             </div>
           ) : (
-            <div>
-              {recentTasks.map(t => (
-                <Link
-                  key={t.id}
-                  to={`/tasks/${t.id}`}
-                  className="agent-row"
-                  style={{ gridTemplateColumns: 'minmax(0, 1fr) 120px 130px 80px 20px' }}
-                >
-                  <div style={{ minWidth: 0 }}>
-                    <Text as="div" size="2" className="truncate">
-                      {t.title ?? <Text color="gray">untitled</Text>}
-                    </Text>
-                    <Text as="div" size="1" color="gray" mt="1">
-                      {ago(t.updated_at)}
+            <div className="card__body"><Flex direction="column" gap="2">
+              {recentRuns.map(r => (
+                <Link key={r.id} to={`/activity/${r.id}`} className="card card--tile card--hover">
+                  <div style={{ padding: '10px 28px 10px 12px' }}>
+                    <Flex align="center" gap="2" mb="1">
+                      <Box
+                        aria-hidden
+                        style={{
+                          width: 8, height: 8, borderRadius: '50%',
+                          background: STATUS_TONE[r.status] ?? 'var(--gray-9)',
+                          flexShrink: 0,
+                        }}
+                      />
+                      <Text size="1" weight="medium" className="truncate" style={{ minWidth: 0 }}>
+                        {agentName(r.agent_id)}
+                      </Text>
+                      <Text size="1" color="gray" className="truncate">
+                        · {statusLabel(r.status)}
+                      </Text>
+                    </Flex>
+                    <Text as="div" size="1" color="gray">
+                      {ago(r.created_at)}
+                      {r.total_cost_usd > 0 && ` · ${money(r.total_cost_usd, { cents: r.total_cost_usd < 100 })}`}
                     </Text>
                   </div>
-                  <Status status={t.status} />
-                  <Text as="div" size="1" color="gray" className="truncate">
-                    {agentName(t.assigned_agent_id)}
-                  </Text>
-                  <Badge color="gray" variant="soft" radius="full" size="1">{humanKey(t.type)}</Badge>
-                  <IconArrowRight className="ic" />
+                  <IconArrowRight className="ic ic--sm card--tile__arrow" />
                 </Link>
               ))}
-            </div>
+            </Flex></div>
           )}
         </div>
       </Grid>
 
-      <Grid columns={{ initial: '1', lg: '2fr 2fr 1fr' }} gap="4" mb="5">
-        <SpendByAgentCard spend={spend} />
-        <ActivityHeatmap />
-        <TaskOutcomesCard tasks={tasks} />
-      </Grid>
-
-      {/* <Box>
-        <SavingsBanner />
-      </Box> */}
+      <SpendByAgentCard spend={spend} />
     </>
   )
 }
