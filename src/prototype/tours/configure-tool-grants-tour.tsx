@@ -31,23 +31,7 @@ export const configureToolGrantsTour: Tour = {
       placement: 'left',
       title: 'Pick the access level',
       body:
-        'Read-only is safest. Read & write lets the agent change things. Read & write (with approval) makes the agent ask before each write.',
-    },
-    {
-      id: 'catalog',
-      target: '[data-tour="grants-catalog"]',
-      placement: 'top',
-      title: 'Add a new permission',
-      body:
-        'Pick an app from the catalog. Already-permitted apps are hidden so you don’t add duplicates.',
-    },
-    {
-      id: 'add',
-      target: '[data-tour="grants-add"]',
-      placement: 'top',
-      title: 'Confirm',
-      body:
-        'This adds the permission to the list. It is not saved yet — you can change the access level before saving.',
+        'Read is safest. Ask lets the agent write but waits for your approval each time. Auto lets it write without asking — use sparingly.',
     },
     {
       id: 'write-warning',

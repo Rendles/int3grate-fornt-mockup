@@ -4,8 +4,8 @@
 //   - The default name shown in step 1.
 //   - The instruction brief used to create v1.
 //   - The permissions (tool grants) the worker needs to do its job.
-//   - The list of "apps" the user must connect in step 2, derived from the
-//     unique tool prefixes in `defaultGrants`.
+//   - The list of apps the user can allow for the agent in step 2,
+//     derived from the unique tool prefixes in `defaultGrants`.
 //   - The plain-English approval list shown in the preview screen.
 //
 // Templates point at tool keys from the existing catalog (`api.listTools`).
@@ -90,7 +90,6 @@ Your job:
     defaultGrants: [
       { tool_name: 'slack.post_message', mode: 'read_write', approval_required: true },
       { tool_name: 'web_search', mode: 'read', approval_required: false },
-      { tool_name: 'memory.read', mode: 'read', approval_required: false },
       { tool_name: 'kb.lookup', mode: 'read', approval_required: false },
     ],
     approvalCopy: [
@@ -116,7 +115,6 @@ Your job:
     defaultGrants: [
       { tool_name: 'quickbooks.read_invoice', mode: 'read', approval_required: false },
       { tool_name: 'web_search', mode: 'read', approval_required: false },
-      { tool_name: 'memory.read', mode: 'read', approval_required: false },
       { tool_name: 'kb.lookup', mode: 'read', approval_required: false },
     ],
     approvalCopy: [
@@ -193,7 +191,6 @@ Your job:
     defaultGrants: [
       { tool_name: 'okta.read_user', mode: 'read', approval_required: false },
       { tool_name: 'okta.create_user', mode: 'read_write', approval_required: true },
-      { tool_name: 'aws.revoke_user', mode: 'read_write', approval_required: true },
       { tool_name: 'slack.post_message', mode: 'read_write', approval_required: true },
     ],
     approvalCopy: [

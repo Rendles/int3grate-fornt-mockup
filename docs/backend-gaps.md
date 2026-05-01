@@ -24,11 +24,9 @@
 - **Что нужно от backend:** `GET /users?tenant_id=...` (или embedded в bearer scope). Минимально — `id`, `name`, `email`, `role`, `approval_level`. Учитывая privacy — возможно scoped views для `member` (видят только себя + admin контакты).
 - **Альтернатива:** denormalize `name` в каждый response (сейчас уже есть `requested_by_name` в approvals — расширить до agent.owner_name, etc).
 
-### 1.3 — `GET /approvals/{id}` ⚠️ medium
+### 1.3 — ~~`GET /approvals/{id}`~~ — RESOLVED 2026-05-01
 
-- **UI:** `ApprovalDetailScreen.tsx` — переход по deep-link `/approvals/:id`.
-- **Текущий мок:** `api.getApproval(id)` ищет в `fxApprovals`.
-- **Что нужно от backend:** добавить single-fetch endpoint. Сейчас в спеке только `GET /approvals` (list).
+> **Этот gap не существует.** Live backend (см. `docs/gateway.yaml`) экспонирует `GET /approvals/{approvalId}` (operationId `getApproval`). Frontend workaround (cache + sequential list sweep), который мы добавили ранее, был основан на устаревшем local draft. Workaround снят, `api.getApproval(id)` снова делает прямой single-fetch. Запись оставлена как stub чтобы не ломать ссылки `§1.3`.
 
 ### 1.4 — `PATCH /agents/{id}` или транзиция `draft → active` ⚠️ medium
 
@@ -51,17 +49,9 @@
 - **Текущий мок:** ничего.
 - **Что нужно от backend:** `POST /users` с email + role + optional approval_level. Email-инвайт flow или magic-link.
 
-### 1.7 — Integration registry / OAuth flow ⏸ planned
+### 1.7 — ~~Integration registry / OAuth flow~~ — REMOVED 2026-05-01
 
-- **UI:** `ToolsScreen.tsx` — `ConnectAppTile` + dialog с placeholder OAuth-flow. Phase 7 wizard step 2 — fake "Connect" toggle для каждого app prefix.
-- **Текущий мок:** Click на Authorise → 1.5s setTimeout → success badge с явной пометкой "Connection placeholder".
-- **Что нужно от backend:**
-  - `GET /integrations` — каталог поддерживаемых сервисов с метаданными (icon, oauth scopes, tools provided).
-  - `POST /integrations/{id}/oauth/start` — возвращает redirect URL на consent page.
-  - `POST /integrations/{id}/oauth/callback` — приём code + установка credentials.
-  - `GET /integrations/connected` — список уже connected сервисов на tenant.
-  - `DELETE /integrations/{id}` — disconnect.
-- **MockBadge:** ✅ на CTA + в dialog title + в info banner.
+> **Этой записи больше нет.** OAuth на стороне tenant'a архитектурно не существует и не планируется — Int3grate владеет shared credentials для всех integrations. См. `handoff-prep.md § 0` для деталей. **Бэкенд-команде не нужно проектировать integration registry / OAuth endpoints.** Запись оставлена как stub чтобы не ломать ссылки `§1.7` из других секций.
 
 ### 1.8 — Filter `/dashboard/runs?agent_id=` ⚠️ low
 
@@ -106,12 +96,13 @@
 - **Backend должен:** возвращать `summary: string` в `RunListItem` или `RunDetail`. Это backend territory — orchestrator или summary-generator. Без этого client может только status-based templates.
 - **MockBadge:** не помечено отдельно — это часть design language, не synthesized data per se. Но фактически — гэп.
 
-### 2.3 — App connection status
+### 2.3 — App "connection" status — это и есть правильная модель (rewritten 2026-05-01)
 
-- **Где:** `ToolsScreen.tsx` → `usedBy` list.
-- **Как:** App считается Connected если хоть один agent имеет grant на любой tool этого app prefix-а. Реальная "connection" — это OAuth credentials, которых нет.
-- **Backend должен:** см. §1.7.
-- **MockBadge:** ✅ на CTA modal.
+- **Где:** `ToolsScreen.tsx` → `usedBy` list. *(Сама страница Apps скрыта в MVP — см. handoff-prep § 2.8 — но логика остаётся в коде.)*
+- **Как работает:** App показывается как "Connected" если хотя бы один agent имеет grant на любой tool этого app prefix-а.
+- **Это не workaround.** На этой платформе **нет per-tenant OAuth-уровня** (см. handoff-prep § 0). Int3grate владеет shared credentials, и единственная авторизация на user-стороне — `setGrants` (agent-level permissions). Поэтому "app is connected" по определению = "хотя бы один agent имеет permission" — это правильная семантическая модель.
+- **Что нужно от backend:** ничего. Концепт работает корректно поверх существующего `GET /tools` + `PUT /agents/{id}/grants`.
+- **Caveat для UI:** слово "Connected" может вводить в заблуждение (вызывает OAuth-ассоциации). Если страницу Apps когда-то восстановят — переименовать в "Used" / "In use by" / "Authorised for".
 
 ### 2.4 — Audit events from run steps
 
@@ -201,11 +192,9 @@
 - **Что нужно:** см. §1.6.
 - **Status:** disabled "(planned)".
 
-### 4.4 — Connect new app (Authorise per service)
+### 4.4 — ~~Connect new app (Authorise per service)~~ — REMOVED 2026-05-01
 
-- **Где:** `ToolsScreen.tsx` → `ConnectAppTile` dialog.
-- **Что нужно:** см. §1.7.
-- **Status:** functional placeholder (1.5s spinner → "Placeholder OK" badge с info banner).
+> **Этой записи больше нет.** Концепт «Connect a new app» / «Authorise per service» был основан на отсутствующей OAuth-модели (см. удалённую § 1.7 и `handoff-prep.md § 0`). Сама модалка `ConnectAppTile` остаётся в `ToolsScreen.tsx`, но страница Apps скрыта в MVP (см. handoff-prep § 2.8); если когда-то будут восстанавливать — этот концепт нужно полностью переосмыслить, не «доделать OAuth». Запись оставлена как stub чтобы не ломать ссылки.
 
 ### 4.5 — Diagnostic mode rendering
 
@@ -237,6 +226,34 @@
 
 ---
 
+## 5. Naming mismatches between mock and live spec
+
+Точечные расхождения между нашим `lib/api.ts` (мокает paths) и реальным `gateway.yaml`. Не функциональные баги — только переименования при swap к real http client.
+
+### 5.1 — `/tools` (mock) → `/tool-catalog` (live)
+
+- **Где:** `lib/api.ts` метод `api.listTools()` — внутренне мокает path `/tools`. В live spec real path — `/tool-catalog` (operationId `listToolCatalog`).
+- **Impact:** ноль на mock layer. Когда swap к real http client — изменить URL string в одной строке.
+- **Кому помнить:** разработчику который будет делать `lib/api.ts` mock-to-real swap.
+
+---
+
+## 6. Tasks subtree — absent in live spec entirely (UI fully removed 2026-05-02)
+
+> **Update 2026-05-02:** UI removed entirely. 4 screens deleted (`TasksScreen`, `TaskDetailScreen`, `TaskNewScreen`, `TaskOutcomesCard`), all `/tasks/*` routes removed, `api.listTasks` / `getTask` / `createTask` removed, types deleted, `fxTasks` fixtures removed, training-fixtures `tasks: []` cleaned. Approval task chip removed from `ApprovalDetailScreen`. The original section below is preserved for backend-team context.
+
+
+
+В legacy local draft (`gateway-legacy-2026-04.yaml`) пути `/tasks/*` присутствовали с пометкой `x-mvp-deferred`. **В live spec (`gateway.yaml`) их нет вообще** — даже как deferred placeholder. Это значит:
+
+- Backend **никогда не вернёт** Task data — `listTasks`, `getTask`, `createTask` всегда будут 404 в production.
+- Frontend Tasks subtree (`/tasks`, `/tasks/new`, `/tasks/:id`) на mock работает, в production **немедленно падает**.
+- Mitigation: Tasks routes доступны только через deep-link из approval task chip (sidebar нет). При production swap нужно либо удалить Tasks UI целиком, либо добавить try/catch + fallback "Tasks not available".
+
+`MockBadge kind="deferred"` на Tasks-screens нужно поменять на `kind="design"` или явно "absent" — текущий ярлык "deferred" подразумевает "будет позже", что неточно.
+
+---
+
 ## 7. Open questions for backend-product alignment
 
 Эти вопросы открыты для backend-product alignment:
@@ -253,9 +270,9 @@
 |---|---|---|---|
 | 1.1 | `POST /auth/register` | 🚨 ship blocker | ✓ MockBadge on RegisterScreen |
 | 1.2 | `GET /users` | 🚨 ship blocker | ✓ MockBadge on Settings → Team |
-| 1.3 | `GET /approvals/{id}` | ⚠️ ship blocker для deep-links | ✓ MockBadge on ApprovalDetailScreen |
+| ~~1.3~~ | ~~`GET /approvals/{id}`~~ | ✅ resolved — есть в live spec (workaround снят) | — |
 | 1.4 | Agent status flip endpoint | ⚠️ medium | — internal hack, no user surface |
-| 1.7 | Integration registry + OAuth | ⏸ может быть post-MVP | ✓ MockBadge on Apps page + Connect modal + Wizard step 2 |
+| ~~1.7~~ | ~~Integration registry + OAuth~~ | ❌ removed — out-of-scope (см. handoff-prep § 0) | — |
 | 1.6 | User invitation | ⏸ может быть post-MVP | ✓ disabled "(planned)" button on Settings → Team |
 | 1.5 | Workspace CRUD | ⏸ может быть post-MVP | ✓ MockBadge on Settings → Workspace + disabled buttons |
 | 1.8 | Filter runs by agent_id | ⚠️ performance | — internal, not surface |
@@ -279,4 +296,8 @@
 
 ---
 
-**Last updated:** 2026-04-28 после Phase 11 + visual mock-flagging pass.
+**Last updated:** 2026-05-01 (later) — `docs/gateway.yaml` synced verbatim with live stage spec (`https://stage.api.int3grate.ai/docs/openapi.yaml`, OpenAPI 3.2.0, version 0.1.0). Reconciliation revealed: § 1.3 (`GET /approvals/{id}`) actually exists in live → resolved + workaround removed. Tasks subtree completely absent in live spec (was `x-mvp-deferred` in legacy draft) → new § 6 documents this. Naming gap `/tools` ↔ `/tool-catalog` → new § 5.
+
+Earlier 2026-05-01: removed § 1.7 (Integration registry / OAuth) and § 4.4 (Connect new app modal) as architecturally out-of-scope; rewrote § 2.3 (App connection status) as the canonical model.
+
+Earlier: 2026-04-28 — Phase 11 + visual mock-flagging pass.

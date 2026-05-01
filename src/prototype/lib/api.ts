@@ -9,7 +9,6 @@ import {
   runs as fxRuns,
   getAgentStats,
   getSpendDashboard,
-  tasks as fxTasks,
   users as fxUsers,
 } from './fixtures'
 import type {
@@ -41,8 +40,6 @@ import type {
   SpendDashboard,
   SpendGroupBy,
   SpendRange,
-  Task,
-  TaskList,
   ToolDefinition,
   ToolGrant,
   ToolPolicyMode,
@@ -324,6 +321,10 @@ export const api = {
     const a = fxAgents.find(a => a.id === agentId)
     if (a) {
       a.active_version = v
+      // Per backend confirmed flow (2026-05-02): activating a version
+      // transitions the agent from `draft` → `active` server-side. Mock
+      // mirrors that so the success page shows the right status.
+      if (a.status === 'draft') a.status = 'active'
       a.updated_at = new Date().toISOString()
     }
     return v
@@ -362,52 +363,6 @@ export const api = {
     const a = fxAgents.find(a => a.id === agentId)
     if (a) a.updated_at = new Date().toISOString()
     return next
-  },
-
-  // ── GET /tasks ────────────────────────────────────────────────────
-  // Returns TaskList envelope (docs/gateway.yaml, x-mvp-deferred).
-  async listTasks(filter?: { status?: Task['status']; limit?: number; offset?: number }): Promise<TaskList> {
-    await delay()
-    let list = [...fxTasks]
-    if (filter?.status) list = list.filter(t => t.status === filter.status)
-    list.sort((a, b) => b.created_at.localeCompare(a.created_at))
-    return paginate(list, filter)
-  },
-
-  // ── POST /tasks ───────────────────────────────────────────────────
-  async createTask(input: {
-    agent_id: string
-    user_input: string
-    type?: Task['type']
-    title?: string
-    domain_id?: string | null
-  }): Promise<Task> {
-    await delay()
-    void input.user_input // user_input is accepted by POST /tasks but is not echoed back in the Task response
-    const agent = fxAgents.find(a => a.id === input.agent_id)
-    if (!agent) throw new Error('agent not found')
-    const now = new Date().toISOString()
-    const t: Task = {
-      id: `tsk_${Math.floor(Math.random() * 9000 + 1000)}`,
-      tenant_id: agent.tenant_id,
-      domain_id: input.domain_id ?? agent.domain_id ?? null,
-      type: input.type ?? 'chat',
-      status: 'pending',
-      title: input.title ?? null,
-      created_by: 'usr_ada',
-      assigned_agent_id: input.agent_id,
-      assigned_agent_version_id: agent.active_version?.id ?? null,
-      created_at: now,
-      updated_at: now,
-    }
-    fxTasks.unshift(t)
-    return t
-  },
-
-  // ── GET /tasks/{id} ───────────────────────────────────────────────
-  async getTask(id: string): Promise<Task | undefined> {
-    await delay()
-    return fxTasks.find(t => t.id === id)
   },
 
   // ── GET /runs/{id} ────────────────────────────────────────────────
@@ -558,6 +513,8 @@ export const api = {
     return paginate(list, filter)
   },
 
+  // GET /approvals/{id} (gateway v0.1.0). Direct single-fetch — backend
+  // exposes the endpoint, no cache or list-sweep workaround needed.
   async getApproval(id: string): Promise<ApprovalRequest | undefined> {
     await delay()
     const scenario = _trainingScenario()
@@ -631,13 +588,6 @@ export const api = {
           gate.status = 'blocked'
           gate.completed_at = now
         }
-        if (a.task_id) {
-          const task = fxTasks.find(t => t.id === a.task_id)
-          if (task && (task.status === 'pending' || task.status === 'running')) {
-            task.status = 'cancelled'
-            task.updated_at = now
-          }
-        }
       }
     }, resumeAt)
 
@@ -649,13 +599,6 @@ export const api = {
         const now = new Date().toISOString()
         run.status = 'completed'
         run.ended_at = now
-        if (a.task_id) {
-          const task = fxTasks.find(t => t.id === a.task_id)
-          if (task && task.status === 'running') {
-            task.status = 'completed'
-            task.updated_at = now
-          }
-        }
       }, completeAt)
     }
 

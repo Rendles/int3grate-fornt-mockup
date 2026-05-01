@@ -142,19 +142,18 @@ Self-contained mock of a multi-tenant agent control plane. **No backend** — ev
 
 #### Backend contract
 
-Canonical backend contract: **`docs/gateway.yaml`** (OpenAPI 3.1). Single source of truth for endpoint shapes, request/response schemas, and `x-mvp-deferred` flags. Sync against this file when backend behavior is in question.
+Canonical backend contract: **`docs/gateway.yaml`** (OpenAPI 3.2). **This file is synced verbatim from the live stage backend** at `https://stage.api.int3grate.ai/docs/openapi.yaml` (last pulled 2026-05-01). It IS what the backend actually exposes — not what we wish it exposed. Refresh with `curl -sS https://stage.api.int3grate.ai/docs/openapi.yaml > docs/gateway.yaml`. The earlier local-only extended draft (which had endpoints the real backend never had — `/auth/register`, `/users`, `/tasks/*`, `/tenants/*`, integration registry) is archived as `docs/gateway-legacy-2026-04.yaml` for diff/history only.
 
 `docs/backend-gaps.md` catalogues every place the UI promises functionality the backend doesn't yet expose. **Read it before invoking new endpoints or proposing backend wiring.**
 
-Key gaps (already flagged with `<MockBadge>` on the relevant surfaces):
+Key gaps (validated against live spec 2026-05-01):
 
-- `POST /auth/register` — missing entirely.
-- `GET /users` — missing entirely (used everywhere for resolving owner / requested_by / approver names).
-- `GET /approvals/{id}` — missing (deep-link single-fetch).
-- Integration registry / OAuth flow — missing (Apps page Connect modal is a placeholder).
-- Per-week spend buckets — backend exposes only aggregate ranges; 4-week trend is split client-side.
-- Activity sentence summaries — backend doesn't return per-run summary; headlines on /activity are derived client-side from RunStatus.
-- Pause / Fire agent transitions — no `PATCH /agents/{id}` for status flip; the wizard mock-hacks `agent.status = 'active'` after activation.
+- `POST /auth/register` — absent. UI hidden (registration screen + "Create account" button commented out).
+- `GET /users` — absent. UI uses `requested_by_name` (denormalised in approval) where possible; ALL user-name surfaces removed (approver name, agent owner, version author).
+- `/tasks/*` — absent in live spec entirely. UI fully removed 2026-05-02 (4 screens deleted, routes/types/fixtures cleaned). Approval `task_id` field stays in spec but no UI consumer.
+- Integration registry / OAuth flow (`/integrations/*`) — absent and architecturally out-of-scope (see `handoff-prep.md § 0` — shared backend credentials, no per-tenant OAuth). Apps page hidden.
+- Workspace CRUD / `PATCH /agents/{id}` (Pause/Fire) — absent. Settings page hidden; AgentDetail "Manage employment" card hidden.
+- Naming mismatch: tool catalog endpoint is `/tool-catalog` in live, but `api.listTools()` in mock targets `/tools`. Update at production swap; mock layer is unaffected.
 
 #### Routing (`router.tsx`, `index.tsx`)
 
