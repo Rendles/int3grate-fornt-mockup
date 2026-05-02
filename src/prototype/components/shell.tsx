@@ -34,6 +34,8 @@ interface NavItem {
   to: string
   icon: ReactNode
   badge?: { count: number | string; tone?: 'accent' | 'warn' | 'muted' }
+  /** Render a thin divider above this item to set it apart visually. */
+  dividerAbove?: boolean
 }
 
 export function Sidebar() {
@@ -63,6 +65,18 @@ export function Sidebar() {
     // /apps route in index.tsx when re-enabling.
     // { key: 'apps', label: 'Apps', to: '/apps', icon: <IconTool /> },
     { key: 'costs', label: 'Costs', to: '/costs', icon: <IconSpend /> },
+    // Sandbox: design preview surfaced for stakeholder feedback. Not a real
+    // product surface — flagged with a muted "preview" badge. Remove from
+    // here together with the /sandbox/team-bridge route in index.tsx and the
+    // screens/sandbox/ folder when the experiment is closed.
+    {
+      key: 'team-bridge',
+      label: 'Team Bridge',
+      to: '/sandbox/team-bridge',
+      icon: <IconAgent />,
+      badge: { count: 'preview', tone: 'muted' },
+      dividerAbove: true,
+    },
     // Settings is hidden in MVP; the Audit log was extracted into its own
     // top-level admin route. See docs/handoff-prep.md (Settings hide entry).
     // Restore this nav item together with the /settings/* routes in
@@ -98,26 +112,37 @@ export function Sidebar() {
 
       <div className="sb__nav">
         {items.map(item => (
-          <Link
-            key={item.key}
-            to={item.to}
-            data-tour={`nav-${item.key}`}
-            className={`sb__item${isActive(item.to) ? ' sb__item--active' : ''}`}
-          >
-            <span className="sb__item-icon">{item.icon}</span>
-            <Text as="span" size="2">{item.label}</Text>
-            {item.badge && (
-              <Badge
-                color={item.badge.tone === 'warn' ? 'amber' : item.badge.tone === 'muted' ? 'gray' : 'blue'}
-                variant={item.badge.tone === 'muted' ? 'outline' : 'soft'}
-                radius="full"
-                size="1"
-                className="sb__item-badge"
-              >
-                {item.badge.count}
-              </Badge>
+          <Fragment key={item.key}>
+            {item.dividerAbove && (
+              <div
+                aria-hidden
+                style={{
+                  height: 1,
+                  margin: '8px 12px 4px',
+                  background: 'var(--gray-a4)',
+                }}
+              />
             )}
-          </Link>
+            <Link
+              to={item.to}
+              data-tour={`nav-${item.key}`}
+              className={`sb__item${isActive(item.to) ? ' sb__item--active' : ''}`}
+            >
+              <span className="sb__item-icon">{item.icon}</span>
+              <Text as="span" size="2">{item.label}</Text>
+              {item.badge && (
+                <Badge
+                  color={item.badge.tone === 'warn' ? 'amber' : item.badge.tone === 'muted' ? 'gray' : 'blue'}
+                  variant={item.badge.tone === 'muted' ? 'outline' : 'soft'}
+                  radius="full"
+                  size="1"
+                  className="sb__item-badge"
+                >
+                  {item.badge.count}
+                </Badge>
+              )}
+            </Link>
+          </Fragment>
         ))}
       </div>
 
