@@ -43,6 +43,9 @@ import SpendScreen from './screens/SpendScreen'
 import ProfileScreen from './screens/ProfileScreen'
 import LearnScreen from './screens/LearnScreen'
 import NotFoundScreen from './screens/NotFoundScreen'
+// Sandbox: design exploration only. Reachable via direct URL, not linked from
+// sidebar. See docs/agent-plans/2026-05-02-1500-team-bridge-sandbox.md.
+import TeamBridgeScreen from './screens/sandbox/TeamBridgeScreen'
 
 // Old paths redirect to new ones (legacy hash routes).
 // Kept so existing tour navigateTo, bookmarks, and direct links don't 404.
@@ -144,6 +147,8 @@ function Router() {
     // { pattern: '/audit', render: () => <AuditScreen /> },
     { pattern: '/profile', render: () => <ProfileScreen /> },
     { pattern: '/learn', render: () => <LearnScreen /> },
+    // Sandbox routes — design previews, not reachable from the sidebar.
+    { pattern: '/sandbox/team-bridge', render: () => <TeamBridgeScreen /> },
   ]
 
   for (const r of routes) {
