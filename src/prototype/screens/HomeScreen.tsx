@@ -4,6 +4,7 @@ import { Box, Button } from '@radix-ui/themes'
 import { AppShell } from '../components/shell'
 import { PageHeader } from '../components/common'
 import { ErrorState, LoadingList } from '../components/states'
+import { WelcomeChatFlow } from '../components/welcome-chat-flow'
 import { IconChat } from '../components/icons'
 import { useAuth } from '../auth'
 import { api } from '../lib/api'
@@ -41,6 +42,9 @@ export default function HomeScreen() {
   }, [reloadKey])
 
   const loading = !errored && (!approvals || !agents || !spend || !recentRuns)
+  // True only after data is loaded. While loading we keep the normal
+  // header so it doesn't flash empty-state copy mid-fetch.
+  const isEmpty = !loading && agents !== null && agents.length === 0
 
   const nowDate = new Date()
 
@@ -74,17 +78,25 @@ export default function HomeScreen() {
         <PageHeader
           eyebrow={nowDate.toLocaleDateString('en-US', { weekday: 'long', month: 'short', day: 'numeric' }).toUpperCase()}
           title={<>Good {nowDate.getHours() < 12 ? 'morning' : nowDate.getHours() < 18 ? 'afternoon' : 'evening'}, <em>{user?.name.split(' ')[0]}.</em></>}
-          subtitle="Team-wide counts, live approvals, and spend this week."
+          subtitle={
+            isEmpty
+              ? "Let's set up your team."
+              : 'Team-wide counts, live approvals, and spend this week.'
+          }
           actions={
-            <>
-              <Button asChild variant="soft" color="gray"><a href="#/approvals">Approvals</a></Button>
-              <Button asChild><a href="#/chats/new"><IconChat />Start a chat</a></Button>
-            </>
+            isEmpty ? undefined : (
+              <>
+                <Button asChild variant="soft" color="gray"><a href="#/approvals">Approvals</a></Button>
+                <Button asChild><a href="#/chats/new"><IconChat />Start a chat</a></Button>
+              </>
+            )
           }
         />
 
         {loading ? (
           <Box mt="5"><LoadingList rows={8} /></Box>
+        ) : isEmpty ? (
+          <Box mt="4"><WelcomeChatFlow /></Box>
         ) : (
           <AdminView
             agents={agents!}

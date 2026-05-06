@@ -311,6 +311,11 @@ export interface CreateChatRequest {
   agent_version_id: string
   model?: string | null
   title?: string | null
+  // MOCK-ONLY: when set, the mock api.createChat seeds the chat with a
+  // synthetic assistant message so the user lands on a chat that already
+  // has a greeting. The real backend does NOT support this — see
+  // docs/backend-gaps.md. Used by the welcome-chat onboarding sandbox.
+  seed_assistant_message?: string
 }
 
 export interface SendMessageRequest {

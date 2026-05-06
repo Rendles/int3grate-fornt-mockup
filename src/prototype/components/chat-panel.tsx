@@ -8,7 +8,7 @@ import { Banner, LoadingList, NoAccessState } from './states'
 import { IconChat, IconCheck, IconPlay, IconStop, IconX } from './icons'
 import { useAuth } from '../auth'
 import { api } from '../lib/api'
-import type { Agent, Chat, ChatMessage, ChatStreamFrame, ChatToolCall } from '../lib/types'
+import type { Agent, AgentVersion, Chat, ChatMessage, ChatStreamFrame, ChatToolCall } from '../lib/types'
 import { absTime, ago, money, num, toolLabel } from '../lib/format'
 
 interface StreamingState {
@@ -22,30 +22,49 @@ interface StreamingState {
 
 /**
  * Self-contained chat experience: state, streaming, send, close, messages,
- * composer. Shared by the full-screen ChatDetailScreen wrapper and the
- * embedded chat inside the AgentDetailScreen Talk-to tab.
+ * composer. Three modes:
  *
- * The component owns its data fetching (chat + agent + messages); callers
- * just give it a chatId and the right wrapping div + CSS class.
+ * `mode='full'` — full-screen wrapper. Prints a CommandBar at the top with
+ * full chat metadata. Owns its fetch (loads chat + messages by `chatId`).
  *
- * `mode='full'` prints a CommandBar at the top with full chat metadata.
- * `mode='embed'` skips the CommandBar (the parent screen — usually an
- * agent tab — already shows the agent context). Both modes show the
- * inline closed/failed banners.
+ * `mode='embed'` — embedded inside an agent tab. Skips the CommandBar (the
+ * parent already shows agent context); shows a thin metadata badge instead.
+ * Owns its fetch.
+ *
+ * `mode='draft'` — chat does not exist yet. Caller passes `agent` and
+ * `agentVersion`; on first send the panel does `createChat → sendMessage`
+ * back-to-back, then calls `onCreated(chatId)` so the parent can navigate
+ * to the now-existing chat URL. No fetching, no closed/failed banners.
  */
-export function ChatPanel({
-  chatId,
-  mode,
-  emptyHint,
-}: {
-  chatId: string
-  mode: 'full' | 'embed'
-  emptyHint?: string
-}) {
+type ChatPanelProps =
+  | {
+      mode: 'full' | 'embed'
+      chatId: string
+      emptyHint?: string
+    }
+  | {
+      mode: 'draft'
+      agent: Agent
+      agentVersion: AgentVersion
+      onCreated: (chatId: string) => void
+      emptyHint?: string
+    }
+
+export function ChatPanel(props: ChatPanelProps) {
   const { user } = useAuth()
-  const [chat, setChat] = useState<Chat | null | undefined>(undefined)
-  const [agent, setAgent] = useState<Agent | null>(null)
-  const [messages, setMessages] = useState<ChatMessage[] | null>(null)
+  const { mode, emptyHint } = props
+
+  // For existing chats: undefined = loading, null = not found, Chat = loaded.
+  // For draft: starts null (no chat yet), becomes a Chat after first send.
+  const [chat, setChat] = useState<Chat | null | undefined>(
+    mode === 'draft' ? null : undefined,
+  )
+  const [agent, setAgent] = useState<Agent | null>(
+    mode === 'draft' ? props.agent : null,
+  )
+  const [messages, setMessages] = useState<ChatMessage[] | null>(
+    mode === 'draft' ? [] : null,
+  )
   const [draft, setDraft] = useState('')
   const [streaming, setStreaming] = useState<StreamingState | null>(null)
   const [streamError, setStreamError] = useState<string | null>(null)
@@ -53,9 +72,12 @@ export function ChatPanel({
   const [closing, setClosing] = useState(false)
   const messagesEndRef = useRef<HTMLDivElement | null>(null)
 
+  // Fetch only runs for existing chats. Draft mode skips it entirely.
+  const fetchChatId = mode === 'draft' ? null : props.chatId
   useEffect(() => {
+    if (!fetchChatId) return
     let cancelled = false
-    api.getChat(chatId).then(c => {
+    api.getChat(fetchChatId).then(c => {
       if (cancelled) return
       setChat(c ?? null)
       if (c) {
@@ -63,55 +85,102 @@ export function ChatPanel({
           if (cancelled) return
           setAgent(res.items.find(a => a.id === c.agent_id) ?? null)
         })
-        api.listChatMessages(chatId, { limit: 200 }).then(list => {
+        api.listChatMessages(fetchChatId, { limit: 200 }).then(list => {
           if (cancelled) return
           setMessages([...list.items].reverse())
         })
       }
     })
     return () => { cancelled = true }
-  }, [chatId])
+  }, [fetchChatId])
 
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth', block: 'end' })
   }, [messages, streaming])
 
-  if (chat === null) {
-    return <NoAccessState requiredRole="access to this chat" body="This chat could not be loaded. It may have been closed long ago or you may not have access." />
-  }
-  if (chat === undefined || messages === null) {
-    return <LoadingList rows={4} />
+  // Loading / not-found gates only matter for existing chats.
+  if (mode !== 'draft') {
+    if (chat === null) {
+      return <NoAccessState requiredRole="access to this chat" body="This chat could not be loaded. It may have been closed long ago or you may not have access." />
+    }
+    if (chat === undefined || messages === null) {
+      return <LoadingList rows={4} />
+    }
   }
 
-  const isOwner = chat.created_by === user?.id
+  // After the guards above, in non-draft mode `chat` and `messages` are
+  // guaranteed non-null. In draft mode `chat` is null until the first send
+  // creates one; downstream consumers must guard accordingly.
+
+  const isOwner = chat ? chat.created_by === user?.id : true
   const isAdmin = user?.role === 'admin' || user?.role === 'domain_admin'
-  const canSend = chat.status === 'active' && (isOwner || isAdmin)
-  const canClose = chat.status === 'active' && (isOwner || isAdmin)
+  const canSend = mode === 'draft'
+    ? !!user && !busy
+    : !!chat && chat.status === 'active' && (isOwner || isAdmin)
+  const canClose = mode !== 'draft' && !!chat && chat.status === 'active' && (isOwner || isAdmin)
 
   const send = async () => {
     const content = draft.trim()
-    if (!content || !canSend || busy) return
+    if (!content || busy || !canSend) return
     setBusy(true)
     setStreamError(null)
-
-    const optimisticUser: ChatMessage = {
-      id: `tmp_${Date.now()}`,
-      chat_id: chat.id,
-      role: 'user',
-      content,
-      tool_calls: null,
-      tool_call_id: null,
-      tool_name: null,
-      cost_usd: null,
-      tokens_in: null,
-      tokens_out: null,
-      created_at: new Date().toISOString(),
-    }
-    setMessages(prev => (prev ? [...prev, optimisticUser] : [optimisticUser]))
     setDraft('')
 
+    let activeChat: Chat
+
+    if (props.mode === 'draft') {
+      // Optimistic user message — shown while createChat is in flight so
+      // the user doesn't stare at an empty pane.
+      const optimisticUser: ChatMessage = {
+        id: `tmp_${Date.now()}`,
+        chat_id: 'pending',
+        role: 'user',
+        content,
+        tool_calls: null,
+        tool_call_id: null,
+        tool_name: null,
+        cost_usd: null,
+        tokens_in: null,
+        tokens_out: null,
+        created_at: new Date().toISOString(),
+      }
+      setMessages([optimisticUser])
+
+      try {
+        activeChat = await api.createChat(
+          {
+            agent_version_id: props.agentVersion.id,
+            title: content.slice(0, 60).trim() || undefined,
+          },
+          user!,
+        )
+        setChat(activeChat)
+      } catch (e) {
+        setStreamError((e as Error).message ?? 'Could not start chat')
+        setBusy(false)
+        return
+      }
+    } else {
+      // chat is guaranteed by the guards above + canSend gate.
+      activeChat = chat!
+      const optimisticUser: ChatMessage = {
+        id: `tmp_${Date.now()}`,
+        chat_id: activeChat.id,
+        role: 'user',
+        content,
+        tool_calls: null,
+        tool_call_id: null,
+        tool_name: null,
+        cost_usd: null,
+        tokens_in: null,
+        tokens_out: null,
+        created_at: new Date().toISOString(),
+      }
+      setMessages(prev => (prev ? [...prev, optimisticUser] : [optimisticUser]))
+    }
+
     try {
-      const stream = api.sendChatMessage(chat.id, { content })
+      const stream = api.sendChatMessage(activeChat.id, { content })
       for await (const frame of stream) {
         applyFrame(frame, setStreaming, setStreamError)
         if (frame.event === 'error') break
@@ -120,17 +189,24 @@ export function ChatPanel({
     } catch (e) {
       setStreamError((e as Error).message ?? 'Stream interrupted')
     } finally {
-      const fresh = await api.listChatMessages(chat.id, { limit: 200 })
+      const fresh = await api.listChatMessages(activeChat.id, { limit: 200 })
       setMessages([...fresh.items].reverse())
-      const updatedChat = await api.getChat(chat.id)
+      const updatedChat = await api.getChat(activeChat.id)
       if (updatedChat) setChat(updatedChat)
       setStreaming(null)
       setBusy(false)
+
+      if (props.mode === 'draft') {
+        // Hand off to the parent — typically a navigate(replace) onto the
+        // real chat URL, which remounts this component in embed mode.
+        props.onCreated(activeChat.id)
+      }
     }
   }
 
   const close = async () => {
-    if (!canClose || closing) return
+    if (mode === 'draft' || !canClose || closing) return
+    if (!chat) return
     setClosing(true)
     try {
       await api.closeChat(chat.id)
@@ -144,7 +220,7 @@ export function ChatPanel({
   return (
     <>
       <div className="chat-detail__head">
-        {mode === 'full' && (
+        {mode === 'full' && chat && (
           <CommandBar
             parts={[
               { label: 'AGENT', value: agent?.name ?? '—' },
@@ -158,7 +234,7 @@ export function ChatPanel({
           />
         )}
 
-        {mode === 'embed' && (
+        {mode === 'embed' && chat && (
           <Flex align="center" justify="between" gap="2" wrap="wrap" mb="3">
             <Flex align="center" gap="2" wrap="wrap">
               <Badge color="gray" variant="soft" radius="full" size="1" style={{ fontFamily: 'var(--font-mono)' }}>
@@ -176,14 +252,16 @@ export function ChatPanel({
           </Flex>
         )}
 
-        {chat.status === 'closed' && (
+        {/* draft mode renders no head content — composer is the focus */}
+
+        {chat?.status === 'closed' && (
           <Box mt={mode === 'embed' ? '2' : '4'}>
             <Banner
               tone="info"
               title="This chat is closed"
               action={agent ? (
                 <Button asChild size="1">
-                  <a href={`#/chats/new?agent=${agent.id}`}><IconChat />Start a new chat</a>
+                  <a href={`#/agents/${agent.id}/talk`}><IconChat />Start a new chat</a>
                 </Button>
               ) : undefined}
             >
@@ -192,7 +270,7 @@ export function ChatPanel({
           </Box>
         )}
 
-        {chat.status === 'failed' && (
+        {chat?.status === 'failed' && (
           <Box mt={mode === 'embed' ? '2' : '4'}>
             <Banner tone="danger" title="This chat ended in a failed state">
               Something went wrong on the agent's side. Open the activity log to see what happened on the last turn.
@@ -203,20 +281,20 @@ export function ChatPanel({
 
       <div className="chat-detail__body">
         <div className="chat-detail__messages">
-          {messages.length === 0 && !streaming && (
+          {(messages?.length ?? 0) === 0 && !streaming && (
             <Text as="div" size="2" color="gray" align="center" style={{ padding: '40px 0' }}>
               {emptyHint ?? `No messages yet — say something to ${agent?.name ?? 'the agent'}.`}
             </Text>
           )}
-          {messages.map(msg => (
+          {messages?.map(msg => (
             <MessageBubble
               key={msg.id}
               message={msg}
-              modelLabel={msg.role === 'assistant' ? chat.model : null}
+              modelLabel={msg.role === 'assistant' ? (chat?.model ?? null) : null}
             />
           ))}
           {streaming && (
-            <StreamingBubble streaming={streaming} modelLabel={chat.model} />
+            <StreamingBubble streaming={streaming} modelLabel={chat?.model ?? ''} />
           )}
           {streamError && (
             <Banner tone="danger" title="Stream error">
@@ -236,7 +314,7 @@ export function ChatPanel({
             busy={busy}
           />
         </div>
-      ) : chat.status === 'active' ? (
+      ) : mode !== 'draft' && chat?.status === 'active' ? (
         <div className="chat-detail__composer chat-detail__composer--readonly">
           <Text as="div" size="1" color="gray">
             Read-only — only the chat owner ({chat.created_by === user?.id ? 'you' : 'someone else'}) and admins can send messages.
@@ -531,6 +609,7 @@ function Composer({
       }}
     >
       <TextAreaField
+        autoFocus
         value={value}
         onChange={e => onChange(e.target.value)}
         onKeyDown={handleKey}

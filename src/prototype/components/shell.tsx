@@ -1,5 +1,5 @@
 import type { ReactNode } from 'react'
-import { Badge, Box, Code, Flex, IconButton, Text } from '@radix-ui/themes'
+import { Badge, Box, Code, DropdownMenu, Flex, IconButton, Text } from '@radix-ui/themes'
 
 import { Fragment, useEffect, useState } from 'react'
 import { Link, useRouter } from '../router'
@@ -12,6 +12,8 @@ import {
   IconApproval,
   // IconAudit — restore when re-enabling the Audit nav item below.
   // IconAudit,
+  IconBug,
+  // IconChat — restore when re-enabling Welcome chat sandbox nav item
   IconHelp,
   IconHome,
   IconLogout,
@@ -24,6 +26,8 @@ import {
   // IconTool — restore when re-enabling Apps nav item below.
   // IconTool,
 } from './icons'
+import { useDevMode } from '../dev/dev-mode'
+import type { DevMode } from '../dev/dev-mode'
 import { Avatar } from './common'
 import { roleLabel } from '../lib/format'
 import { useTour } from '../tours/useTour'
@@ -65,9 +69,8 @@ export function Sidebar() {
     // /apps route in index.tsx when re-enabling.
     // { key: 'apps', label: 'Apps', to: '/apps', icon: <IconTool /> },
     { key: 'costs', label: 'Costs', to: '/costs', icon: <IconSpend /> },
-    // Sandbox: design preview surfaced for stakeholder feedback. Not a real
-    // product surface — flagged with a muted "preview" badge. Remove from
-    // here together with the /sandbox/team-bridge route in index.tsx and the
+    // Welcome chat sandbox route removed — delete this nav item together
+    // with the /sandbox/welcome-chat route in index.tsx and the
     // screens/sandbox/ folder when the experiment is closed.
     {
       key: 'team-bridge',
@@ -76,6 +79,20 @@ export function Sidebar() {
       icon: <IconAgent />,
       badge: { count: 'preview', tone: 'muted' },
       dividerAbove: true,
+    },
+    {
+      key: 'approvals-inline',
+      label: 'Approvals preview',
+      to: '/sandbox/approvals-inline',
+      icon: <IconApproval />,
+      badge: { count: 'preview', tone: 'muted' },
+    },
+    {
+      key: 'quick-hire',
+      label: 'Quick hire',
+      to: '/sandbox/quick-hire',
+      icon: <IconAgent />,
+      badge: { count: 'preview', tone: 'muted' },
     },
     // Settings is hidden in MVP; the Audit log was extracted into its own
     // top-level admin route. See docs/handoff-prep.md (Settings hide entry).
@@ -242,6 +259,8 @@ export function Topbar({
           </Box>
         )}
 
+        <DevModeMenu />
+
         <IconButton
           variant="ghost"
           size="1"
@@ -291,3 +310,53 @@ export function AppShell({
     </div>
   )
 }
+
+// ─── DevModeMenu ────────────────────────────────────────────────────────
+// Topbar dropdown for forcing every read endpoint into a synthetic state
+// (empty / loading / error). Session-only — refresh resets to 'real'.
+// Trigger glows amber when a non-real mode is active so it's never invisible
+// that the data on screen is fake.
+
+const DEV_MODES: { id: DevMode; label: string; hint: string }[] = [
+  { id: 'real', label: 'Real data', hint: 'Use fixtures as usual' },
+  { id: 'empty', label: 'Empty', hint: 'All list endpoints return []' },
+  { id: 'loading', label: 'Loading', hint: 'All read endpoints hang forever' },
+  { id: 'error', label: 'Error', hint: 'All read endpoints throw' },
+]
+
+function DevModeMenu() {
+  const { mode, setMode } = useDevMode()
+  const isActive = mode !== 'real'
+  const current = DEV_MODES.find(m => m.id === mode)
+  return (
+    <DropdownMenu.Root>
+      <DropdownMenu.Trigger>
+        <IconButton
+          variant={isActive ? 'soft' : 'ghost'}
+          color={isActive ? 'amber' : undefined}
+          size="1"
+          title={`Dev: forcing ${current?.label.toLowerCase() ?? 'real'} state`}
+          aria-label="Dev mode menu"
+        >
+          <IconBug size={14} />
+        </IconButton>
+      </DropdownMenu.Trigger>
+      <DropdownMenu.Content size="1">
+        <DropdownMenu.Label>Force page state</DropdownMenu.Label>
+        <DropdownMenu.RadioGroup value={mode} onValueChange={v => setMode(v as DevMode)}>
+          {DEV_MODES.map(opt => (
+            <DropdownMenu.RadioItem
+              key={opt.id}
+              value={opt.id}
+              title={opt.hint}
+              style={{ minWidth: 160 }}
+            >
+              {opt.label}
+            </DropdownMenu.RadioItem>
+          ))}
+        </DropdownMenu.RadioGroup>
+      </DropdownMenu.Content>
+    </DropdownMenu.Root>
+  )
+}
+

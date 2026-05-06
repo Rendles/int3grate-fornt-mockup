@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import { Box, Button, Flex, Grid, Heading, Slider, Spinner, Text } from '@radix-ui/themes'
 
 import { AppShell } from '../components/shell'
@@ -21,6 +21,7 @@ import type { Agent } from '../lib/types'
 import {
   FEATURED_TEMPLATES,
   NON_FEATURED_TEMPLATES,
+  getTemplate,
   type AssistantTemplate,
 } from '../lib/templates'
 
@@ -60,6 +61,35 @@ export default function AgentNewScreen() {
   const [busy, setBusy] = useState(false)
   const [hireError, setHireError] = useState<string | null>(null)
   const [hiredAgent, setHiredAgent] = useState<Agent | null>(null)
+
+  // Optional `?template=<id>` deep-link — used by the welcome-chat
+  // "Modify before hire" button. When present, skip the welcome phase and
+  // land directly on phase='name' with the template pre-filled. Inlined
+  // here (rather than calling `pickTemplate`) so the hook stays above
+  // the member-guard early return — Rules of Hooks.
+  useEffect(() => {
+    const hash = window.location.hash
+    const queryStart = hash.indexOf('?')
+    if (queryStart < 0) return
+    const params = new URLSearchParams(hash.slice(queryStart + 1))
+    const templateId = params.get('template')
+    if (!templateId) return
+    const t = getTemplate(templateId)
+    if (!t) return
+    /* eslint-disable react-hooks/set-state-in-effect */
+    setTemplate(t)
+    setName(t.defaultName)
+    setInstructions(t.defaultInstructions)
+    setModel(t.defaultModel ?? DEFAULT_MODEL)
+    setPickedGrants(t.defaultGrants.map(g => ({
+      tool_name: g.tool_name,
+      mode: g.mode,
+      approval_required: g.approval_required,
+    })))
+    setPhase('name')
+    /* eslint-enable react-hooks/set-state-in-effect */
+    // Run once on mount.
+  }, [])
 
   if (isMember) {
     return (

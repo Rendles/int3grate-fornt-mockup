@@ -1,223 +1,103 @@
-import { useEffect, useMemo, useState } from 'react'
-import { Badge, Box, Button, Flex, Grid, Separator, Text } from '@radix-ui/themes'
+import { useEffect, useState } from 'react'
+import { Badge, Box, Button, Flex, Text } from '@radix-ui/themes'
 
 import { AppShell } from '../components/shell'
-import { PageHeader, InfoHint, Status } from '../components/common'
-import { SelectField, TextInput } from '../components/fields'
-import { Banner, LoadingList } from '../components/states'
-import { IconAlert, IconChat } from '../components/icons'
+import { PageHeader, Status } from '../components/common'
+import { LoadingList } from '../components/states'
+import { IconArrowRight } from '../components/icons'
 import { useRouter } from '../router'
-import { useAuth } from '../auth'
 import { api } from '../lib/api'
 import type { Agent } from '../lib/types'
 
-const MODELS = [
-  { value: 'claude-opus-4-7', label: 'claude-opus-4-7 — heavy reasoning' },
-  { value: 'claude-sonnet-4-6', label: 'claude-sonnet-4-6 — balanced default' },
-  { value: 'claude-haiku-4-5', label: 'claude-haiku-4-5 — fast / cheap' },
-]
-
+/**
+ * Agent picker for the global "Start a chat" entry on HomeScreen — used when
+ * the user has not chosen an agent yet. Picking an agent navigates to
+ * `/agents/:id/talk`, where the chat is composed and lazily created on first
+ * send (see ChatPanel's draft mode).
+ *
+ * Deep-links of the form `#/chats/new?agent=<id>` (legacy) bypass the picker
+ * and redirect straight to the agent's draft-chat tab.
+ */
 export default function ChatNewScreen() {
   const { navigate, search } = useRouter()
-  const { user } = useAuth()
+  const presetAgentId = search.get('agent')
 
   const [agents, setAgents] = useState<Agent[] | null>(null)
-  const [agentId, setAgentId] = useState<string>(search.get('agent') ?? '')
-  // `userModel` holds an explicit user choice from the dropdown. When null we
-  // derive the displayed model from the agent version's primary — no need to
-  // mirror it into state via an effect (which trips react-hooks/set-state-in-effect).
-  const [userModel, setUserModel] = useState<string | null>(null)
-  const [title, setTitle] = useState<string>('')
-  const [submitted, setSubmitted] = useState(false)
-  const [busy, setBusy] = useState(false)
-  const [err, setErr] = useState<string | null>(null)
 
   useEffect(() => {
-    api.listAgents().then(res => {
-      const list = res.items
-      setAgents(list)
-      if (!agentId && list.length) {
-        setAgentId(list.find(a => a.status === 'active')?.id ?? list[0].id)
-      }
-    })
-  }, [agentId])
-
-  const agent = useMemo(() => agents?.find(a => a.id === agentId) ?? null, [agents, agentId])
-  const version = agent?.active_version ?? null
-  const runnable = agent?.status === 'active' && !!version
-
-  const defaultModel = (version?.model_chain_config as { primary?: string })?.primary ?? ''
-  const model = userModel ?? defaultModel
-
-  const submit = async () => {
-    setSubmitted(true)
-    if (!agentId || !version || !user || !runnable) return
-    setBusy(true)
-    setErr(null)
-    try {
-      const chat = await api.createChat(
-        {
-          agent_version_id: version.id,
-          model: model || undefined,
-          title: title.trim() || undefined,
-        },
-        user,
-      )
-      navigate(`/agents/${chat.agent_id}/talk/${chat.id}`)
-    } catch (e) {
-      setErr((e as Error).message ?? 'Could not start chat')
-    } finally {
-      setBusy(false)
+    if (presetAgentId) {
+      navigate(`/agents/${presetAgentId}/talk`, { replace: true })
+      return
     }
-  }
+    api.listAgents().then(res => setAgents(res.items))
+  }, [presetAgentId, navigate])
 
-  const cancelHref = agent ? `/agents/${agent.id}/talk` : '/agents'
-  const crumbs = agent
-    ? [
-        { label: 'home', to: '/' },
-        { label: 'team', to: '/agents' },
-        { label: agent.name, to: `/agents/${agent.id}/talk` },
-        { label: 'new chat' },
-      ]
-    : [{ label: 'home', to: '/' }, { label: 'team', to: '/agents' }, { label: 'new chat' }]
+  // While the redirect is firing, render nothing extra to avoid a flash.
+  if (presetAgentId) return null
 
   return (
-    <AppShell crumbs={crumbs}>
+    <AppShell crumbs={[{ label: 'home', to: '/' }, { label: 'team', to: '/agents' }, { label: 'new chat' }]}>
       <div className="page page--narrow">
         <PageHeader
-          eyebrow={
-            <>
-              NEW CHAT{' '}
-              <InfoHint>
-                Each chat is locked to one agent setup and one model. To switch, open a new chat.
-              </InfoHint>
-            </>
-          }
-          title={<>Start a <em>chat.</em></>}
-          subtitle="Pick an agent, optionally pick the model. The model is fixed once the chat opens."
+          eyebrow="NEW CHAT"
+          title={<>Pick an <em>agent.</em></>}
+          subtitle="Choose who you want to chat with. The conversation starts when you send your first message."
           actions={
-            <>
-              <Button asChild variant="soft" disabled={busy} color='gray'><a href={`#${cancelHref}`}>Cancel</a></Button>
-              <Button onClick={submit} disabled={busy || !runnable} data-tour="chat-submit">
-                <IconChat />
-                {busy ? 'opening…' : 'Open chat'}
-              </Button>
-            </>
+            <Button asChild variant="soft" color="gray">
+              <a href="#/agents">Cancel</a>
+            </Button>
           }
         />
-
-        {err && (
-          <Banner tone="warn" title="Couldn't start chat" action={<Button variant="ghost" onClick={() => setErr(null)}>Dismiss</Button>}>
-            {err}
-          </Banner>
-        )}
 
         {!agents ? (
           <LoadingList rows={4} />
         ) : (
-          <>
-            {/* AGENT PICKER */}
-            <div className="card" data-tour="chat-agent-picker">
-              <div className="card__head">
-                <Text as="div" size="2" weight="medium" className="card__title">Agent</Text>
-                {agent && !runnable && (
-                  <Badge color="amber" variant="soft" radius="full" size="1">
-                    {agent.status !== 'active' ? `${agent.status} · can't chat` : 'no active version'}
-                  </Badge>
-                )}
-              </div>
-              <div className="card__body">
-                <Flex direction="column" gap="2">
-                  {agents.filter(a => a.status !== 'archived').map(a => {
-                    const on = a.id === agentId
+          <div className="card">
+            <div className="card__body">
+              <Flex direction="column" gap="2">
+                {agents
+                  .filter(a => a.status !== 'archived')
+                  .map(a => {
+                    const runnable = a.status === 'active' && !!a.active_version
                     return (
                       <button
                         key={a.id}
                         className="login__role"
+                        disabled={!runnable}
                         style={{
                           textAlign: 'left',
                           padding: 12,
-                          borderColor: on ? 'var(--accent-a7)' : undefined,
-                          background: on ? 'var(--accent-a3)' : 'var(--gray-3)',
+                          background: 'var(--gray-3)',
                           display: 'grid',
-                          gridTemplateColumns: 'minmax(0, 1fr) 100px',
+                          gridTemplateColumns: 'minmax(0, 1fr) auto 24px',
                           gap: 14,
                           alignItems: 'center',
-                          opacity: a.status === 'paused' ? 0.75 : 1,
+                          opacity: runnable ? 1 : 0.6,
+                          cursor: runnable ? 'pointer' : 'not-allowed',
                         }}
-                        onClick={() => setAgentId(a.id)}
+                        onClick={() => {
+                          if (runnable) navigate(`/agents/${a.id}/talk`)
+                        }}
                       >
-                        <div style={{ minWidth: 0, textAlign: 'left' }}>
-                          <Text as="div" size="2">{a.name}</Text>
+                        <Box minWidth="0">
+                          <Text as="div" size="2" weight="medium">{a.name}</Text>
                           {a.description && (
                             <Text as="div" size="1" color="gray" mt="1" className="truncate">{a.description}</Text>
                           )}
-                        </div>
-                        <div
-                          data-tour={on && a.active_version ? 'chat-agent-version' : undefined}
-                          style={{ textAlign: 'right' }}
-                        >
+                        </Box>
+                        <Flex align="center" gap="2">
                           <Status status={a.status} />
-                          {a.active_version && (
-                            <Text as="div" size="1" color="gray" mt="1">v{a.active_version.version}</Text>
+                          {!runnable && a.status === 'active' && (
+                            <Badge color="amber" variant="soft" radius="full" size="1">no setup</Badge>
                           )}
-                        </div>
+                        </Flex>
+                        <IconArrowRight className="ic" />
                       </button>
                     )
                   })}
-                </Flex>
-                {submitted && !agentId && (
-                  <Text as="div" size="1" color="red" mt="2">
-                    <Flex align="center" gap="2">
-                      <IconAlert className="ic ic--sm" /> Pick an agent
-                    </Flex>
-                  </Text>
-                )}
-              </div>
+              </Flex>
             </div>
-
-            <div style={{ height: 16 }} />
-
-            <div className="card">
-              <div className="card__body">
-                <Grid columns={{ initial: '1', md: '240px 1fr' }} gap="5" py="5">
-                  <Box>
-                    <Text as="div" size="2" weight="medium">Title</Text>
-                    <Text as="div" size="1" color="gray" mt="1">Optional. Shown in the chat list.</Text>
-                  </Box>
-                  <Box data-tour="chat-title">
-                    <TextInput
-                      value={title}
-                      onChange={e => setTitle(e.target.value)}
-                      placeholder={agent ? `Conversation with ${agent.name}` : 'Quick question'}
-                    />
-                  </Box>
-                </Grid>
-                <Separator size="4" />
-                <Grid columns={{ initial: '1', md: '240px 1fr' }} gap="5" py="5">
-                  <Box>
-                    <Text as="div" size="2" weight="medium">Model</Text>
-                    <Text as="div" size="1" color="gray" mt="1">
-                      Defaults to the agent's primary model. Fixed once the chat opens.
-                    </Text>
-                  </Box>
-                  <Box data-tour="chat-model">
-                    <SelectField
-                      value={model || undefined}
-                      onChange={setUserModel}
-                      options={MODELS}
-                      placeholder="Use agent default"
-                    />
-                  </Box>
-                </Grid>
-              </div>
-            </div>
-
-            <div style={{ height: 16 }} />
-            <Banner tone="info" title="Chats can't be reopened">
-              Once closed, a chat is read-only — open a new chat to keep talking. Messages stay around for audit.
-            </Banner>
-          </>
+          </div>
         )}
       </div>
     </AppShell>

@@ -1,12 +1,12 @@
 import type { CSSProperties } from 'react'
-import { HugeiconsIcon } from '@hugeicons/react'
-import type { IconSvgElement } from '@hugeicons/react'
+import { HugeiconsIcon, type IconSvgElement } from '@hugeicons/react'
 import {
   Alert02Icon,
   ArrowLeft01Icon,
   ArrowRight01Icon,
   Audit01Icon,
   BubbleChatIcon,
+  Bug01Icon,
   Cancel01Icon,
   CheckmarkBadge01Icon,
   Clock01Icon,
@@ -79,3 +79,4 @@ export const IconSun = make(Sun03Icon)
 export const IconMoon = make(Moon02Icon)
 export const IconHelp = make(HelpCircleIcon)
 export const IconSettings = make(Settings02Icon)
+export const IconBug = make(Bug01Icon)

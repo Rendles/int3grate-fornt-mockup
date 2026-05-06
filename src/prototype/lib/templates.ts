@@ -42,6 +42,11 @@ export interface AssistantTemplate {
   featured: boolean
   // Used as the avatar's two-letter initials when no other icon is available.
   initials: string
+  // First message the agent sends after a hire from the welcome-chat
+  // onboarding flow. Business-tone, 1-2 sentences, ends in a question.
+  // Stored client-side and seeded into the chat via mock-only
+  // CreateChatRequest.seed_assistant_message — see docs/backend-gaps.md.
+  welcomeMessage: string
 }
 
 export const TEMPLATES: AssistantTemplate[] = [
@@ -73,6 +78,8 @@ You never make up information. If you don't know something about a prospect, ask
     ],
     featured: true,
     initials: 'SA',
+    welcomeMessage:
+      "Hi — I'm your Sales Agent. I can scan your CRM for new leads, draft personalised intros for your approval, and follow up on prospects that go quiet. Want me to start with this week's inbound?",
   },
   {
     id: 'marketing',
@@ -98,6 +105,8 @@ Your job:
     ],
     featured: true,
     initials: 'MA',
+    welcomeMessage:
+      "Hi — I'm your Marketing Agent. I can draft this week's newsletter in your brand voice, schedule social posts, and surface mentions worth a reply. Want me to put together a draft for review?",
   },
   {
     id: 'reports',
@@ -122,6 +131,8 @@ Your job:
     ],
     featured: true,
     initials: 'RA',
+    welcomeMessage:
+      "Hi — I'm your Reports Analyst. I read your numbers and summarise them in plain language, with comparisons to last period and anything that looks off. Want me to pull this week's snapshot?",
   },
   {
     id: 'support',
@@ -148,6 +159,8 @@ Your job:
     ],
     featured: true,
     initials: 'CS',
+    welcomeMessage:
+      "Hi — I'm your Customer Support agent. I can read a customer's history, look up answers in your knowledge base, and draft replies for your approval. Want me to take a look at the open tickets?",
   },
   {
     id: 'finance',
@@ -174,6 +187,8 @@ Your job:
     ],
     featured: false,
     initials: 'FH',
+    welcomeMessage:
+      "Hi — I'm your Finance Helper. I reconcile Stripe charges against QuickBooks, flag duplicates and refund-eligible cases, and prepare refunds for your approval — never on my own. Should I run this week's reconciliation?",
   },
   {
     id: 'operations',
@@ -200,6 +215,8 @@ Your job:
     ],
     featured: false,
     initials: 'OH',
+    welcomeMessage:
+      "Hi — I'm your Operations Helper. I handle Okta and AWS access changes for new joiners and leavers, post Slack updates, and watch for stale entitlements. Want me to check who's still around but shouldn't be?",
   },
   {
     id: 'custom',
@@ -214,6 +231,7 @@ Your job:
     ],
     featured: false,
     initials: 'CW',
+    welcomeMessage: '',
   },
 ]
 

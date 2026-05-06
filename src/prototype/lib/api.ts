@@ -46,6 +46,21 @@ import type {
   User,
 } from './types'
 import { TRAINING_SCENARIOS, type TrainingScenario } from '../tours/training-fixtures'
+import { getDevMode } from '../dev/dev-mode'
+
+// Dev-mode short-circuit. Read methods call this right after delay()
+// and either get '"empty"' (apply empty result), 'real' (continue with
+// the real impl), hang forever (loading mode), or throw (error mode).
+async function _devGate(): Promise<'real' | 'empty'> {
+  const m = getDevMode()
+  if (m === 'real') return 'real'
+  if (m === 'empty') return 'empty'
+  if (m === 'loading') {
+    await new Promise<never>(() => {})
+    return 'real' // unreachable
+  }
+  throw new Error('Dev mode: forced error')
+}
 
 // Slice an array per limit/offset envelope params. Defaults:
 // no slicing (returns the whole array) so existing client-side pagination
@@ -230,6 +245,7 @@ export const api = {
   // ── GET /users (resolution helper for owner_user_id, requested_by, etc.)
   async listUsers(): Promise<User[]> {
     await delay()
+    if (await _devGate() === 'empty') return []
     const scenario = _trainingScenario()
     return [...(scenario?.users ?? fxUsers)]
   },
@@ -239,6 +255,7 @@ export const api = {
   // fields (total_spend_usd, runs_count) are null on list views per spec.
   async listAgents(filter?: { limit?: number; offset?: number }): Promise<AgentList> {
     await delay()
+    if (await _devGate() === 'empty') return { items: [], total: 0, limit: filter?.limit, offset: filter?.offset }
     const scenario = _trainingScenario()
     return paginate(scenario?.agents ?? fxAgents, filter)
   },
@@ -248,6 +265,7 @@ export const api = {
   // (docs/gateway.yaml). List view leaves these null.
   async getAgent(id: string): Promise<Agent | undefined> {
     await delay()
+    if (await _devGate() === 'empty') return undefined
     const scenario = _trainingScenario()
     const a = (scenario?.agents ?? fxAgents).find(a => a.id === id)
     if (!a) return undefined
@@ -333,6 +351,7 @@ export const api = {
   // ── GET /agents/{id}/grants ───────────────────────────────────────
   async getGrants(agentId: string): Promise<ToolGrant[]> {
     await delay()
+    if (await _devGate() === 'empty') return []
     const training = trainingGrants(agentId)
     return training ? training.map(cloneGrant) : grantsByAgent[agentId] ?? []
   },
@@ -369,6 +388,7 @@ export const api = {
   // Returns RunDetail (docs/gateway.yaml schema name).
   async getRun(id: string): Promise<RunDetail | undefined> {
     await delay()
+    if (await _devGate() === 'empty') return undefined
     const scenario = _trainingScenario()
     if (scenario) return scenario.runs.find(r => r.id === id)
     return fxRuns[id]
@@ -382,6 +402,11 @@ export const api = {
     offset?: number
   }): Promise<RunsList> {
     await delay()
+    if (await _devGate() === 'empty') {
+      const limit = filter?.limit ?? 20
+      const offset = filter?.offset ?? 0
+      return { items: [], total: 0, limit, offset }
+    }
     const limit = filter?.limit ?? 20
     const offset = filter?.offset ?? 0
     const all = Object.values(fxRuns)
@@ -431,6 +456,7 @@ export const api = {
     }
     const limit = filter?.limit ?? 20
     const offset = filter?.offset ?? 0
+    if (await _devGate() === 'empty') return { items: [], total: 0, limit, offset }
 
     const all: AuditEvent[] = []
     // Run-sourced events.
@@ -506,6 +532,7 @@ export const api = {
   // Returns ApprovalList envelope (docs/gateway.yaml).
   async listApprovals(filter?: { status?: ApprovalRequest['status']; limit?: number; offset?: number }): Promise<ApprovalList> {
     await delay()
+    if (await _devGate() === 'empty') return { items: [], total: 0, limit: filter?.limit, offset: filter?.offset }
     const scenario = _trainingScenario()
     let list = [...(scenario?.approvals ?? fxApprovals)]
     if (filter?.status) list = list.filter(a => a.status === filter.status)
@@ -517,6 +544,7 @@ export const api = {
   // exposes the endpoint, no cache or list-sweep workaround needed.
   async getApproval(id: string): Promise<ApprovalRequest | undefined> {
     await delay()
+    if (await _devGate() === 'empty') return undefined
     const scenario = _trainingScenario()
     if (scenario) return scenario.approvals.find(a => a.id === id)
     return fxApprovals.find(a => a.id === id)
@@ -621,6 +649,7 @@ export const api = {
     await delay()
     const limit = filter?.limit ?? 20
     const offset = filter?.offset ?? 0
+    if (await _devGate() === 'empty') return { items: [], total: 0, limit, offset }
     const isAdmin = viewer.role === 'admin' || viewer.role === 'domain_admin'
     const source = trainingChats() ?? fxChats
     const all = source
@@ -638,6 +667,7 @@ export const api = {
   // GET /chat/{chatId}
   async getChat(id: string): Promise<Chat | undefined> {
     await delay()
+    if (await _devGate() === 'empty') return undefined
     const training = trainingChats()
     if (training) return training.find(c => c.id === id)
     return fxChats.find(c => c.id === id)
@@ -673,14 +703,36 @@ export const api = {
       total_tokens_in: 0,
       total_tokens_out: 0,
     }
+    // MOCK-ONLY: when seed_assistant_message is provided, prepend a synthetic
+    // assistant ChatMessage so the chat lands non-empty. The real backend
+    // does NOT support this — see docs/backend-gaps.md. Used by the
+    // welcome-chat onboarding sandbox to deliver a per-template greeting.
+    const seedMessages: ChatMessage[] = req.seed_assistant_message
+      ? [
+          {
+            id: `msg_seed_${id}`,
+            chat_id: id,
+            role: 'assistant',
+            content: req.seed_assistant_message,
+            tool_calls: null,
+            tool_call_id: null,
+            tool_name: null,
+            cost_usd: 0,
+            tokens_in: 0,
+            tokens_out: 0,
+            created_at: now,
+          },
+        ]
+      : []
+
     if (training) {
       training.unshift(chat)
       if (!__trainingChatMessages) __trainingChatMessages = {}
-      __trainingChatMessages[id] = []
+      __trainingChatMessages[id] = [...seedMessages]
       return chat
     }
     fxChats.unshift(chat)
-    fxChatMessages[id] = []
+    fxChatMessages[id] = [...seedMessages]
     return chat
   },
 
@@ -704,6 +756,7 @@ export const api = {
     await delay()
     const limit = filter?.limit ?? 50
     const offset = filter?.offset ?? 0
+    if (await _devGate() === 'empty') return { items: [], total: 0, limit, offset }
     const source = trainingChatMessages(chatId) ?? fxChatMessages[chatId] ?? []
     const all = source
       .slice()
@@ -730,12 +783,22 @@ export const api = {
   // ── GET /tools (gateway v0.2.0) ───────────────────────────────────
   async listTools(): Promise<ToolDefinition[]> {
     await delay()
+    if (await _devGate() === 'empty') return []
     return fxTools
   },
 
   // ── GET /internal/agents/{id}/grants/snapshot (gateway v0.2.0) ────
   async getGrantsSnapshot(agentId: string): Promise<GrantsSnapshot> {
     await delay()
+    if (await _devGate() === 'empty') {
+      return {
+        agent_id: agentId,
+        tenant_id: 'ten_acme',
+        version: 'snap_empty',
+        grants: [],
+        issued_at: new Date().toISOString(),
+      }
+    }
     const scenario = _trainingScenario()
     const agent = (scenario?.agents ?? fxAgents).find(a => a.id === agentId)
     if (!agent) throw new Error('agent not found')
@@ -768,6 +831,7 @@ export const api = {
   // ── GET /dashboard/spend ──────────────────────────────────────────
   async getSpend(range: SpendRange = '7d', group_by: SpendGroupBy = 'agent'): Promise<SpendDashboard> {
     await delay()
+    if (await _devGate() === 'empty') return { range, group_by, total_usd: 0, items: [] }
     return getSpendDashboard(range, group_by)
   },
 }

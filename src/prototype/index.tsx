@@ -43,9 +43,13 @@ import SpendScreen from './screens/SpendScreen'
 import ProfileScreen from './screens/ProfileScreen'
 import LearnScreen from './screens/LearnScreen'
 import NotFoundScreen from './screens/NotFoundScreen'
-// Sandbox: design exploration only. Reachable via direct URL, not linked from
-// sidebar. See docs/agent-plans/2026-05-02-1500-team-bridge-sandbox.md.
+// Sandbox: design exploration only. Reachable via direct URL + a sidebar
+// entry with a muted "preview" badge. See docs/agent-plans/.
 import TeamBridgeScreen from './screens/sandbox/TeamBridgeScreen'
+import ApprovalsInlineScreen from './screens/sandbox/ApprovalsInlineScreen'
+import QuickHireScreen from './screens/sandbox/QuickHireScreen'
+// WelcomeChatScreen removed — standalone preview no longer needed
+import { DevModeProvider, DevModeRemount } from './dev/dev-mode-provider'
 
 // Old paths redirect to new ones (legacy hash routes).
 // Kept so existing tour navigateTo, bookmarks, and direct links don't 404.
@@ -147,8 +151,12 @@ function Router() {
     // { pattern: '/audit', render: () => <AuditScreen /> },
     { pattern: '/profile', render: () => <ProfileScreen /> },
     { pattern: '/learn', render: () => <LearnScreen /> },
-    // Sandbox routes — design previews, not reachable from the sidebar.
+    // Sandbox routes — design previews, surfaced in the sidebar with a
+    // muted "preview" badge. See docs/agent-plans/.
     { pattern: '/sandbox/team-bridge', render: () => <TeamBridgeScreen /> },
+    { pattern: '/sandbox/approvals-inline', render: () => <ApprovalsInlineScreen /> },
+    { pattern: '/sandbox/quick-hire', render: () => <QuickHireScreen /> },
+    // /sandbox/welcome-chat removed — standalone preview no longer needed
   ]
 
   for (const r of routes) {
@@ -175,15 +183,19 @@ function ThemedRoot() {
       <div className="prototype-root">
         <AuthProvider>
           <RouterProvider>
-            <TrainingModeProvider>
-              <TrainingBanner />
-              <TourProvider>
-                <Router />
-                <TourOverlay />
-                <WelcomeToast />
-                <TrainingAutoExit />
-              </TourProvider>
-            </TrainingModeProvider>
+            <DevModeProvider>
+              <TrainingModeProvider>
+                <TrainingBanner />
+                <TourProvider>
+                  <DevModeRemount>
+                    <Router />
+                  </DevModeRemount>
+                  <TourOverlay />
+                  <WelcomeToast />
+                  <TrainingAutoExit />
+                </TourProvider>
+              </TrainingModeProvider>
+            </DevModeProvider>
           </RouterProvider>
         </AuthProvider>
         {import.meta.env.DEV && <ThemePanel defaultOpen={false} />}
@@ -199,3 +211,4 @@ export default function PrototypeApp() {
     </ThemeProvider>
   )
 }
+

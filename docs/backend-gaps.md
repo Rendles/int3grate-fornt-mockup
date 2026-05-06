@@ -78,6 +78,18 @@
 - **Текущий мок:** `prettifyRequestedAction()` парсит prefix `service.action` и подменяет через `toolLabel()` map.
 - **Что нужно от backend:** возвращать поле `requested_action_label` (denormalised human text) или structured object (tool, args summary, target). Сейчас UI парсит free-form string — fragile.
 
+### 1.12 — Seed assistant message on chat creation ⚠️ medium
+
+- **UI:** `screens/sandbox/WelcomeChatScreen.tsx` — onboarding flow: после hire'а агента из шаблона нас перекидывает в чат, где агент сразу приветствует пользователя сообщением из `template.welcomeMessage`.
+- **Текущий мок:** `CreateChatRequest` имеет mock-only поле `seed_assistant_message?: string`. `api.createChat` (`lib/api.ts`) при наличии этого поля prepend'ит synthetic `ChatMessage` (role='assistant') в `fxChatMessages[id]` ДО возврата chat'а — `listChatMessages` сразу возвращает приветствие.
+- **Что нужно от backend:** один из путей —
+  1. Поддержать `seed_assistant_message` в `POST /chat` body (простейший) — backend сам создаёт assistant-message без вызова LLM.
+  2. Хранить `welcome_message_template` на `agent_version` (или `agent`) и backend генерит greeting при `createChat` на основе template'а версии.
+  3. Auto-trigger LLM с system-prompt «Greet the user as {name}, explain what you can do» — самый дорогой и недетерминированный.
+- **Use case:** только onboarding-flow welcome-chat. В production /agents/new и QuickHireGrid greeting НЕ нужен (там пользователь сам идёт в chat и пишет первое сообщение).
+- **Если backend не реализует:** UI fallback — после hire navigate'имся на `/agents/:id/talk` (draft mode без greeting). Onboarding теряет narrative-finish, но не падает.
+- **MockBadge:** не нужен — пользователь не видит mock-only механики, только результат (greeting в chat).
+
 ---
 
 ## 2. Synthesized data on the client

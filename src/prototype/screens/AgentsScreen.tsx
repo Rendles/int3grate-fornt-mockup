@@ -1,12 +1,13 @@
 import { useEffect, useMemo, useState } from 'react'
-import { Box, Button, Code, Flex, Grid, Text, TextField } from '@radix-ui/themes'
+import { Box, Button, Code, Dialog, Flex, Grid, Text, TextField, VisuallyHidden } from '@radix-ui/themes'
 
 import { AppShell } from '../components/shell'
-import { Avatar, PageHeader, Status } from '../components/common'
+import { Avatar, Caption, PageHeader, Status } from '../components/common'
 import { TextInput } from '../components/fields'
 import { EmptyState, ErrorState, LoadingList } from '../components/states'
 import { IconAgent, IconArrowRight, IconChat, IconLock, IconPlus, IconSearch } from '../components/icons'
-import { Link } from '../router'
+import { QuickHireGrid } from '../components/quick-hire-grid'
+import { WelcomeChatFlow } from '../components/welcome-chat-flow'
 import { useAuth } from '../auth'
 import { api } from '../lib/api'
 import { AGENT_STATUS_FILTERS } from '../lib/filters'
@@ -22,6 +23,11 @@ export default function AgentsScreen() {
   const [reloadTick, setReloadTick] = useState(0)
   const [filter, setFilter] = useState<AgentStatusFilter>('all')
   const [query, setQuery] = useState('')
+  // Hire dialog — opened from PageHeader button or in-grid HireTile.
+  // Hosts <WelcomeChatFlow variant="compact"> and refreshes the agents
+  // list whenever it closes (so a freshly hired agent appears without
+  // a manual reload).
+  const [hireOpen, setHireOpen] = useState(false)
 
   const canCreate = user?.role === 'admin' || user?.role === 'domain_admin'
 
@@ -79,44 +85,46 @@ export default function AgentsScreen() {
           subtitle="Configure your agents and what apps they can use."
           actions={
             canCreate
-              ? <Button asChild><a href="#/agents/new"><IconPlus />Hire an agent</a></Button>
+              ? <Button onClick={() => setHireOpen(true)}><IconPlus />Hire an agent</Button>
               : <Button variant="ghost" disabled title="Admins only"><IconLock />Hire an agent</Button>
           }
         />
 
-        <Flex align="center" gap="2" mb="4" wrap="wrap">
-          <Flex align="center" gap="2">
-            {AGENT_STATUS_FILTERS.map(f => {
-              const isActive = filter === f
-              return (
-                <Button
-                  key={f}
-                  type="button"
-                  size="2"
-                  variant="soft"
-                  color={isActive ? 'blue' : 'gray'}
-                  onClick={() => { setFilter(f) }}
-                >
-                  <span style={{ textTransform: 'capitalize' }}>{f}</span>
-                  <Code variant="ghost" size="1" color="gray">{counts[f] ?? 0}</Code>
-                </Button>
-              )
-            })}
+        {agents && agents.length > 0 && (
+          <Flex align="center" gap="2" mb="4" wrap="wrap">
+            <Flex align="center" gap="2">
+              {AGENT_STATUS_FILTERS.map(f => {
+                const isActive = filter === f
+                return (
+                  <Button
+                    key={f}
+                    type="button"
+                    size="2"
+                    variant="soft"
+                    color={isActive ? 'blue' : 'gray'}
+                    onClick={() => { setFilter(f) }}
+                  >
+                    <span style={{ textTransform: 'capitalize' }}>{f}</span>
+                    <Code variant="ghost" size="1" color="gray">{counts[f] ?? 0}</Code>
+                  </Button>
+                )
+              })}
+            </Flex>
+            <Box flexGrow="1" />
+            <Box width="260px">
+              <TextInput
+                size="2"
+                placeholder="Filter by name or description..."
+                value={query}
+                onChange={e => setQuery(e.target.value)}
+              >
+                <TextField.Slot side="left">
+                  <IconSearch className="ic ic--sm" />
+                </TextField.Slot>
+              </TextInput>
+            </Box>
           </Flex>
-          <Box flexGrow="1" />
-          <Box width="260px">
-            <TextInput
-              size="2"
-              placeholder="Filter by name or description..."
-              value={query}
-              onChange={e => setQuery(e.target.value)}
-            >
-              <TextField.Slot side="left">
-                <IconSearch className="ic ic--sm" />
-              </TextField.Slot>
-            </TextInput>
-          </Box>
-        </Flex>
+        )}
 
         {error ? (
           <ErrorState
@@ -127,12 +135,21 @@ export default function AgentsScreen() {
         ) : !agents ? (
           <LoadingList rows={6} />
         ) : agents.length === 0 ? (
-          <EmptyState
-            icon={<IconAgent />}
-            title="No agents yet"
-            body="Hire your first agent and give it a role, instructions, and access to apps."
-            action={canCreate ? { label: 'Hire an agent', href: '/agents/new' } : undefined}
-          />
+          canCreate ? (
+            <Box mt="2">
+              <Caption>Pick a starter template</Caption>
+              <Text as="div" size="2" color="gray" mt="1" mb="3">
+                Hire your first agent in two clicks. You can rename, retrain, or fire later.
+              </Text>
+              <QuickHireGrid mode="embedded" />
+            </Box>
+          ) : (
+            <EmptyState
+              icon={<IconAgent />}
+              title="No agents yet"
+              body="Ask a workspace admin to hire your first agent."
+            />
+          )
         ) : filtered.length === 0 ? (
           <EmptyState
             icon={<IconAgent />}
@@ -149,12 +166,58 @@ export default function AgentsScreen() {
               />
             ))}
             {canCreate && filter === 'all' && !query && (
-              <HireTile />
+              <HireTile onClick={() => setHireOpen(true)} />
             )}
           </Grid>
         )}
 
       </div>
+
+      {/* Hire dialog — same chat-style flow as the welcome onboarding
+          but in compact variant (skips the welcome pitch). On close we
+          refresh the agents list so a freshly hired agent appears
+          immediately. */}
+      <Dialog.Root
+        open={hireOpen}
+        onOpenChange={(open) => {
+          setHireOpen(open)
+          if (!open) setReloadTick(t => t + 1)
+        }}
+      >
+        <Dialog.Content
+          size="2"
+          maxWidth="780px"
+          style={{ padding: 0 }}
+          // Prevent the focus trap from auto-focusing the first
+          // chip on open — that would trigger its HoverCard preview
+          // (focus = open) and the preview wouldn't dismiss until the
+          // user manually hovers it.
+          onOpenAutoFocus={(e) => e.preventDefault()}
+        >
+          {/* Re-apply .prototype-root inside the portal so our scoped
+              styles (welcome-*, .ic, button resets, theme tokens) match
+              what the WelcomeChatFlow looks like everywhere else. The
+              page-background + min-height that .prototype-root normally
+              brings would fight the dialog overlay, so we override them
+              inline. */}
+          <div
+            className="prototype-root"
+            style={{ minHeight: 'auto', background: 'transparent' }}
+          >
+            <VisuallyHidden>
+              <Dialog.Title>Hire a new agent</Dialog.Title>
+              <Dialog.Description>
+                Pick a role from the picker, customise it if you'd like,
+                and hire to add to your team.
+              </Dialog.Description>
+            </VisuallyHidden>
+            <WelcomeChatFlow
+              variant="compact"
+              onClose={() => setHireOpen(false)}
+            />
+          </div>
+        </Dialog.Content>
+      </Dialog.Root>
     </AppShell>
   )
 }
@@ -204,10 +267,11 @@ function AssistantCard({ agent, lastRun }: { agent: Agent; lastRun: RunListItem 
   )
 }
 
-function HireTile() {
+function HireTile({ onClick }: { onClick: () => void }) {
   return (
-    <Link
-      to="/agents/new"
+    <button
+      type="button"
+      onClick={onClick}
       className="card card--tile"
       style={{
         padding: 16,
@@ -219,11 +283,14 @@ function HireTile() {
         gap: 8,
         color: 'var(--accent-11)',
         border: '1px dashed var(--gray-7)',
+        background: 'transparent',
+        cursor: 'pointer',
+        textAlign: 'center',
       }}
     >
       <IconPlus />
       <Text size="2" weight="medium">Hire a new agent</Text>
       <Text size="1" color="gray">Pick a role and configure access</Text>
-    </Link>
+    </button>
   )
 }

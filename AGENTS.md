@@ -119,6 +119,7 @@ Before touching any UI text or making product decisions, read in this order:
 
 1. **`docs/ux-spec.md`** — canonical spec for the target user (Maria, agent-curious owner). Everything user-facing should align with this. § 11 has explicit instructions for AI agents reviewing the project.
 2. **`docs/backend-gaps.md`** — catalogue of mock-only surfaces and missing backend endpoints. Don't try to "fix" these from the frontend.
+3. **`docs/backlog.md`** — current open items. Skim at session start.
 
 ## Commands
 
@@ -132,21 +133,18 @@ There is no test runner configured.
 ### Local launch and visual verification
 
 - The current app mounts the prototype directly. Use `http://localhost:5173/#/` as the default local URL.
-- Do **not** use the old `#/app/...` prefix. Real routes are direct hash routes such as `#/agents`, `#/approvals`, `#/activity`, `#/settings/team`, and `#/agents/new`.
+- Do **not** use the old `#/app/...` prefix. Real routes are direct hash routes such as `#/agents`, `#/approvals`, `#/activity`, and `#/agents/new`. The `#/app` toggling architecture was removed — `src/App.tsx` now just returns `<PrototypeApp />`.
 - If the user says the app is already running, verify against that live server instead of trying to start another dev server.
-- If `npm run dev` fails from Codex with a Vite/Rolldown `spawn EPERM`-style error while the user's app works, treat it as a local sandbox/runtime issue, not a project bug.
 - For isolated headless checks, seed the admin session in localStorage before loading routes: `localStorage.setItem('proto.session.v1', JSON.stringify({ token: 'mock_usr_ada', userId: 'usr_ada' }))`.
-- If Browser Use / `node_repl` fails because it resolves an old system Node, do not chase app problems. The project can still be checked through the already-running browser or an isolated headless Edge pass against `localhost:5173`.
-- For vocabulary/UI-copy passes, visually check at least: Home, Approvals list/detail, Activity list + expanded row, Team, Apps, Costs, Tasks, all Settings tabs, and Hire wizard welcome → success.
+- For vocabulary/UI-copy passes, visually check at least: Home, Approvals list/detail, Activity list + expanded row, Team (`/agents`), Agent detail tabs, Costs, and the Hire wizard welcome → success. Apps / Settings / Audit / Register are not currently routed (see Architecture below).
 - A successful vocabulary pass should find no visible `Assistant` / `Assistants` / `AI worker` copy in those routes. Internal IDs like `assistants`, `/agents`, `role: 'assistant'`, and `data-tour="nav-assistants"` can remain.
 
 ## Architecture
 
 This is a **Vite + React 19 + TypeScript** single-page app. The current app mounts the prototype directly:
 
-- `src/App.tsx` returns `<PrototypeApp />`.
-- `src/prototype/` is the actual product mockup — a control plane operator UI for managing AI agents, conversations, activity, approvals, apps, costs, and settings.
-- Old notes about a public landing page or `#/app`-gated prototype are stale. Do not route or test through `#/app`.
+- `src/App.tsx` is a 5-line wrapper that returns `<PrototypeApp />`. There is no public landing page and no `#/app` toggle.
+- `src/prototype/` is the actual product mockup — a control plane operator UI for managing AI agents, conversations, activity, approvals, and costs.
 
 ### The prototype (`src/prototype/`)
 
@@ -154,50 +152,54 @@ Self-contained mock of a multi-tenant agent control plane. **No backend** — ev
 
 #### Backend contract
 
-Canonical backend contract: **`docs/gateway.yaml`** (OpenAPI 3.1). Single source of truth for endpoint shapes, request/response schemas, and `x-mvp-deferred` flags. Sync against this file when backend behavior is in question.
+Canonical backend contract: **`docs/gateway.yaml`** (OpenAPI 3.2.0). **This file is synced verbatim from the live stage backend** at `https://stage.api.int3grate.ai/docs/openapi.yaml` (last pulled 2026-05-01). It IS what the backend actually exposes — not what we wish it exposed. Refresh with `curl -sS https://stage.api.int3grate.ai/docs/openapi.yaml > docs/gateway.yaml`. The earlier local-only extended draft (which had endpoints the real backend never had — `/auth/register`, `/users`, `/tasks/*`, `/tenants/*`, integration registry) is archived as `docs/gateway-legacy-2026-04.yaml` for diff/history only.
 
 `docs/backend-gaps.md` catalogues every place the UI promises functionality the backend doesn't yet expose. **Read it before invoking new endpoints or proposing backend wiring.**
 
-Key gaps (already flagged with `<MockBadge>` on the relevant surfaces):
+Key gaps (validated against live spec 2026-05-01):
 
-- `POST /auth/register` — missing entirely.
-- `GET /users` — missing entirely (used everywhere for resolving owner / requested_by / approver names).
-- `GET /approvals/{id}` — missing (deep-link single-fetch).
-- Integration registry / OAuth flow — missing (Apps page Connect modal is a placeholder).
+- `POST /auth/register` — absent. UI hidden (registration screen + "Create account" button commented out).
+- `GET /users` — absent. UI uses `requested_by_name` (denormalised in approval) where possible; ALL user-name surfaces removed (approver name, agent owner, version author).
+- `GET /approvals/{id}` — absent (deep-link single-fetch). UI hydrates from the list response.
+- `/tasks/*` — absent in live spec entirely. UI fully removed 2026-05-02 (4 screens deleted, routes/types/fixtures cleaned). Approval `task_id` field stays in spec but no UI consumer.
+- Integration registry / OAuth flow (`/integrations/*`) — absent and architecturally out-of-scope (see `docs/handoff-prep.md § 0` — shared backend credentials, no per-tenant OAuth). Apps page hidden.
+- Workspace CRUD / `PATCH /agents/{id}` (Pause/Fire) — absent. Settings page hidden; AgentDetail "Manage employment" surface removed from the visible Settings tab.
 - Per-week spend buckets — backend exposes only aggregate ranges; 4-week trend is split client-side.
-- Activity sentence summaries — backend doesn't return per-run summary; headlines on /activity are derived client-side from RunStatus.
-- Pause / Fire agent transitions — no `PATCH /agents/{id}` for status flip; the wizard mock-hacks `agent.status = 'active'` after activation.
+- Activity sentence summaries — backend doesn't return per-run summary; headlines on `/activity` are derived client-side from `RunStatus`.
+- Naming mismatch: tool catalog endpoint is `/tool-catalog` in live, but `api.listTools()` in mock targets `/tools`. Update at production swap; mock layer is unaffected.
 
 #### Routing (`router.tsx`, `index.tsx`)
 
-Hand-rolled hash router. Routes are declared as a flat list in `index.tsx` using `matchRoute(pattern, path)` with `:param` segments. **Always navigate via the `<Link>` component or `useRouter().navigate`**. They write direct hash routes such as `#/agents` and `#/settings/history`; there is no `/app` prefix in the current app.
+Hand-rolled hash router. Routes are declared as a flat list in `index.tsx` using `matchRoute(pattern, path)` with `:param` segments. **Always navigate via the `<Link>` component or `useRouter().navigate`** — they write direct hash routes such as `#/agents` and `#/activity`. There is **no `/app` prefix** anywhere; route patterns are matched against the raw hash path.
 
-Current route map (after Phase 11):
+Current route map (live in `src/prototype/index.tsx`):
 
-- `/`, `/login`, `/register`, `/profile`, `/learn`, `/404`-style fallback
-- `/agents`, `/agents/new`, `/agents/:agentId` (Overview default), `/agents/:agentId/{talk,grants,activity,settings,advanced}`, `/agents/:agentId/talk/:chatId` (embedded chat), `/agents/:agentId/versions/new`
-- `/approvals`, `/approvals/:approvalId`
-- `/activity`, `/activity/:runId` (Technical view — labelled `advanced` in UI)
-- `/apps`, `/costs`
-- `/settings`, `/settings/{team,history,developer,diagnostic}`
-- `/tasks`, `/tasks/new`, `/tasks/:taskId` *(MVP-deferred backend, kept in UI for design continuity, banner explains)*
-- Legacy redirects: `/runs` → `/activity`, `/tools` → `/apps`, `/spend` → `/costs`, `/audit` → `/settings/history`, `/chats` → `/agents`, `/chats/:chatId` → resolves agent_id and forwards to `/agents/:agentId/talk/:chatId`.
-
-`/chats/new` still exists as a chat-creation form; after createChat it navigates to the embedded path.
+- `/`, `/login`, `/profile`, `/learn`. `NotFoundScreen` is the fallback. `/register` is commented out (see backend gaps).
+- `/agents`, `/agents/new`, `/agents/:agentId` (Overview default), `/agents/:agentId/{talk,grants,activity,settings,advanced}`, `/agents/:agentId/talk/:chatId` (embedded chat), `/agents/:agentId/versions/new`.
+- `/approvals`, `/approvals/:approvalId`.
+- `/activity`, `/activity/:runId` (Technical view — labelled `advanced` in the UI).
+- `/costs`.
+- `/sandbox/team-bridge`, `/sandbox/approvals-inline`, `/sandbox/quick-hire` — design-exploration previews, surfaced in the sidebar with a muted "preview" badge.
+- Legacy redirects: `/runs[/...]` → `/activity[/...]`, `/spend` → `/costs`, `/chats` → `/agents`, `/chats/:chatId` → resolves agent_id and forwards to `/agents/:agentId/talk/:chatId`. `/chats/new` still exists as a chat-creation form; after `createChat` it navigates to the embedded path.
+- **Hidden (commented out, not deleted):** `/register`, `/apps` + `/tools` redirect, `/settings` + `/settings/{team,history,developer,diagnostic}`, `/audit`. Their screen files (`RegisterScreen.tsx`, `ToolsScreen.tsx`, `SettingsScreen.tsx`, `AuditScreen.tsx`) are preserved for restoration but no route currently mounts them.
 
 > ⚠️ **`Link` props pass-through**: the `Link` component accepts the full `AnchorHTMLAttributes` surface (minus `href`/`onClick`, which it owns) and spreads it onto the inner `<a>`. This is what makes Radix Themes `asChild` composition work. Don't tighten the props back to a fixed list.
 
 #### Sidebar (`components/shell.tsx`)
 
-7 items (admins see all 7, members see 6 — Settings is admin-only):
+5 production items + 3 sandbox preview items. Apps / Settings / Audit nav entries are commented out (alongside their routes). Settings was admin-only when shipped; the role gate is preserved in the comment block for restoration.
 
+Production:
 1. **Home** (`/`) — operational dashboard.
 2. **Approvals** (`/approvals`) — pending decisions, with badge count.
-3. **Activity** (`/activity`) — ribbon of what agents did.
-4. **Team** (`/agents`) — list of agents. Route key / URL remain `agents`; only the user-facing sidebar label is `Team`.
-5. **Apps** (`/apps`) — connected services.
-6. **Costs** (`/costs`) — spend overview (admin-only restriction inside).
-7. **Settings** (`/settings`) — workspace, team members, history log, developer details, diagnostic mode (admin-only).
+3. **Activity** (`/activity`) — ribbon of what agents did. Audit log is folded into this view; there is no separate `/audit` surface.
+4. **Team** (`/agents`) — list of agents. The route stays `/agents` and the internal nav key is still `assistants` (and `data-tour="nav-assistants"`), but the visible label is `Team` per `docs/ux-spec.md`.
+5. **Costs** (`/costs`) — spend overview.
+
+Sandbox preview (muted badge, separated by a divider):
+6. **Team Bridge** (`/sandbox/team-bridge`).
+7. **Approvals preview** (`/sandbox/approvals-inline`).
+8. **Quick hire** (`/sandbox/quick-hire`).
 
 #### Auth (`auth.tsx`)
 
@@ -207,7 +209,7 @@ Current route map (after Phase 11):
 - `domain@int3grate.ai` (Marcelo — domain_admin, L3)
 - `member@int3grate.ai` (Priya — member, L1)
 
-Any password works; the login screen pre-fills `demo`.
+Any password works; the login screen pre-fills `demo`. The "Create account" button is commented out alongside the `/register` route.
 
 **Two-step login flow** mirrors the spec: `POST /auth/login` returns `LoginResponse { token, expires_at }`, then the client calls `GET /me` with the bearer to fetch the `User`. The mock generates a `mock_<userId>` token and decodes it back. Session is `{ token, userId }` in `localStorage` under `proto.session.v1`.
 
@@ -223,25 +225,26 @@ The `api` object is the single data layer used by every screen. Each call awaits
 
 **When adding new entities or screens**: extend `lib/types.ts`, seed in `lib/fixtures.ts`, and expose through `lib/api.ts` — do not call fixtures from screens directly.
 
+**Dev-mode page-state toggle**: the topbar bug-icon (see `dev/dev-mode-provider.tsx`) forces `api.ts` into `empty` / `loading` / `error` modes for working on those visual states without fabricating dummy data. `DevModeRemount` re-mounts the route tree on toggle.
+
 #### Domain model (`lib/types.ts`)
 
-Canonical entities, aligned 1:1 with `docs/gateway.yaml` schemas. Keep this file the single source of truth for shape.
+Canonical entities, aligned 1:1 with `docs/gateway.yaml` schemas. Keep this file the single source of truth for shape. Tasks types were removed alongside the UI deletion (no `Task`, `TaskList`, `CreateTaskRequest` etc.).
 
 Auth: `LoginRequest`, `LoginResponse`, `User`, `Role`, `ApprovalLevel`.
 Agents: `Agent`, `AgentStatus`, `AgentList`, `CreateAgentRequest`, `AgentVersion`, `CreateAgentVersionRequest`.
 Tools: `ToolGrant`, `ToolGrantMode`, `ToolGrantScopeType`, `ReplaceToolGrantsRequest`, `ToolGrantCheck`, `ToolDefinition`, `ToolPolicyMode`, `GrantsSnapshot`, `GrantsSnapshotEntry`.
-Tasks (`x-mvp-deferred`): `Task`, `TaskType`, `TaskStatus`, `TaskList`, `CreateTaskRequest`.
 Runs: `RunDetail` *(canonical name; `Run` is a kept alias)*, `RunListItem`, `RunsList`, `RunStatus`, `RunErrorKind`, `RunToolError`, `RunStep`, `RunStepType`.
 Chat: `Chat`, `ChatList`, `ChatMessage`, `ChatMessageList`, `ChatStatus`, `ChatMessageRole`, `ChatToolCall`, `CreateChatRequest`, `SendMessageRequest`, `ChatStreamFrame`.
 Audit: `AuditEvent`, `AuditList`, `AuditStepType`.
-Approvals: `ApprovalRequest`, `ApprovalStatus`, `ApprovalList`, `ApprovalDecisionRequest`, `ApprovalDecisionAccepted`, `CreateApprovalInternalRequest`.
+Approvals: `ApprovalRequest`, `ApprovalStatus`, `ApprovalList`, `ApprovalDecisionRequest`, `ApprovalDecisionAccepted`.
 Spend: `SpendDashboard`, `SpendRow`, `SpendRange`, `SpendGroupBy`.
 
 **Type names stay even when UI labels change.** `Agent` is the canonical type name and matches the gateway spec. Don't rename internal types when changing user-facing copy.
 
 #### Templates (`lib/templates.ts`)
 
-7 starter agent templates used by the Hire wizard at `/agents/new`: Sales, Marketing, Reports, Customer Support, Finance, Operations, Custom. Each carries `defaultName`, `shortPitch`, `longPitch`, `defaultInstructions`, `defaultGrants` (linking tool keys), `approvalCopy`, `featured` flag (top-4 on Welcome). Edit this file to add or change templates — it's the single source of truth for the wizard.
+7 starter agent templates used by the Hire wizard at `/agents/new`: Sales, Marketing, Reports, Customer Support, Finance, Operations, Custom. Each carries `defaultName`, `shortPitch`, `longPitch`, `defaultInstructions`, `defaultGrants` (linking tool keys), `approvalCopy`, `featured` flag (top-4 on Welcome), `initials`, and a `welcomeMessage` (seeded as the agent's first chat message on hire). The exported interface name is `AssistantTemplate` (internal — vocab rule does not apply). Edit this file to add or change templates — it's the single source of truth for the wizard.
 
 #### Styling (`prototype.css`)
 
@@ -286,7 +289,7 @@ All exported through the `components/common.tsx` barrel:
 Two-tier wrapper over `@hugeicons/react` + `@hugeicons/core-free-icons`:
 
 - **`<Icon icon={SomeIcon} />`** (`components/icon.tsx`) — preferred for new code.
-- **Legacy named exports** (`components/icons.tsx`) — `IconHome`, `IconAgent`, `IconChat`, `IconTask`, `IconApproval`, `IconRun`, `IconTool`, `IconSpend`, `IconAudit`, `IconSettings`, `IconPlus`, `IconArrowLeft`, `IconArrowRight`, `IconCheck`, `IconX`, `IconAlert`, `IconInfo`, `IconPlay`, `IconStop`, `IconSearch`, `IconLock`, `IconEye`, `IconEyeOff`, `IconLogout`, `IconSun`, `IconMoon`, `IconHelp`. New code prefers `<Icon>`.
+- **Legacy named exports** (`components/icons.tsx`) — `IconHome`, `IconAgent`, `IconChat`, `IconApproval`, `IconRun`, `IconTool`, `IconSpend`, `IconAudit`, `IconSettings`, `IconPlus`, `IconArrowLeft`, `IconArrowRight`, `IconCheck`, `IconX`, `IconAlert`, `IconInfo`, `IconPlay`, `IconStop`, `IconSearch`, `IconLock`, `IconEye`, `IconEyeOff`, `IconLogout`, `IconSun`, `IconMoon`, `IconHelp`. New code prefers `<Icon>`.
 
 Both wrappers default `className="ic"`. Sizing: 14px default; `.ic--sm` 12px, `.ic--lg` 18px. All icons inherit `currentColor`.
 
@@ -339,22 +342,19 @@ End users are not engineers. The product is "my little digital team" — agents 
 
 ### Mock-only surfaces (visually flagged)
 
-Whenever a UI surface displays data that isn't backed by a real endpoint, mark it with `<MockBadge>`. Currently flagged:
+Whenever a UI surface displays data that isn't backed by a real endpoint, mark it with `<MockBadge>`. Currently flagged in routed screens:
 
-- **RegisterScreen** — no `POST /auth/register` in spec.
-- **ApprovalDetailScreen PageHeader** — no `GET /approvals/{id}`.
-- **RunsScreen PageHeader** — activity sentence headlines synthesized from RunStatus.
-- **ToolsScreen PageHeader + Connect new app modal** — connection status derived from grants; OAuth is a placeholder.
-- **AgentDetailScreen Settings tab → Manage employment** — Pause/Fire endpoints don't exist.
-- **AgentNewScreen step 2 (Connect apps)** — fake OAuth toggles in the wizard.
-- **SpendScreen 4-week trend** — week buckets split client-side.
-- **SettingsScreen Workspace card** — Workspace edit endpoints missing.
-- **SettingsScreen Team members** — `GET /users` missing.
-- **SettingsScreen Developer details** — reference doc.
-- **SettingsScreen Diagnostic mode** — toggle wired without rendering.
-- **All Tasks screens** + Task-related dashboard widgets — backend exists in spec but `x-mvp-deferred` (use `kind="deferred"`).
+- **HomeScreen → ActivityHeatmap** — heatmap is synthesized client-side; backend doesn't expose hourly action aggregates.
+- **HomeScreen → SavingsBanner** — savings figure synthesized from a fictional baseline (38 min/task at $75/hr).
+- **Sandbox previews** (`/sandbox/team-bridge`, `/sandbox/approvals-inline`, `/sandbox/quick-hire`) — design-only; mutations don't persist and may not call real api endpoints.
 
-The full mapping (every gap → its UI flag) lives in `docs/backend-gaps.md` § "Сводная таблица приоритета".
+Preserved in source but **not currently routed** (badges remain so they reappear correctly when restored):
+
+- `RegisterScreen` — no `POST /auth/register` in spec.
+- `ToolsScreen` (Apps page header + Connect new app modal) — connection status derived from grants; OAuth is a placeholder.
+- `SettingsScreen` Workspace / Team / Developer / Diagnostic tabs — Workspace edit endpoints missing, `GET /users` missing, Developer card is a reference doc, Diagnostic toggle is a placeholder.
+
+The full mapping (every gap → its UI flag) lives in `docs/backend-gaps.md`.
 
 ### Guided tours (`src/prototype/tours/`)
 
@@ -382,7 +382,7 @@ Provider in `TrainingModeProvider.tsx` swaps fixtures at the `api.*` layer when 
 - **Topbar `?` button** + global `?` hotkey — opens `/learn`. Ignored while a tour is active or focus is in an editable field.
 - **`WelcomeToast.tsx`** — bottom-right pinned, non-blocking; appears once per browser on first authenticated mount.
 
-Mounted in `index.tsx` as: `RouterProvider` → `TrainingModeProvider` → (`TrainingBanner`, `TourProvider` → (`Router`, `TourOverlay`, `WelcomeToast`, `TrainingAutoExit`)).
+Mounted in `index.tsx` as: `AuthProvider` → `RouterProvider` → `DevModeProvider` → `TrainingModeProvider` → (`TrainingBanner`, `TourProvider` → (`DevModeRemount` → `Router`, `TourOverlay`, `WelcomeToast`, `TrainingAutoExit`)).
 
 #### Adding a new tour
 
@@ -398,6 +398,7 @@ Mounted in `index.tsx` as: `RouterProvider` → `TrainingModeProvider` → (`Tra
    - UI text or vocab change → `docs/ux-spec.md` § 8.
    - Layout / new screen → `docs/ux-spec.md` § 4 (three key screens).
    - Backend wiring → `docs/backend-gaps.md`.
+   - Open items / priorities → `docs/backlog.md`.
 
 2. **Check the spec for anti-patterns.** `docs/ux-spec.md` § 10 has a checklist: workflow / MCP / tokens / "Hey friend! 👋" / mascots / etc. Don't introduce them.
 

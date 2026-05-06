@@ -3,10 +3,10 @@ import { Badge, Box, Button, DataList, Flex, Grid, Text } from '@radix-ui/themes
 import { AppShell } from '../components/shell'
 import { Avatar, Caption, PageHeader, MetaRow, Status, Tabs, InfoHint } from '../components/common'
 import { Banner, EmptyState, LoadingList, NoAccessState } from '../components/states'
-import { IconArrowRight, IconChat, IconPlus, IconRun } from '../components/icons'
+import { IconArrowRight, IconPlus, IconRun } from '../components/icons'
 import { GrantsEditor } from '../components/grants-editor'
 import { ChatPanel } from '../components/chat-panel'
-import { Link } from '../router'
+import { Link, useRouter } from '../router'
 import { api } from '../lib/api'
 import { useAuth } from '../auth'
 import type { Agent, AgentVersion, Chat, GrantsSnapshot, RunListItem, ToolGrant } from '../lib/types'
@@ -40,7 +40,7 @@ export default function AgentDetailScreen({
     if (!user) return
     api.listChats({ id: user.id, role: user.role }, { agent_id: agentId, limit: 50 })
       .then(res => setChats(res.items))
-  }, [agentId, user])
+  }, [agentId, user, chatId])
 
   if (agent === null) {
     return (
@@ -97,12 +97,6 @@ export default function AgentDetailScreen({
           actions={
             <>
               <Status status={agent.status} />
-              <Button asChild disabled={!canTalk}>
-                <a href={canTalk ? `#/agents/${agent.id}/talk` : undefined} data-tour="agent-talk-cta">
-                  <IconChat />
-                  Talk to {agent.name.split(' ')[0]}
-                </a>
-              </Button>
             </>
           }
         />
@@ -263,9 +257,13 @@ function OverviewTab({
 }
 
 // ────────────────────────────────────────────────────────── Talk-to tab
-// Recent chats with this agent + "Start new chat" CTA.
+// Two-column layout always: sidebar with past chats on the left, ChatPanel
+// (draft or embed) on the right. Sidebar persists across chat switches so the
+// user keeps their context — only the right pane remounts when chatId changes.
 
 function TalkToTab({ agent, chats, canTalk, chatId }: { agent: Agent; chats: Chat[]; canTalk: boolean; chatId?: string }) {
+  const { navigate } = useRouter()
+
   if (!canTalk) {
     return (
       <Banner tone="warn" title={agent.status !== 'active' ? `${agent.name} is paused` : 'Not configured yet'}>
@@ -276,94 +274,104 @@ function TalkToTab({ agent, chats, canTalk, chatId }: { agent: Agent; chats: Cha
     )
   }
 
-  // Embedded mode — a specific chat is selected via /agents/:id/talk/:chatId.
-  // Render the chat panel inline above the past-chats list so the user can
-  // both keep talking and jump to other conversations.
-  if (chatId) {
-    return (
-      <Flex direction="column" gap="3">
-        <Flex align="center" justify="between" gap="2" wrap="wrap">
-          <Caption>Conversation</Caption>
-          <Button asChild variant="ghost" color="gray" size="1">
-            <Link to={`/agents/${agent.id}/talk`}>← All chats with {agent.name.split(' ')[0]}</Link>
-          </Button>
-        </Flex>
-        <div className="chat-detail chat-detail--embed">
-          {/* `key` forces a fresh mount when chat changes, so loading state
-              shows immediately instead of briefly displaying the previous
-              chat's messages. */}
-          <ChatPanel key={chatId} chatId={chatId} mode="embed" />
-        </div>
-      </Flex>
-    )
-  }
-
   return (
-    <Flex direction="column" gap="3">
-      <div className="card" data-tour="agent-talk-tab-content" style={{ borderColor: 'var(--accent-a6)' }}>
-        <Flex align="center" gap="3" p="4" wrap="wrap">
-          <Box style={{ color: 'var(--accent-9)' }}>
-            <IconChat size={22} />
-          </Box>
-          <Box flexGrow="1" minWidth="0">
-            <Text as="div" size="3" weight="medium">Start a new chat</Text>
-            <Text as="div" size="2" color="gray" mt="1">
-              Replies stream in real time. Each chat is locked to one model — open a new one to switch.
-            </Text>
-          </Box>
-          <Button asChild size="2">
-            <a href={`#/chats/new?agent=${agent.id}`}>
-              <IconChat />
-              New chat
-            </a>
+    <div
+      data-tour="agent-talk-tab-content"
+      style={{
+        display: 'grid',
+        gridTemplateColumns: '280px minmax(0, 1fr)',
+        gap: 16,
+        alignItems: 'start',
+      }}
+    >
+      {/* Sidebar — list of past chats with this agent + new-chat trigger. */}
+      <aside
+        style={{
+          background: 'var(--gray-2)',
+          border: '1px solid var(--gray-a3)',
+          borderRadius: 8,
+          overflow: 'hidden',
+          position: 'sticky',
+          top: 16,
+        }}
+      >
+        <Flex
+          align="center"
+          justify="between"
+          gap="2"
+          style={{
+            padding: '10px 12px',
+            borderBottom: '1px solid var(--gray-a3)',
+            background: 'var(--gray-a2)',
+          }}
+        >
+          <Caption>Conversations</Caption>
+          <Button asChild variant={chatId ? 'soft' : 'solid'} size="1">
+            <Link to={`/agents/${agent.id}/talk`}>
+              <IconPlus />New
+            </Link>
           </Button>
         </Flex>
-      </div>
 
-      {chats.length === 0 ? (
-        <EmptyState
-          icon={<IconChat />}
-          title="No chats yet"
-          body={`Open a new chat to talk to ${agent.name}.`}
-        />
-      ) : (
-        <div className="card card--flush">
-          <div className="card__head">
-            <Text as="div" size="2" weight="medium" className="card__title">Past chats</Text>
-            <Text size="1" color="gray">{chats.length}</Text>
-          </div>
-          <Flex direction="column">
-            {chats.map((c, i) => (
-              <Link
-                key={c.id}
-                to={`/agents/${agent.id}/talk/${c.id}`}
-                className="agent-row"
-                style={{
-                  gridTemplateColumns: 'minmax(0, 1fr) auto auto auto 24px',
-                  gap: '14px',
-                  borderBottom: i === chats.length - 1 ? 0 : '1px solid var(--gray-a3)',
-                }}
-              >
-                <Box minWidth="0">
-                  <Text as="div" size="2" weight="medium" className="truncate">
-                    {c.title ?? `Conversation`}
+        <Flex
+          direction="column"
+          style={{
+            maxHeight: 'calc(100svh - 320px)',
+            overflowY: 'auto',
+          }}
+        >
+          {chats.length === 0 ? (
+            <Text as="div" size="1" color="gray" style={{ padding: '14px 12px' }}>
+              No chats yet. Send a message to start one.
+            </Text>
+          ) : (
+            chats.map((c, i) => {
+              const active = chatId === c.id
+              return (
+                <Link
+                  key={c.id}
+                  to={`/agents/${agent.id}/talk/${c.id}`}
+                  style={{
+                    display: 'block',
+                    padding: '10px 12px',
+                    background: active ? 'var(--accent-a3)' : 'transparent',
+                    borderLeft: active ? '3px solid var(--accent-9)' : '3px solid transparent',
+                    borderBottom: i === chats.length - 1 ? 0 : '1px solid var(--gray-a3)',
+                    color: 'inherit',
+                    textDecoration: 'none',
+                  }}
+                >
+                  <Text as="div" size="2" weight={active ? 'medium' : 'regular'} className="truncate">
+                    {c.title ?? 'Conversation'}
                   </Text>
-                  <Text as="div" size="1" color="gray" mt="1">
-                    {ago(c.updated_at)}
-                  </Text>
-                </Box>
-                <Badge color="gray" variant="soft" radius="full" size="1" style={{ fontFamily: 'var(--font-mono)' }}>
-                  {c.model}
-                </Badge>
-                <Status status={c.status} />
-                <Text size="1" color="gray">{money(c.total_cost_usd, { cents: c.total_cost_usd < 100 })}</Text>
-                <IconArrowRight className="ic" />
-              </Link>
-            ))}
-          </Flex>
-        </div>
-      )}
-    </Flex>
+                  <Flex align="center" gap="2" mt="1">
+                    <Text size="1" color="gray">{ago(c.updated_at)}</Text>
+                    {c.status !== 'active' && <Status status={c.status} />}
+                  </Flex>
+                </Link>
+              )
+            })
+          )}
+        </Flex>
+      </aside>
+
+      {/* Main pane — ChatPanel in draft (no chatId) or embed (chatId set). */}
+      <div className="chat-detail chat-detail--embed">
+        {chatId ? (
+          <ChatPanel key={chatId} chatId={chatId} mode="embed" />
+        ) : (
+          <ChatPanel
+            mode="draft"
+            agent={agent}
+            agentVersion={agent.active_version!}
+            onCreated={(newChatId) =>
+              navigate(`/agents/${agent.id}/talk/${newChatId}`, { replace: true })
+            }
+            emptyHint={`Say something to ${agent.name.split(' ')[0]} — your chat starts when you send the first message.`}
+          />
+        )}
+      </div>
+    </div>
   )
 }
 
