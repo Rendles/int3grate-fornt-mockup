@@ -684,33 +684,56 @@
   background-color: var(--gray-a3);
 }
 
-/* Honest px radii — Radix's --radius-* are scaled by --radius-factor and
-   --scaling, which clip values below nominal. Use literals to pin them. */
-.prototype-root .rt-Button,
-.prototype-root .rt-IconButton { border-radius: 12px; }
-.prototype-root .rt-Badge { border-radius: 12px; }
+/* ============================================================= RADIX OVERRIDES
 
-/* ============================================================= INPUTS
+   ⚠️  NO `.prototype-root` PREFIX BELOW.
 
-   Inputs (TextField, TextArea, Select.Trigger) wrapped by fields.tsx.
-   Override Radix surface variant: larger radius, very subtle border.
+   Radix portals dialog / popover / select / dropdown content into
+   `<body>` — outside `.prototype-root`. If we scope these rules to
+   `.prototype-root .rt-*`, buttons and inputs inside dialogs end up
+   with default Radix radii (8px) while the rest of the UI uses 12px /
+   --radius-5, and we keep re-discovering this on every new dialog.
+
+   These selectors target Radix-emitted classes (rt-Button, rt-TextField*,
+   etc.) which exist only where Radix Themes is mounted. There is no
+   other Radix consumer in the bundle, so leaving them un-scoped is safe
+   and is the only way to also catch portaled content.
+
+   Do NOT re-add `.prototype-root` here. See CLAUDE.md → Styling for
+   the broader portal warning.
    ============================================================= */
 
-.prototype-root .rt-TextFieldRoot {
+/* Honest px radii — Radix's --radius-* are scaled by --radius-factor and
+   --scaling, which clip values below nominal. Use literals to pin them. */
+.rt-Button,
+.rt-IconButton { border-radius: 12px; }
+.rt-Badge { border-radius: 12px; }
+
+/* SegmentedControl exposes an internal var that drives the root radius +
+   the inner indicator radius (via calc). Override here so the segmented
+   switch matches our 12px button family rather than Radix's default
+   --radius-2. */
+.rt-SegmentedControlRoot {
+  --segmented-control-border-radius: 12px;
+}
+
+/* Inputs (TextField, TextArea, Select.Trigger) wrapped by fields.tsx.
+   Override Radix surface variant: larger radius, very subtle border. */
+.rt-TextFieldRoot {
   --text-field-border-radius: var(--radius-5);
 }
-.prototype-root .rt-TextAreaRoot,
-.prototype-root .rt-SelectTrigger {
+.rt-TextAreaRoot,
+.rt-SelectTrigger {
   border-radius: var(--radius-5);
 }
 
-.prototype-root .rt-TextFieldRoot:where(.rt-variant-surface),
-.prototype-root .rt-TextAreaRoot:where(.rt-variant-surface),
-.prototype-root .rt-SelectTrigger:where(.rt-variant-surface) {
+.rt-TextFieldRoot:where(.rt-variant-surface),
+.rt-TextAreaRoot:where(.rt-variant-surface),
+.rt-SelectTrigger:where(.rt-variant-surface) {
   box-shadow: inset 0 0 0 1px var(--gray-a2);
 }
-.prototype-root .rt-SelectTrigger:where(.rt-variant-surface):where(:hover),
-.prototype-root .rt-SelectTrigger:where(.rt-variant-surface):where([data-state='open']) {
+.rt-SelectTrigger:where(.rt-variant-surface):where(:hover),
+.rt-SelectTrigger:where(.rt-variant-surface):where([data-state='open']) {
   box-shadow: inset 0 0 0 1px var(--gray-a2);
 }
 /* ============================================================= STATES */
@@ -860,6 +883,34 @@
 }
 .agent-row:hover { background: var(--gray-3); }
 .agent-row:last-child { border-bottom: 0; }
+/* Focus ring for keyboard nav. Anchor-based rows get this from the browser
+   default; div[role="link"] rows on /approvals don't, so the rule has to
+   be explicit. Inset outline so neighbouring rows don't shift. */
+.agent-row:focus-visible {
+  outline: 2px solid var(--accent-9);
+  outline-offset: -2px;
+  background: var(--gray-3);
+}
+
+/* Wrap around an .agent-row on /approvals when the row can expand a
+   reject-reason panel underneath. Border-bottom moves from .agent-row to
+   the wrap so the row + its expanded panel feel like one block, with the
+   divider only between adjacent (id, panel) pairs. */
+.approval-row-wrap {
+  display: flex;
+  flex-direction: column;
+  border-bottom: 1px solid var(--gray-a3);
+}
+.approval-row-wrap:last-child { border-bottom: 0; }
+.approval-row-wrap > .agent-row { border-bottom: 0; }
+
+/* Padding-only wrapper — RejectInlineForm paints its own red-tinted
+   panel inside. Using approval-row__reject-panel padding to align that
+   panel with the row's 16px horizontal padding. */
+.approval-row__reject-panel {
+  padding: 0 16px 16px;
+}
+
 /* ============================================================= SPEND */
 
 .spend-row {

@@ -20,7 +20,6 @@ import HomeScreen from './screens/HomeScreen'
 import AgentsScreen from './screens/AgentsScreen'
 import AgentDetailScreen from './screens/AgentDetailScreen'
 import AgentNewScreen from './screens/AgentNewScreen'
-import VersionNewScreen from './screens/VersionNewScreen'
 import RunDetailScreen from './screens/RunDetailScreen'
 import RunsScreen from './screens/RunsScreen'
 // AuditScreen folded back into Activity (RunsScreen is the single grouped view).
@@ -113,7 +112,6 @@ function Router() {
     { pattern: '/agents', render: () => <AgentsScreen /> },
     { pattern: '/agents/new', render: () => <AgentNewScreen /> },
     { pattern: '/agents/:agentId', render: p => <AgentDetailScreen agentId={p.agentId} tab="overview" /> },
-    { pattern: '/agents/:agentId/versions/new', render: p => <VersionNewScreen agentId={p.agentId} /> },
     { pattern: '/agents/:agentId/talk', render: p => <AgentDetailScreen agentId={p.agentId} tab="talk" /> },
     { pattern: '/agents/:agentId/talk/:chatId', render: p => <AgentDetailScreen agentId={p.agentId} tab="talk" chatId={p.chatId} /> },
     { pattern: '/agents/:agentId/grants', render: p => <AgentDetailScreen agentId={p.agentId} tab="grants" /> },

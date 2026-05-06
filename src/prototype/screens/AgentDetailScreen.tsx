@@ -1,16 +1,17 @@
 import { useEffect, useState } from 'react'
 import { Badge, Box, Button, DataList, Flex, Grid, Text } from '@radix-ui/themes'
 import { AppShell } from '../components/shell'
-import { Avatar, Caption, PageHeader, MetaRow, Status, Tabs, InfoHint } from '../components/common'
+import { Avatar, Caption, PageHeader, MetaRow, Status, Tabs } from '../components/common'
 import { Banner, EmptyState, LoadingList, NoAccessState } from '../components/states'
 import { IconArrowRight, IconPlus, IconRun } from '../components/icons'
 import { GrantsEditor } from '../components/grants-editor'
 import { ChatPanel } from '../components/chat-panel'
+import { RetrainDialog } from '../components/retrain-dialog'
 import { Link, useRouter } from '../router'
 import { api } from '../lib/api'
 import { useAuth } from '../auth'
-import type { Agent, AgentVersion, Chat, GrantsSnapshot, RunListItem, ToolGrant } from '../lib/types'
-import { absTime, ago, domainLabel, money, num, policyModeLabel, stageLabel, toolLabel } from '../lib/format'
+import type { Agent, AgentVersion, Chat, RunListItem, ToolGrant } from '../lib/types'
+import { absTime, ago, domainLabel, money, num, stageLabel } from '../lib/format'
 import { statusLabel } from '../components/common/status-label'
 
 type AgentTab = 'overview' | 'talk' | 'grants' | 'activity' | 'settings' | 'advanced'
@@ -29,12 +30,21 @@ export default function AgentDetailScreen({
   const [grants, setGrants] = useState<ToolGrant[] | null>(null)
   const [chats, setChats] = useState<Chat[]>([])
   const [runs, setRuns] = useState<RunListItem[]>([])
+  const [retrainOpen, setRetrainOpen] = useState(false)
 
   useEffect(() => {
     api.getAgent(agentId).then(a => setAgent(a ?? null))
     api.getGrants(agentId).then(setGrants)
     api.listRuns({ limit: 100 }).then(r => setRuns(r.items.filter(it => it.agent_id === agentId)))
   }, [agentId])
+
+  // After retrain succeeds, the agent's embedded `active_version` and
+  // `updated_at` change server-side. Refetch to pull the fresh state so
+  // both Overview (brief preview) and Advanced (version + created_at)
+  // re-render with the new values.
+  const handleRetrained = () => {
+    api.getAgent(agentId).then(a => setAgent(a ?? null))
+  }
 
   useEffect(() => {
     if (!user) return
@@ -110,6 +120,7 @@ export default function AgentDetailScreen({
             version={activeVersion}
             recentRuns={runs.slice(0, 4)}
             canEdit={canEdit}
+            onRetrain={() => setRetrainOpen(true)}
           />
         )}
         {tab === 'talk' && <TalkToTab agent={agent} chats={chats} canTalk={canTalk} chatId={chatId} />}
@@ -124,11 +135,19 @@ export default function AgentDetailScreen({
           <AdvancedTab
             agent={agent}
             version={activeVersion}
-            grantsVersion={grants?.length ?? 0}
             canEdit={canEdit}
+            onRetrain={() => setRetrainOpen(true)}
           />
         )}
       </div>
+
+      <RetrainDialog
+        open={retrainOpen}
+        onOpenChange={setRetrainOpen}
+        agent={agent}
+        currentVersion={activeVersion}
+        onRetrained={handleRetrained}
+      />
     </AppShell>
   )
 }
@@ -142,11 +161,13 @@ function OverviewTab({
   version,
   recentRuns,
   canEdit,
+  onRetrain,
 }: {
   agent: Agent
   version: AgentVersion | null
   recentRuns: RunListItem[]
   canEdit: boolean
+  onRetrain: () => void
 }) {
   if (!version) {
     return (
@@ -154,12 +175,12 @@ function OverviewTab({
         <div className="card__head">
           <Text as="div" size="2" weight="medium" className="card__title">Not configured yet</Text>
           {canEdit && (
-            <Button asChild size="1"><a href={`#/agents/${agent.id}/versions/new`}><IconPlus />Create v1</a></Button>
+            <Button size="1" onClick={onRetrain}><IconPlus />Set up brief</Button>
           )}
         </div>
         <div className="card__body">
           <Text as="div" size="2" color="gray" mb="4">
-            This agent doesn't have a setup yet. {canEdit ? 'Create one to make it runnable.' : 'An admin needs to create one.'}
+            This agent doesn't have a setup yet. {canEdit ? 'Give them a brief to make them runnable.' : 'An admin needs to give them a brief.'}
           </Text>
         </div>
       </div>
@@ -236,10 +257,11 @@ function OverviewTab({
               >
                 <Box minWidth="0">
                   <Text as="div" size="2" className="truncate">
-                    {r.suspended_stage ? 'Waiting for your approval' : 'Activity'}
+                    {statusLabel(r.status)}
                   </Text>
                   <Text as="div" size="1" color="gray" mt="1">
                     {ago(r.created_at)}
+                    {r.suspended_stage && ` · ${stageLabel(r.suspended_stage)}`}
                   </Text>
                 </Box>
                 <Status status={r.status} />
@@ -268,7 +290,7 @@ function TalkToTab({ agent, chats, canTalk, chatId }: { agent: Agent; chats: Cha
     return (
       <Banner tone="warn" title={agent.status !== 'active' ? `${agent.name} is paused` : 'Not configured yet'}>
         {agent.status !== 'active'
-          ? 'Resume the agent in Settings to start a chat.'
+          ? 'Ask a workspace admin to resume this agent before starting a chat.'
           : 'Create a setup before talking to this agent.'}
       </Banner>
     )
@@ -424,7 +446,9 @@ function ActivityTab({ agent, runs }: { agent: Agent; runs: RunListItem[] }) {
 }
 
 // ────────────────────────────────────────────────────────── Settings tab
-// Profile-ish card + Pause / Fire actions (planned).
+// Read-only profile card. Pause / Fire / Resume actions are not surfaced
+// here — those would need PATCH /agents/{id} which the live spec doesn't
+// expose. See docs/backend-gaps.md and the Manage-employment note below.
 
 function SettingsTab({
   agent,
@@ -457,19 +481,25 @@ function SettingsTab({
 }
 
 // ────────────────────────────────────────────────────────── Advanced tab
-// All the technical config knobs power users care about: model chain, memory,
-// tool scope, approval rules, raw brief, policy snapshot.
+// Limited to fields the live OpenAPI actually defines on AgentVersion:
+// `version`, `is_active`, `created_at`, `instruction_spec`. The four
+// `*_config` objects (model_chain_config / memory_scope_config /
+// tool_scope_config / approval_rules) are spec'd as
+// `object additionalProperties: true` — their internal shape is NOT
+// fixed by the contract, so we don't render speculated fields here.
+// `GET /internal/agents/{id}/grants/snapshot` exists but is x-internal
+// (orchestrator-only), so the UI doesn't call it. See docs/backend-gaps.md.
 
 function AdvancedTab({
   agent,
   version,
-  grantsVersion,
   canEdit,
+  onRetrain,
 }: {
   agent: Agent
   version: AgentVersion | null
-  grantsVersion: number
   canEdit: boolean
+  onRetrain: () => void
 }) {
   if (!version) {
     return (
@@ -483,36 +513,26 @@ function AdvancedTab({
       <ActiveVersionCard
         version={version}
         canEdit={canEdit}
-        agentId={agent.id}
+        agentName={agent.name}
+        onRetrain={onRetrain}
       />
       <InstructionsCard text={version.instruction_spec} />
-      <Grid columns={{ initial: '1', md: '2' }} gap="4">
-        <ModelChainCard config={version.model_chain_config} />
-        <MemoryScopeCard config={version.memory_scope_config} />
-      </Grid>
-      <Grid columns={{ initial: '1', md: '2' }} gap="4">
-        <ToolScopeCard config={version.tool_scope_config} agentId={agent.id} />
-        <ApprovalRulesCard config={version.approval_rules} />
-      </Grid>
-      <PolicySnapshotPanel agentId={agent.id} grantsVersion={grantsVersion} />
       <Banner tone="info" title="Setup history is single-version for now">
-        Only the current setup is shown. Re-creating a setup activates the new one and archives the previous.
+        Only the current setup is shown. Retraining replaces the current brief and archives the previous version.
       </Banner>
     </Flex>
   )
 }
 
-// ─────────────────────────────────────────────────────────────────
-// Config cards (kept from the previous Overview tab, now used in Advanced)
-// ─────────────────────────────────────────────────────────────────
-
 function ActiveVersionCard({
-  version, canEdit, agentId,
+  version, canEdit, agentName, onRetrain,
 }: {
   version: AgentVersion
   canEdit: boolean
-  agentId: string
+  agentName: string
+  onRetrain: () => void
 }) {
+  const firstName = agentName.split(' ')[0] || agentName
   return (
     <div className="card">
       <div className="card__head">
@@ -520,8 +540,8 @@ function ActiveVersionCard({
         <Flex align="center" gap="2">
           <Badge color="blue" variant="soft" radius="full" size="1">v{version.version}</Badge>
           {canEdit && (
-            <Button asChild variant="ghost" size="1">
-              <a href={`#/agents/${agentId}/versions/new`}><IconPlus />New setup</a>
+            <Button variant="ghost" size="1" onClick={onRetrain}>
+              Retrain {firstName}
             </Button>
           )}
         </Flex>
@@ -564,358 +584,3 @@ function InstructionsCard({ text }: { text: string }) {
   )
 }
 
-function ModelChainCard({ config }: { config: Record<string, unknown> }) {
-  const primary = typeof config.primary === 'string' ? config.primary : null
-  const fallbacks = Array.isArray(config.fallbacks)
-    ? (config.fallbacks.filter(f => typeof f === 'string') as string[])
-    : []
-  const maxTokens = typeof config.max_tokens === 'number' ? config.max_tokens : null
-  const temperature = typeof config.temperature === 'number' ? config.temperature : null
-  const tempHint = temperature == null
-    ? null
-    : temperature <= 0.2
-      ? 'deterministic'
-      : temperature <= 0.5
-        ? 'focused'
-        : temperature <= 0.8
-          ? 'balanced'
-          : 'exploratory'
-
-  return (
-    <div className="card">
-      <div className="card__head">
-        <Text as="div" size="2" weight="medium" className="card__title">Model</Text>
-      </div>
-      <div className="card__body">
-        <Flex direction="column" gap="3">
-          <Flex align="center" justify="between" gap="3">
-            <Caption>Primary</Caption>
-            {primary
-              ? <ModelBadge name={primary} variant="solid" />
-              : <Text size="1" color="gray">—</Text>}
-          </Flex>
-          <Flex align="center" justify="between" gap="3">
-            <Caption>Fallbacks</Caption>
-            {fallbacks.length === 0 ? (
-              <Text size="1" color="gray">none</Text>
-            ) : (
-              <Flex gap="1" wrap="wrap" justify="end">
-                {fallbacks.map(f => <ModelBadge key={f} name={f} variant="soft" />)}
-              </Flex>
-            )}
-          </Flex>
-          <Flex align="center" justify="between" gap="3">
-            <Caption>Response length limit</Caption>
-            <Text size="2">{maxTokens != null ? num(maxTokens) : '—'}</Text>
-          </Flex>
-          <Flex align="center" justify="between" gap="3">
-            <Caption>Creativity</Caption>
-            <Flex align="center" gap="2">
-              <Text size="2">{temperature != null ? temperature.toFixed(1) : '—'}</Text>
-              {tempHint && <Text size="1" color="gray">· {tempHint}</Text>}
-            </Flex>
-          </Flex>
-        </Flex>
-      </div>
-    </div>
-  )
-}
-
-function ModelBadge({ name, variant }: { name: string; variant: 'solid' | 'soft' }) {
-  return (
-    <Badge
-      color="blue"
-      variant={variant === 'solid' ? 'solid' : 'soft'}
-      radius="small"
-      size="1"
-      style={{ fontFamily: 'var(--font-mono)' }}
-    >
-      {name}
-    </Badge>
-  )
-}
-
-function MemoryScopeCard({ config }: { config: Record<string, unknown> }) {
-  const userFacts = config.user_facts === true
-  const sessionOnly = config.session_only === true
-  const domainShared = config.domain_shared === true
-  const retentionDays = typeof config.retention_days === 'number' ? config.retention_days : null
-
-  return (
-    <div className="card">
-      <div className="card__head">
-        <Text as="div" size="2" weight="medium" className="card__title">Memory</Text>
-      </div>
-      <div className="card__body">
-        <Flex direction="column" gap="3">
-          <ToggleRow on={userFacts} label="Remembers user facts" hint="Saves things the user shares about themselves between sessions." />
-          <ToggleRow on={sessionOnly} label="Session-only" hint="If on, memory is wiped when the session ends." />
-          <ToggleRow on={domainShared} label="Shared across team" hint="Other agents on the same team can read what this one remembers." />
-          <Flex align="center" justify="between" gap="3">
-            <Caption>Retention</Caption>
-            <Text size="2">
-              {retentionDays != null ? `${retentionDays} ${retentionDays === 1 ? 'day' : 'days'}` : '—'}
-            </Text>
-          </Flex>
-        </Flex>
-      </div>
-    </div>
-  )
-}
-
-function ToggleRow({ on, label, hint }: { on: boolean; label: string; hint?: string }) {
-  return (
-    <Flex align="center" justify="between" gap="3">
-      <Flex align="center" gap="2" minWidth="0">
-        <Text size="2">{label}</Text>
-        {hint && <InfoHint>{hint}</InfoHint>}
-      </Flex>
-      {on
-        ? <Badge color="green" variant="soft" radius="full" size="1">On</Badge>
-        : <Badge color="gray" variant="outline" radius="full" size="1">Off</Badge>}
-    </Flex>
-  )
-}
-
-function ToolScopeCard({ config, agentId }: { config: Record<string, unknown>; agentId: string }) {
-  const inherits = config.inherits_from_agent === true
-  const overrides = Array.isArray(config.overrides)
-    ? (config.overrides.filter(o => typeof o === 'string') as string[])
-    : []
-  const denylist = Array.isArray(config.denylist)
-    ? (config.denylist.filter(d => typeof d === 'string') as string[])
-    : []
-
-  return (
-    <div className="card">
-      <div className="card__head">
-        <Text as="div" size="2" weight="medium" className="card__title">Apps</Text>
-        <Button asChild variant="ghost" size="1">
-          <a href={`#/agents/${agentId}/grants`}>Open permissions</a>
-        </Button>
-      </div>
-      <div className="card__body">
-        <Flex direction="column" gap="3">
-          <ToggleRow
-            on={inherits}
-            label="Uses agent's permissions"
-            hint="When on, this setup sees every app permission granted to the agent unless explicitly overridden below."
-          />
-          <Flex align="center" justify="between" gap="3" wrap="wrap">
-            <Caption>Overrides</Caption>
-            {overrides.length === 0 ? (
-              <Text size="1" color="gray">none</Text>
-            ) : (
-              <Flex gap="1" wrap="wrap" justify="end">
-                {overrides.map(o => (
-                  <Badge key={o} color="blue" variant="soft" radius="small" size="1">{toolLabel(o)}</Badge>
-                ))}
-              </Flex>
-            )}
-          </Flex>
-          <Flex align="center" justify="between" gap="3" wrap="wrap">
-            <Caption>Denylist</Caption>
-            {denylist.length === 0 ? (
-              <Text size="1" color="gray">none</Text>
-            ) : (
-              <Flex gap="1" wrap="wrap" justify="end">
-                {denylist.map(d => (
-                  <Badge key={d} color="red" variant="soft" radius="small" size="1">{toolLabel(d)}</Badge>
-                ))}
-              </Flex>
-            )}
-          </Flex>
-        </Flex>
-      </div>
-    </div>
-  )
-}
-
-interface ApprovalRule {
-  id?: string
-  when?: string
-  required_approver_level?: number
-}
-
-function ApprovalRulesCard({ config }: { config: Record<string, unknown> }) {
-  const rawRules = Array.isArray(config.rules) ? config.rules : []
-  const rules: ApprovalRule[] = rawRules.filter(
-    (r): r is ApprovalRule => typeof r === 'object' && r != null,
-  )
-
-  return (
-    <div className="card">
-      <div className="card__head">
-        <Text as="div" size="2" weight="medium" className="card__title">Approval rules</Text>
-        {rules.length > 0 && (
-          <Badge color="amber" variant="soft" radius="full" size="1">{rules.length}</Badge>
-        )}
-      </div>
-      <div className="card__body">
-        {rules.length === 0 ? (
-          <Text as="div" size="2" color="gray">
-            No rules configured — this agent runs without human approval gates.
-          </Text>
-        ) : (
-          <Flex direction="column" gap="3">
-            {rules.map((r, i) => (
-              <ApprovalRuleRow key={r.id ?? i} rule={r} />
-            ))}
-          </Flex>
-        )}
-      </div>
-    </div>
-  )
-}
-
-function ApprovalRuleRow({ rule }: { rule: ApprovalRule }) {
-  const when = rule.when ?? '—'
-  const m = /^([a-z0-9_]+(?:\.[a-z0-9_]+)+)(.*)$/i.exec(when)
-  const toolPart = m?.[1] ?? null
-  const conditionPart = m?.[2]?.trim() ?? null
-  const level = rule.required_approver_level
-
-  return (
-    <Flex
-      align="center"
-      justify="between"
-      gap="3"
-      wrap="wrap"
-      style={{
-        padding: '10px 12px',
-        background: 'var(--amber-a2)',
-        border: '1px solid var(--amber-a4)',
-        borderRadius: 4,
-      }}
-    >
-      <Flex align="center" gap="2" wrap="wrap" minWidth="0">
-        <Text size="1" color="gray">When</Text>
-        {toolPart ? (
-          <Badge color="blue" variant="soft" radius="small" size="1">{toolLabel(toolPart)}</Badge>
-        ) : (
-          <Text size="2">{when}</Text>
-        )}
-        {conditionPart && (
-          <Text size="2" color="gray" style={{ fontFamily: 'var(--font-mono)' }}>{conditionPart}</Text>
-        )}
-        <Text size="1" color="gray">runs</Text>
-      </Flex>
-      <Flex align="center" gap="2">
-        <Text size="1" color="gray">needs</Text>
-        {level != null
-          ? <Badge color="amber" variant="soft" radius="full" size="1">Level {level} approver</Badge>
-          : <Text size="2" color="gray">approver</Text>}
-      </Flex>
-    </Flex>
-  )
-}
-
-function PolicySnapshotPanel({ agentId, grantsVersion }: { agentId: string; grantsVersion: number }) {
-  const [snapshot, setSnapshot] = useState<GrantsSnapshot | null>(null)
-  const [tick, setTick] = useState(0)
-
-  useEffect(() => {
-    let cancelled = false
-    api.getGrantsSnapshot(agentId)
-      .then(s => { if (!cancelled) setSnapshot(s) })
-      .catch(() => {})
-    return () => { cancelled = true }
-  }, [agentId, grantsVersion, tick])
-
-  const loading = !snapshot || snapshot.agent_id !== agentId
-
-  return (
-    <div
-      className="card"
-      style={{
-        borderStyle: 'dashed',
-        borderColor: 'var(--gray-7)',
-        background: 'color-mix(in oklab, var(--gray-10) 4%, var(--gray-2))',
-      }}
-    >
-      <div className="card__head">
-        <Text as="div" size="2" weight="medium" className="card__title">
-          Policy snapshot{' '}
-          <Badge color="gray" variant="outline" radius="small" size="1">internal</Badge>{' '}
-          <InfoHint>
-            The exact set of permissions and rules pinned for one activity at the moment it starts. Useful for admins verifying what an agent is operating under. Most users never need this view.
-          </InfoHint>
-        </Text>
-        <Flex align="center" gap="2">
-          {snapshot && <Badge color="gray" variant="outline" radius="small" size="1">version {snapshot.version}</Badge>}
-          <Button variant="ghost" size="1" onClick={() => setTick(t => t + 1)}>Refresh</Button>
-        </Flex>
-      </div>
-      <div className="card__body" style={{ padding: 0 }}>
-        {loading || !snapshot ? (
-          <div style={{ padding: 20 }}><LoadingList rows={3} /></div>
-        ) : snapshot.grants.length === 0 ? (
-          <Text as="div" size="1" color="gray" align="center" style={{ padding: 20 }}>
-            No effective policy entries — this agent has no permissions.
-          </Text>
-        ) : (
-          <>
-            <div
-              style={{
-                display: 'grid',
-                gridTemplateColumns: 'minmax(0, 1fr) 180px minmax(0, 1fr)',
-                gap: 14,
-                padding: '10px 16px',
-                background: 'var(--gray-a2)',
-                borderBottom: '1px solid var(--gray-a3)',
-                textTransform: 'uppercase',
-                letterSpacing: '0.14em',
-              }}
-            >
-              <Text as="span" size="1" color="gray">app</Text>
-              <Text as="span" size="1" color="gray">policy</Text>
-              <Text as="span" size="1" color="gray">scopes</Text>
-            </div>
-            {snapshot.grants.map((g, i) => (
-              <div
-                key={`${g.tool_name}-${i}`}
-                style={{
-                  display: 'grid',
-                  gridTemplateColumns: 'minmax(0, 1fr) 180px minmax(0, 1fr)',
-                  gap: 14,
-                  padding: '10px 16px',
-                  alignItems: 'center',
-                  borderBottom: '1px solid var(--gray-a3)',
-                }}
-              >
-                <Text as="div" size="2">{toolLabel(g.tool_name)}</Text>
-                <span>
-                  <Badge
-                    color={g.mode === 'read_only' ? 'cyan' : g.mode === 'requires_approval' ? 'amber' : 'red'}
-                    variant="soft"
-                    radius="small"
-                    size="1"
-                  >
-                    {policyModeLabel(g.mode)}
-                  </Badge>
-                </span>
-                <Text as="span" size="1" color="gray">
-                  {g.scopes && g.scopes.length > 0
-                    ? g.scopes.join(', ')
-                    : '—'}
-                </Text>
-              </div>
-            ))}
-            <Text
-              as="div"
-              size="1"
-              color="gray"
-              style={{
-                padding: '8px 16px',
-                background: 'var(--gray-a2)',
-                borderTop: '1px solid var(--gray-a3)',
-              }}
-            >
-              issued {absTime(snapshot.issued_at)}
-            </Text>
-          </>
-        )}
-      </div>
-    </div>
-  )
-}

@@ -90,6 +90,24 @@
 - **Если backend не реализует:** UI fallback — после hire navigate'имся на `/agents/:id/talk` (draft mode без greeting). Onboarding теряет narrative-finish, но не падает.
 - **MockBadge:** не нужен — пользователь не видит mock-only механики, только результат (greeting в chat).
 
+### 1.13 — `AgentVersion.*_config` shapes underspecified ⚠️ medium
+
+- **Где было в UI:** AgentDetail → Advanced tab имел четыре карточки, рендерящие предполагаемые внутренние поля:
+  - `ModelChainCard` читал `model_chain_config.{primary, fallbacks, max_tokens, temperature}`
+  - `MemoryScopeCard` читал `memory_scope_config.{user_facts, session_only, domain_shared, retention_days}`
+  - `ToolScopeCard` читал `tool_scope_config.{inherits_from_agent, overrides, denylist}`
+  - `ApprovalRulesCard` читал `approval_rules.rules[].{when, required_approver_level}`
+- **Что говорит spec:** `docs/gateway.yaml` определяет каждое из этих полей как `object` с `additionalProperties: true` — внутренняя структура НЕ зафиксирована. Это значит, что любой backend-совместимый response мог бы вернуть `{}` или произвольную форму, и UI работал бы только на наших мок-фикстурах.
+- **Действие 2026-05-06:** четыре карточки удалены из UI вместе с поддерживающими компонентами (`ModelBadge`, `ToggleRow`, `ApprovalRule` interface, `ApprovalRuleRow`). На Advanced остались только поля, гарантированные spec'ом: `version`, `is_active`, `created_at`, `instruction_spec`.
+- **Что нужно от backend:** зафиксировать схемы внутри `*_config` объектов в OpenAPI (отдельные named schemas или `properties` блок вместо `additionalProperties: true`). Без этого UI не может показывать ничего более конкретного, чем raw JSON.
+
+### 1.14 — `GET /internal/agents/{agentId}/grants/snapshot` is x-internal ⚠️ medium
+
+- **Где было в UI:** AgentDetail Advanced tab → `PolicySnapshotPanel` (dashed-border card в самом низу).
+- **Что говорит spec:** endpoint существует в `docs/gateway.yaml:810`, но помечен `x-internal: true`, `tags: [internal]`, и описание прямо пишет «called by orchestrator». Bearer-scope обычного user'а почти наверняка его не пропустит.
+- **Действие 2026-05-06:** панель удалена из UI. `api.getGrantsSnapshot()` и типы `GrantsSnapshot` / `GrantsSnapshotEntry` оставлены в `lib/api.ts` / `lib/types.ts` — на случай будущей admin-only internal-tools UI.
+- **Что нужно от backend (если хотим показывать в UI):** либо публичный аналог endpoint'а с user-scoped permission'ами, либо documented elevation flow (например, отдельный `/admin` namespace с tenant_admin scope).
+
 ---
 
 ## 2. Synthesized data on the client

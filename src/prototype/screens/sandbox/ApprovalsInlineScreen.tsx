@@ -11,19 +11,21 @@
 // state only. See § 4 of the plan.
 
 import { useEffect, useMemo, useRef, useState } from 'react'
-import { Box, Button, Code, Flex, Grid, IconButton, Text } from '@radix-ui/themes'
+import { Box, Button, Code, Flex, Grid, Text } from '@radix-ui/themes'
 
 import { AppShell } from '../../components/shell'
-import { Avatar, Caption, MockBadge, PageHeader, Status } from '../../components/common'
-import { TextAreaField } from '../../components/fields'
+import { Caption, MockBadge, PageHeader } from '../../components/common'
 import { Banner, EmptyState, ErrorState, LoadingList } from '../../components/states'
-import { IconApproval, IconArrowLeft, IconArrowRight, IconCheck, IconX } from '../../components/icons'
+import { IconApproval } from '../../components/icons'
+import { ApprovalCard } from '../../components/approval-card'
+import { ToastStack } from '../../components/undo-toast'
+import { makeToastId, nowMs, type UndoToast } from '../../lib/undo-toast'
 import { useRouter } from '../../router'
 import { api } from '../../lib/api'
 import { APPROVAL_STATUS_FILTERS } from '../../lib/filters'
 import type { ApprovalStatusFilter } from '../../lib/filters'
 import type { Agent, ApprovalRequest, RunListItem } from '../../lib/types'
-import { ago, prettifyRequestedAction } from '../../lib/format'
+import { prettifyRequestedAction } from '../../lib/format'
 
 // 12 cards = 4 rows of 3 on lg / 6 rows of 2 on md / 12 on small. Keeps
 // the first paint compact and lets the IntersectionObserver fire as soon
@@ -33,25 +35,6 @@ const PAGE_SIZE = 12
 // 5 seconds — long enough to catch a misclick, short enough that the user
 // doesn't expect this to be a real "I changed my mind" workflow.
 const UNDO_WINDOW_MS = 5000
-
-interface UndoToast {
-  id: string
-  approvalId: string
-  decision: 'approved' | 'rejected'
-  agentName: string
-  actionVerb: string
-  expiresAt: number
-}
-
-// Module-level helpers — kept out of the component so React's purity lint
-// rule doesn't flag the (intentional) Date.now / Math.random calls. These
-// only run from event handlers, so impurity is fine.
-function makeToastId(): string {
-  return `toast-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`
-}
-function nowMs(): number {
-  return Date.now()
-}
 
 export default function ApprovalsInlineScreen() {
   const { navigate } = useRouter()
@@ -352,6 +335,7 @@ export default function ApprovalsInlineScreen() {
                     isRejectExpanded={expandedRejectId === a.id}
                     rejectReason={rejectReason}
                     rejectTouched={rejectTouched}
+                    rejectMinChars={4}
                     onOpenDetail={() => navigate(`/approvals/${a.id}`)}
                     onApprove={() => onApprove(a.id, agentName, actionVerb)}
                     onRejectStart={() => onRejectStart(a.id)}
@@ -389,254 +373,3 @@ export default function ApprovalsInlineScreen() {
   )
 }
 
-// ─── ApprovalCard ───────────────────────────────────────────────────────
-// Card-style preview of a single approval. Avatar + name in header,
-// "wants to" + action verb in body, wide Details button + ✓/✕ icon
-// buttons on the right. Reject expands a reason form inside the card.
-
-interface ApprovalCardProps {
-  approval: ApprovalRequest
-  agentName: string
-  actionVerb: string
-  isRejectExpanded: boolean
-  rejectReason: string
-  rejectTouched: boolean
-  onOpenDetail: () => void
-  onApprove: () => void
-  onRejectStart: () => void
-  onChangeReason: (v: string) => void
-  onBlurReason: () => void
-  onRejectCancel: () => void
-  onRejectConfirm: () => void
-}
-
-function ApprovalCard(props: ApprovalCardProps) {
-  const { approval, agentName, actionVerb, isRejectExpanded, onOpenDetail, onApprove, onRejectStart } = props
-  const isPending = approval.status === 'pending'
-
-  return (
-    <div
-      className="card"
-      style={{
-        padding: 16,
-        gap: 12,
-        display: 'flex',
-        flexDirection: 'column',
-        borderColor: isRejectExpanded ? 'var(--red-a6)' : undefined,
-      }}
-    >
-      <Flex align="center" gap="3" minWidth="0">
-        <Avatar initials={agentName.slice(0, 2).toUpperCase()} size={36} />
-        <Box minWidth="0" flexGrow="1">
-          <Text as="div" size="3" weight="medium" className="truncate">{agentName}</Text>
-          <Text as="div" size="1" color="gray" mt="1" className="truncate">
-            {approval.requested_by_name
-              ? `Triggered by ${approval.requested_by_name} · ${ago(approval.created_at)}`
-              : ago(approval.created_at)}
-          </Text>
-        </Box>
-        <Status status={approval.status} />
-      </Flex>
-      <Box>
-        <Caption mb="1">wants to</Caption>
-        <Text as="div" size="2" weight="medium" style={{ lineHeight: 1.45 }}>
-          {actionVerb}
-        </Text>
-      </Box>
-      <Flex direction="column" gap="2" style={{ marginTop: 'auto' }}>
-        {isRejectExpanded ? (
-          <RejectFormBody {...props} />
-        ) : (
-          <Flex gap="2" align="center">
-            <Button size="2" variant="soft" onClick={onOpenDetail} style={{ flex: 1, minWidth: 0 }}>
-              View full details
-              <IconArrowRight className="ic ic--sm" />
-            </Button>
-            {isPending && (
-              <>
-                <IconButton size="2" variant="soft" color="green" onClick={onApprove}
-                  title="Quick approve" aria-label={`Quick approve — ${agentName} ${actionVerb}`}>
-                  <IconCheck className="ic ic--sm" />
-                </IconButton>
-                <IconButton size="2" variant="soft" color="red" onClick={onRejectStart}
-                  title="Quick reject" aria-label={`Quick reject — ${agentName} ${actionVerb}`}>
-                  <IconX className="ic ic--sm" />
-                </IconButton>
-              </>
-            )}
-          </Flex>
-        )}
-      </Flex>
-    </div>
-  )
-}
-
-function RejectFormBody({
-  rejectReason, rejectTouched, onChangeReason, onBlurReason, onRejectCancel, onRejectConfirm,
-}: ApprovalCardProps) {
-  const reasonInvalid = rejectTouched && rejectReason.trim().length < 4
-  return (
-    <Box
-      style={{
-        padding: 12,
-        background: 'var(--red-a2)',
-        border: '1px solid var(--red-a4)',
-        borderRadius: 6,
-      }}
-    >
-      <Flex align="center" justify="between" mb="2">
-        <Caption>
-          reason for rejecting <Text as="span" color="red">*</Text>
-        </Caption>
-        <Code variant="ghost" size="1" color="gray">≥ 4 chars</Code>
-      </Flex>
-      <TextAreaField
-        autoFocus
-        style={{ minHeight: 72 }}
-        placeholder="Why are we rejecting?"
-        value={rejectReason}
-        onChange={e => onChangeReason(e.target.value)}
-        onBlur={onBlurReason}
-        error={reasonInvalid ? 'At least 4 characters.' : undefined}
-      />
-      <Flex justify="end" gap="2" mt="3">
-        <Button variant="soft" color="gray" size="2" onClick={onRejectCancel}>
-          <IconArrowLeft className="ic ic--sm" />
-          Cancel
-        </Button>
-        <Button color="red" size="2" onClick={onRejectConfirm}>
-          <IconX className="ic ic--sm" />
-          Confirm reject
-        </Button>
-      </Flex>
-    </Box>
-  )
-}
-
-// ─── ToastStack ─────────────────────────────────────────────────────────
-// Bottom-right stack of undo-toasts. Each toast counts down 5 seconds; on
-// expiry the toast removes itself (decision stays committed in sandbox-
-// state). Clicking Undo removes the toast AND restores the row.
-
-function ToastStack({
-  toasts,
-  onUndo,
-  onDismiss,
-}: {
-  toasts: UndoToast[]
-  onUndo: (toastId: string) => void
-  onDismiss: (toastId: string) => void
-}) {
-  if (toasts.length === 0) return null
-  return (
-    <Box
-      style={{
-        position: 'fixed',
-        bottom: 16,
-        right: 16,
-        zIndex: 80,
-        pointerEvents: 'none',
-      }}
-    >
-      <Flex direction="column" gap="2" align="end">
-        {toasts.map(t => (
-          <ToastItem
-            key={t.id}
-            toast={t}
-            onUndo={() => onUndo(t.id)}
-            onDismiss={() => onDismiss(t.id)}
-          />
-        ))}
-      </Flex>
-    </Box>
-  )
-}
-
-function ToastItem({
-  toast,
-  onUndo,
-  onDismiss,
-}: {
-  toast: UndoToast
-  onUndo: () => void
-  onDismiss: () => void
-}) {
-  const computeRemaining = () =>
-    Math.max(0, Math.ceil((toast.expiresAt - Date.now()) / 1000))
-  const [remaining, setRemaining] = useState(computeRemaining)
-
-  useEffect(() => {
-    const tick = setInterval(() => {
-      const left = toast.expiresAt - Date.now()
-      if (left <= 0) {
-        clearInterval(tick)
-        onDismiss()
-        return
-      }
-      setRemaining(Math.ceil(left / 1000))
-    }, 250)
-    return () => clearInterval(tick)
-  }, [toast.expiresAt, onDismiss])
-
-  const isApprove = toast.decision === 'approved'
-  const accentColor = isApprove ? 'var(--green-11)' : 'var(--red-11)'
-  const accentBorder = isApprove ? 'var(--green-a6)' : 'var(--red-a6)'
-
-  return (
-    <Flex
-      align="center"
-      gap="3"
-      role="status"
-      aria-live="polite"
-      style={{
-        pointerEvents: 'auto',
-        background: 'var(--gray-2)',
-        border: `1px solid ${accentBorder}`,
-        borderRadius: 8,
-        boxShadow: '0 8px 24px rgba(0, 0, 0, 0.35)',
-        padding: '10px 14px',
-        minWidth: 320,
-        maxWidth: 420,
-      }}
-    >
-      <span
-        aria-hidden
-        style={{
-          width: 24,
-          height: 24,
-          borderRadius: 6,
-          border: `1px solid ${accentBorder}`,
-          color: accentColor,
-          background: 'var(--gray-3)',
-          display: 'grid',
-          placeItems: 'center',
-          flexShrink: 0,
-        }}
-      >
-        {isApprove ? <IconCheck className="ic ic--sm" /> : <IconX className="ic ic--sm" />}
-      </span>
-      <Box style={{ flex: '1 1 auto', minWidth: 0 }}>
-        <Text as="div" size="2" weight="medium" className="truncate">
-          <Text as="span" style={{ color: accentColor }}>
-            {isApprove ? 'Approved' : 'Rejected'}
-          </Text>
-          <Text as="span" color="gray">{' · '}</Text>
-          <Text as="span">{toast.agentName}</Text>
-        </Text>
-        <Text as="div" size="1" color="gray" className="truncate" mt="1">
-          {toast.actionVerb}
-        </Text>
-      </Box>
-      <Button
-        variant="soft"
-        color="gray"
-        size="1"
-        onClick={onUndo}
-        aria-label={`Undo — ${toast.agentName} ${toast.actionVerb}`}
-        style={{ flexShrink: 0 }}
-      >
-        Undo ({remaining}s)
-      </Button>
-    </Flex>
-  )
-}

@@ -167,6 +167,8 @@ Key gaps (validated against live spec 2026-05-01):
 - Per-week spend buckets — backend exposes only aggregate ranges; 4-week trend is split client-side.
 - Activity sentence summaries — backend doesn't return per-run summary; headlines on `/activity` are derived client-side from `RunStatus`.
 - Naming mismatch: tool catalog endpoint is `/tool-catalog` in live, but `api.listTools()` in mock targets `/tools`. Update at production swap; mock layer is unaffected.
+- `AgentVersion.*_config` shapes — `model_chain_config` / `memory_scope_config` / `tool_scope_config` / `approval_rules` are spec'd as `object additionalProperties: true`, so internal fields aren't fixed. UI used to render speculated fields (Model / Memory / Apps / Approval rules cards on AgentDetail → Advanced); those four cards were removed 2026-05-06. See `docs/backend-gaps.md § 1.13`.
+- `GET /internal/agents/{id}/grants/snapshot` is `x-internal: true` (orchestrator-only). UI used to render a `PolicySnapshotPanel` on AgentDetail → Advanced calling this endpoint; the panel was removed 2026-05-06. `api.getGrantsSnapshot()` + `GrantsSnapshot` types kept for a possible future internal-tools UI. See `docs/backend-gaps.md § 1.14`.
 
 #### Routing (`router.tsx`, `index.tsx`)
 
@@ -258,6 +260,8 @@ Layout escape hatches:
 > ⚠️ **Anchor styling specificity**: the global `<a>` reset uses `:where(.prototype-root) a { color: inherit }` (zero-specificity wrapper). Without `:where()`, Radix Button styles like `<Button asChild color="gray">` would lose their color when wrapping a `<Link>`. Don't drop the `:where()`.
 
 > ⚠️ **Portaled Radix content** (`Select.Content`, dropdowns, popovers, dialogs) renders **outside `.prototype-root`** via `<body>` portals. Selectors targeting popup contents must NOT be prefixed with `.prototype-root` or they won't match.
+
+> ⚠️ **Radix class overrides are intentionally global** (no `.prototype-root` prefix). The block in `prototype.css` under `RADIX OVERRIDES` (button / icon-button / badge radius, `rt-TextFieldRoot` / `rt-TextAreaRoot` / `rt-SelectTrigger` radius + surface) controls the styling of Radix-emitted classes everywhere — including portaled dialog / popover / select content on `<body>`. If these were scoped to `.prototype-root`, every new dialog would re-discover wrong-radius buttons/inputs. Don't re-add the prefix.
 
 > ⚠️ **`--color-panel-solid` override**: at the top of `.prototype-root` we redefine `--color-panel-solid: var(--gray-2)`. Don't remove it without a replacement strategy.
 
