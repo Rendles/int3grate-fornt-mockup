@@ -17,6 +17,8 @@ import type {
   ToolDefinition,
   ToolGrant,
   User,
+  Workspace,
+  WorkspaceMembership,
 } from './types'
 
 const now = Date.now()
@@ -59,6 +61,58 @@ export const users: User[] = [
     created_at: days(190),
   },
 ]
+
+// ══════════════════════════════════════════════════ WORKSPACES (mock-only)
+//
+// No backend support for any of these shapes — see docs/backend-gaps.md § 1.15.
+// Memberships use a flat list (workspace_id × user_id × joined_at). Agent
+// association is a side-table (agentWorkspace) — keeps Agent type 1:1 with spec.
+
+export const workspaces: Workspace[] = [
+  {
+    id: 'ws_growth',
+    name: 'Growth',
+    description: 'Sales pipeline + marketing campaigns.',
+    created_at: days(540),
+  },
+  {
+    id: 'ws_ops',
+    name: 'Operations',
+    description: 'Customer support, account provisioning, internal tools.',
+    created_at: days(420),
+  },
+  {
+    id: 'ws_finance',
+    name: 'Finance',
+    description: 'Invoice reconciliation, expense reports, vendor management.',
+    created_at: days(190),
+  },
+]
+
+export const workspaceMemberships: WorkspaceMembership[] = [
+  // Ada — admin, member of all three.
+  { workspace_id: 'ws_growth',  user_id: 'usr_ada',     joined_at: days(540) },
+  { workspace_id: 'ws_ops',     user_id: 'usr_ada',     joined_at: days(420) },
+  { workspace_id: 'ws_finance', user_id: 'usr_ada',     joined_at: days(190) },
+  // Marcelo — domain_admin, in Growth + Ops.
+  { workspace_id: 'ws_growth',  user_id: 'usr_marcelo', joined_at: days(420) },
+  { workspace_id: 'ws_ops',     user_id: 'usr_marcelo', joined_at: days(300) },
+  // Priya — member, Ops only.
+  { workspace_id: 'ws_ops',     user_id: 'usr_priya',   joined_at: days(190) },
+]
+
+// agent_id → workspace_id. Side-table because Agent.workspace_id isn't in
+// docs/gateway.yaml. Used by api list-filtering to scope visible agents
+// (and by cascade — approvals / runs / spend — to inherit the same scope).
+export const agentWorkspace: Record<string, string> = {
+  agt_lead_qualifier:    'ws_growth',
+  agt_campaign_drafter:  'ws_growth',
+  agt_refund_resolver:   'ws_ops',
+  agt_kb_sync:           'ws_ops',
+  agt_access_provisioner:'ws_ops',
+  agt_legacy_triage:     'ws_ops',
+  agt_invoice_reconciler:'ws_finance',
+}
 
 // ══════════════════════════════════════════════════ AGENT VERSIONS
 

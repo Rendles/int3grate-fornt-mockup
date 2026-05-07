@@ -42,13 +42,13 @@ import SpendScreen from './screens/SpendScreen'
 import ProfileScreen from './screens/ProfileScreen'
 import LearnScreen from './screens/LearnScreen'
 import NotFoundScreen from './screens/NotFoundScreen'
+import WorkspacesScreen from './screens/WorkspacesScreen'
 // Sandbox: design exploration only. Reachable via direct URL + a sidebar
 // entry with a muted "preview" badge. See docs/agent-plans/.
 import TeamBridgeScreen from './screens/sandbox/TeamBridgeScreen'
-import ApprovalsInlineScreen from './screens/sandbox/ApprovalsInlineScreen'
-import QuickHireScreen from './screens/sandbox/QuickHireScreen'
 // WelcomeChatScreen removed — standalone preview no longer needed
 import { DevModeProvider, DevModeRemount } from './dev/dev-mode-provider'
+import { WorkspaceRemount } from './components/workspace-remount'
 
 // Old paths redirect to new ones (legacy hash routes).
 // Kept so existing tour navigateTo, bookmarks, and direct links don't 404.
@@ -149,11 +149,10 @@ function Router() {
     // { pattern: '/audit', render: () => <AuditScreen /> },
     { pattern: '/profile', render: () => <ProfileScreen /> },
     { pattern: '/learn', render: () => <LearnScreen /> },
+    { pattern: '/workspaces', render: () => <WorkspacesScreen /> },
     // Sandbox routes — design previews, surfaced in the sidebar with a
     // muted "preview" badge. See docs/agent-plans/.
     { pattern: '/sandbox/team-bridge', render: () => <TeamBridgeScreen /> },
-    { pattern: '/sandbox/approvals-inline', render: () => <ApprovalsInlineScreen /> },
-    { pattern: '/sandbox/quick-hire', render: () => <QuickHireScreen /> },
     // /sandbox/welcome-chat removed — standalone preview no longer needed
   ]
 
@@ -186,7 +185,9 @@ function ThemedRoot() {
                 <TrainingBanner />
                 <TourProvider>
                   <DevModeRemount>
-                    <Router />
+                    <WorkspaceRemount>
+                      <Router />
+                    </WorkspaceRemount>
                   </DevModeRemount>
                   <TourOverlay />
                   <WelcomeToast />

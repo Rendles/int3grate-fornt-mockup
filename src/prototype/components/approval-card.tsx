@@ -12,7 +12,7 @@ import { ago } from '../lib/format'
 // card, replacing the footer buttons.
 //
 // Pure visual — owns no state. Parent wires handlers and the expanded
-// flag. Used by /approvals (cards view) and /sandbox/approvals-inline.
+// flag. Used by /approvals (cards view).
 
 export interface ApprovalCardProps {
   approval: ApprovalRequest

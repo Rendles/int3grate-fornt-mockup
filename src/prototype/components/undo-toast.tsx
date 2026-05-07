@@ -5,9 +5,9 @@ import { IconCheck, IconX } from './icons'
 import type { UndoToast } from '../lib/undo-toast'
 
 // Bottom-right pinned, 5s-countdown undo toasts. Used by the production
-// /approvals quick-actions and by /sandbox/approvals-inline. The toast is
-// pure UI — it doesn't know whether the underlying decision is sandbox-
-// only or a deferred backend commit. Caller is responsible for:
+// /approvals quick-actions. The toast is pure UI — it doesn't know
+// whether the underlying decision is sandbox-only or a deferred backend
+// commit. Caller is responsible for:
 //   - calling onUndo to actually revert the decision
 //   - calling onDismiss when the toast expires (or otherwise wiring the
 //     real "commit" on expiry)

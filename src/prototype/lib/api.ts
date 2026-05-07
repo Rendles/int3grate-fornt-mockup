@@ -1,6 +1,7 @@
 import {
   agents as fxAgents,
   agentVersions as fxVersions,
+  agentWorkspace as fxAgentWorkspace,
   approvals as fxApprovals,
   chats as fxChats,
   chatMessages as fxChatMessages,
@@ -10,6 +11,8 @@ import {
   getAgentStats,
   getSpendDashboard,
   users as fxUsers,
+  workspaces as fxWorkspaces,
+  workspaceMemberships as fxWorkspaceMemberships,
 } from './fixtures'
 import type {
   Agent,
@@ -26,6 +29,7 @@ import type {
   ChatMessageList,
   ChatStreamFrame,
   CreateChatRequest,
+  CreateWorkspaceRequest,
   GrantsSnapshot,
   GrantsSnapshotEntry,
   LoginResponse,
@@ -43,10 +47,47 @@ import type {
   ToolDefinition,
   ToolGrant,
   ToolPolicyMode,
+  UpdateWorkspaceRequest,
   User,
+  Workspace,
+  WorkspaceList,
 } from './types'
 import { TRAINING_SCENARIOS, type TrainingScenario } from '../tours/training-fixtures'
 import { getDevMode } from '../dev/dev-mode'
+import { getCurrentWorkspaceId } from './workspace-context'
+
+// Workspace filter — Step 3 of docs/agent-plans/2026-05-06-2200-workspaces-mock.md.
+// Returns true iff the agent belongs to the active workspace. Null/empty
+// agentId is treated as "out of scope" — never visible. When no workspace
+// is selected (currentWorkspaceId === null), nothing is in scope: that is
+// the correct behavior both for users with 0 workspaces and for the brief
+// session-init window before workspaces load.
+//
+// Training mode short-circuits this (training scenarios bring their own
+// agent set with no workspace concept).
+function inCurrentWorkspace(agentId: string | null | undefined): boolean {
+  const wsId = getCurrentWorkspaceId()
+  if (wsId === null) return false
+  if (!agentId) return false
+  return fxAgentWorkspace[agentId] === wsId
+}
+
+// User-id → workspace membership (used for SpendDashboard group_by='user').
+function userInCurrentWorkspace(userId: string): boolean {
+  const wsId = getCurrentWorkspaceId()
+  if (wsId === null) return false
+  return fxWorkspaceMemberships.some(m => m.workspace_id === wsId && m.user_id === userId)
+}
+
+// ApprovalRequest doesn't carry agent_id directly — resolve via run_id →
+// run.agent_version_id → version.agent_id. Returns null if any link is
+// missing (such approvals are filtered out by inCurrentWorkspace).
+function approvalAgentId(a: ApprovalRequest): string | null {
+  const run = fxRuns[a.run_id]
+  if (!run || !run.agent_version_id) return null
+  const version = fxVersions.find(v => v.id === run.agent_version_id)
+  return version?.agent_id ?? null
+}
 
 // Dev-mode short-circuit. Read methods call this right after delay()
 // and either get '"empty"' (apply empty result), 'real' (continue with
@@ -257,7 +298,9 @@ export const api = {
     await delay()
     if (await _devGate() === 'empty') return { items: [], total: 0, limit: filter?.limit, offset: filter?.offset }
     const scenario = _trainingScenario()
-    return paginate(scenario?.agents ?? fxAgents, filter)
+    if (scenario) return paginate(scenario.agents, filter)
+    const scoped = fxAgents.filter(a => inCurrentWorkspace(a.id))
+    return paginate(scoped, filter)
   },
 
   // ── GET /agents/{id} ───────────────────────────────────────────────
@@ -296,6 +339,13 @@ export const api = {
       updated_at: now,
     }
     fxAgents.unshift(agent)
+    // Pin the new agent to the active workspace so it shows up in the
+    // current scope. UI-only side-table — see fxAgentWorkspace doc in
+    // fixtures.ts. If no workspace is selected the agent is orphaned
+    // (won't pass inCurrentWorkspace), which is acceptable for the
+    // mock — UI flows always create from inside a workspace.
+    const wsId = getCurrentWorkspaceId()
+    if (wsId) fxAgentWorkspace[id] = wsId
     return agent
   },
 
@@ -409,30 +459,38 @@ export const api = {
     }
     const limit = filter?.limit ?? 20
     const offset = filter?.offset ?? 0
-    const all = Object.values(fxRuns)
-      .filter(r => (filter?.status ? r.status === filter.status : true))
-      .sort((a, b) => b.created_at.localeCompare(a.created_at))
-    const items: RunListItem[] = all.slice(offset, offset + limit).map(r => {
+    // Resolve agent_id once per run (via version) so we can workspace-filter
+    // before slicing the page. Without this, pagination totals would be
+    // wrong (we'd page over the unfiltered set, then trim per page).
+    const resolved = Object.values(fxRuns).map(r => {
       const version = r.agent_version_id
         ? fxVersions.find(v => v.id === r.agent_version_id)
         : undefined
-      return {
-        id: r.id,
-        tenant_id: r.tenant_id,
-        domain_id: r.domain_id,
-        task_id: r.task_id,
-        agent_id: version?.agent_id ?? null,
-        agent_version_id: r.agent_version_id,
-        status: r.status,
-        suspended_stage: r.suspended_stage,
-        started_at: r.started_at,
-        ended_at: r.ended_at,
-        total_cost_usd: r.total_cost_usd,
-        total_tokens_in: r.total_tokens_in,
-        total_tokens_out: r.total_tokens_out,
-        created_at: r.created_at,
-      }
+      return { run: r, agentId: version?.agent_id ?? null }
     })
+    const all = resolved
+      .filter(({ run, agentId }) => {
+        if (filter?.status && run.status !== filter.status) return false
+        if (!inCurrentWorkspace(agentId)) return false
+        return true
+      })
+      .sort((a, b) => b.run.created_at.localeCompare(a.run.created_at))
+    const items: RunListItem[] = all.slice(offset, offset + limit).map(({ run: r, agentId }) => ({
+      id: r.id,
+      tenant_id: r.tenant_id,
+      domain_id: r.domain_id,
+      task_id: r.task_id,
+      agent_id: agentId,
+      agent_version_id: r.agent_version_id,
+      status: r.status,
+      suspended_stage: r.suspended_stage,
+      started_at: r.started_at,
+      ended_at: r.ended_at,
+      total_cost_usd: r.total_cost_usd,
+      total_tokens_in: r.total_tokens_in,
+      total_tokens_out: r.total_tokens_out,
+      created_at: r.created_at,
+    }))
     return { items, total: all.length, limit, offset }
   },
 
@@ -465,6 +523,7 @@ export const api = {
         const version = run.agent_version_id ? fxVersions.find(v => v.id === run.agent_version_id) : undefined
         const agentId = version?.agent_id
         if (!agentId) continue
+        if (!inCurrentWorkspace(agentId)) continue
         if (filter?.agent_id && filter.agent_id !== agentId) continue
         if (filter?.run_id && filter.run_id !== run.id) continue
         for (const step of run.steps) {
@@ -493,6 +552,7 @@ export const api = {
     // Chat-sourced events.
     if (!filter?.run_id) {
       for (const chat of fxChats) {
+        if (!inCurrentWorkspace(chat.agent_id)) continue
         if (filter?.agent_id && filter.agent_id !== chat.agent_id) continue
         if (filter?.chat_id && filter.chat_id !== chat.id) continue
         const messages = fxChatMessages[chat.id] ?? []
@@ -534,7 +594,9 @@ export const api = {
     await delay()
     if (await _devGate() === 'empty') return { items: [], total: 0, limit: filter?.limit, offset: filter?.offset }
     const scenario = _trainingScenario()
-    let list = [...(scenario?.approvals ?? fxApprovals)]
+    let list = scenario
+      ? [...scenario.approvals]
+      : fxApprovals.filter(a => inCurrentWorkspace(approvalAgentId(a)))
     if (filter?.status) list = list.filter(a => a.status === filter.status)
     list.sort((a, b) => b.created_at.localeCompare(a.created_at))
     return paginate(list, filter)
@@ -651,9 +713,13 @@ export const api = {
     const offset = filter?.offset ?? 0
     if (await _devGate() === 'empty') return { items: [], total: 0, limit, offset }
     const isAdmin = viewer.role === 'admin' || viewer.role === 'domain_admin'
-    const source = trainingChats() ?? fxChats
+    const training = trainingChats()
+    const source = training ?? fxChats
     const all = source
       .filter(c => (isAdmin ? true : c.created_by === viewer.id))
+      // Skip workspace filter inside training scenarios — they bring their
+      // own chat set and have no workspace concept.
+      .filter(c => (training ? true : inCurrentWorkspace(c.agent_id)))
       .filter(c => (filter?.agent_id ? c.agent_id === filter.agent_id : true))
       .sort((a, b) => b.updated_at.localeCompare(a.updated_at))
     return {
@@ -829,10 +895,162 @@ export const api = {
   },
 
   // ── GET /dashboard/spend ──────────────────────────────────────────
+  // Workspace-scoped: byAgent rows filtered via agentWorkspace map; byUser
+  // rows filtered to members of the current workspace. Total is recomputed
+  // on the filtered slice so the hero number matches the visible items.
   async getSpend(range: SpendRange = '7d', group_by: SpendGroupBy = 'agent'): Promise<SpendDashboard> {
     await delay()
     if (await _devGate() === 'empty') return { range, group_by, total_usd: 0, items: [] }
-    return getSpendDashboard(range, group_by)
+    const full = getSpendDashboard(range, group_by)
+    const items = full.items.filter(row =>
+      group_by === 'agent' ? inCurrentWorkspace(row.id) : userInCurrentWorkspace(row.id),
+    )
+    const total_usd = Math.round(items.reduce((s, r) => s + r.total_usd, 0) * 100) / 100
+    return { range, group_by, total_usd, items }
+  },
+
+  // ──────────────────────────────────────────────────────────────────
+  // Workspaces (mock-only — no backend endpoints exist; see
+  // docs/backend-gaps.md § 1.15). Mutations write straight into the
+  // fxWorkspaces / fxWorkspaceMemberships / fxAgentWorkspace arrays
+  // and persist for the lifetime of the page load only.
+  // ──────────────────────────────────────────────────────────────────
+
+  // GET /workspaces — workspaces the calling user belongs to.
+  async listWorkspaces(userId: string): Promise<WorkspaceList> {
+    await delay()
+    if (await _devGate() === 'empty') return { items: [], total: 0 }
+    const myIds = new Set(
+      fxWorkspaceMemberships
+        .filter(m => m.user_id === userId)
+        .map(m => m.workspace_id),
+    )
+    const items = fxWorkspaces.filter(w => myIds.has(w.id))
+    return { items, total: items.length }
+  },
+
+  async getWorkspace(id: string): Promise<Workspace> {
+    await delay()
+    const w = fxWorkspaces.find(w => w.id === id)
+    if (!w) throw new Error('Workspace not found')
+    return w
+  },
+
+  // POST /workspaces — creator is auto-joined.
+  async createWorkspace(input: CreateWorkspaceRequest, creatorUserId: string): Promise<Workspace> {
+    await delay()
+    const name = input.name.trim()
+    if (!name) throw new Error('Workspace name is required')
+
+    const segment = toIdSegment(name, 'workspace')
+    let id = `ws_${segment}`
+    let suffix = 2
+    while (fxWorkspaces.some(w => w.id === id)) {
+      id = `ws_${segment}_${suffix}`
+      suffix += 1
+    }
+
+    const ws: Workspace = {
+      id,
+      name,
+      description: input.description?.trim() || undefined,
+      created_at: new Date().toISOString(),
+    }
+    fxWorkspaces.push(ws)
+    fxWorkspaceMemberships.push({
+      workspace_id: id,
+      user_id: creatorUserId,
+      joined_at: ws.created_at,
+    })
+    return ws
+  },
+
+  // PATCH /workspaces/{id}
+  async updateWorkspace(id: string, patch: UpdateWorkspaceRequest): Promise<Workspace> {
+    await delay()
+    const w = fxWorkspaces.find(w => w.id === id)
+    if (!w) throw new Error('Workspace not found')
+    if (patch.name !== undefined) {
+      const trimmed = patch.name.trim()
+      if (!trimmed) throw new Error('Workspace name is required')
+      w.name = trimmed
+    }
+    if (patch.description !== undefined) {
+      w.description = patch.description.trim() || undefined
+    }
+    return w
+  },
+
+  // DELETE /workspaces/{id} — last-workspace block enforced if userId is
+  // passed (membership check). Cascade hard-deletes:
+  //   - workspace memberships
+  //   - agent → workspace map entries
+  //   - agents themselves (mock equivalent of "archive on backend")
+  async deleteWorkspace(id: string, userId?: string): Promise<void> {
+    await delay()
+    const idx = fxWorkspaces.findIndex(w => w.id === id)
+    if (idx < 0) throw new Error('Workspace not found')
+
+    if (userId) {
+      const myCount = fxWorkspaceMemberships
+        .filter(m => m.user_id === userId)
+        .length
+      const isMine = fxWorkspaceMemberships
+        .some(m => m.user_id === userId && m.workspace_id === id)
+      if (isMine && myCount <= 1) {
+        throw new Error('Cannot delete your only workspace')
+      }
+    }
+
+    // Cascade: agents + their grants + their versions stay around (we
+    // only nuke the membership map entries). Approvals/runs reference
+    // agent_id, so once the agent itself is removed the cascade is
+    // automatic via the listAgents filter (Step 3).
+    const agentIds = Object.entries(fxAgentWorkspace)
+      .filter(([, wsId]) => wsId === id)
+      .map(([aid]) => aid)
+    for (const aid of agentIds) {
+      delete fxAgentWorkspace[aid]
+      const ai = fxAgents.findIndex(a => a.id === aid)
+      if (ai >= 0) fxAgents.splice(ai, 1)
+    }
+
+    // Drop memberships pointing at this workspace.
+    for (let i = fxWorkspaceMemberships.length - 1; i >= 0; i -= 1) {
+      if (fxWorkspaceMemberships[i].workspace_id === id) {
+        fxWorkspaceMemberships.splice(i, 1)
+      }
+    }
+
+    fxWorkspaces.splice(idx, 1)
+  },
+
+  // GET /workspaces/{id}/members — read-only list (full
+  // invite/remove flow needs GET /users + invite endpoints, neither
+  // exists in spec; see docs/backend-gaps.md § 1.15).
+  async listWorkspaceMembers(workspaceId: string): Promise<User[]> {
+    await delay()
+    const userIds = new Set(
+      fxWorkspaceMemberships
+        .filter(m => m.workspace_id === workspaceId)
+        .map(m => m.user_id),
+    )
+    return fxUsers.filter(u => userIds.has(u.id))
+  },
+
+  // Companion to listWorkspaces — returns counts per workspace for the
+  // /workspaces card grid. Returned as a Record<workspaceId, stats> so the
+  // caller can join in O(1). Spans all workspaces, not just the caller's
+  // memberships — the caller filters to its own.
+  async listWorkspaceStats(): Promise<Record<string, { member_count: number; agent_count: number }>> {
+    await delay()
+    const out: Record<string, { member_count: number; agent_count: number }> = {}
+    for (const w of fxWorkspaces) {
+      const member_count = fxWorkspaceMemberships.filter(m => m.workspace_id === w.id).length
+      const agent_count = Object.values(fxAgentWorkspace).filter(wid => wid === w.id).length
+      out[w.id] = { member_count, agent_count }
+    }
+    return out
   },
 }
 

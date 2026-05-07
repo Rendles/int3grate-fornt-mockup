@@ -4,9 +4,8 @@
 //   createChat with a seed assistant greeting.
 //
 // Exposed as a hook so the QuickHireGrid component (used inside /agents
-// empty-state and the /sandbox/quick-hire screen) and the
-// /sandbox/welcome-chat screen share the exact same chain — no duplication
-// drift between them.
+// empty-state) and the welcome-chat flow share the exact same chain —
+// no duplication drift between them.
 
 import { useState } from 'react'
 

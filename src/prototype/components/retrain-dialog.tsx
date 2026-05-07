@@ -41,8 +41,7 @@ export function RetrainDialog({
   // dialog opens so a previous canceled edit doesn't leak in. The
   // setState-in-effect lint rule fires on this pattern; it's the cleanest
   // way to express "snapshot props when the dialog opens" without a
-  // controlled-from-parent state — same workaround used elsewhere in this
-  // codebase (e.g. ApprovalsInlineScreen initial-load reset).
+  // controlled-from-parent state.
   useEffect(() => {
     if (open) {
       /* eslint-disable react-hooks/set-state-in-effect */

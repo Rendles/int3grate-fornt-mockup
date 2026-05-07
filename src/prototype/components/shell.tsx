@@ -31,6 +31,7 @@ import type { DevMode } from '../dev/dev-mode'
 import { Avatar } from './common'
 import { roleLabel } from '../lib/format'
 import { useTour } from '../tours/useTour'
+import { WorkspaceSwitcher } from './workspace-switcher'
 
 interface NavItem {
   key: string
@@ -80,20 +81,6 @@ export function Sidebar() {
       badge: { count: 'preview', tone: 'muted' },
       dividerAbove: true,
     },
-    {
-      key: 'approvals-inline',
-      label: 'Approvals preview',
-      to: '/sandbox/approvals-inline',
-      icon: <IconApproval />,
-      badge: { count: 'preview', tone: 'muted' },
-    },
-    {
-      key: 'quick-hire',
-      label: 'Quick hire',
-      to: '/sandbox/quick-hire',
-      icon: <IconAgent />,
-      badge: { count: 'preview', tone: 'muted' },
-    },
     // Settings is hidden in MVP; the Audit log was extracted into its own
     // top-level admin route. See docs/handoff-prep.md (Settings hide entry).
     // Restore this nav item together with the /settings/* routes in
@@ -126,6 +113,8 @@ export function Sidebar() {
           <Text as="div" size="1" className="sb__brand-sub">CONTROL · v0.7</Text>
         </div>
       </div>
+
+      <WorkspaceSwitcher />
 
       <div className="sb__nav">
         {items.map(item => (

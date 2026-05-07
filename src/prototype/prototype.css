@@ -207,6 +207,70 @@
   text-transform: uppercase;
 }
 
+/* Workspace switcher block — sits between .sb__brand and .sb__nav.
+   See components/workspace-switcher.tsx. */
+.sb__ws {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  width: 100%;
+  padding: 10px 14px;
+  background: transparent;
+  border: 0;
+  border-bottom: 1px solid var(--gray-a2);
+  color: var(--gray-12);
+  text-align: left;
+  font: inherit;
+  cursor: pointer;
+  transition: background 120ms;
+}
+.sb__ws:hover,
+.sb__ws[data-state='open'] {
+  background: var(--gray-3);
+}
+.sb__ws--placeholder {
+  cursor: default;
+}
+.sb__ws--placeholder:hover { background: transparent; }
+.sb__ws-menu {
+  min-width: 220px;
+}
+
+/* /workspaces — card grid + member roster.
+   See screens/WorkspacesScreen.tsx. */
+.ws-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+  gap: 12px;
+}
+.ws-card {
+  border: 1px solid var(--gray-a4);
+  border-radius: var(--radius-4);
+  padding: 14px 16px;
+  background: var(--gray-a2);
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  transition: border-color 120ms, background 120ms;
+}
+.ws-card:hover {
+  border-color: var(--gray-a6);
+}
+.ws-card--active {
+  border-color: var(--accent-a8);
+  background: var(--accent-a2);
+}
+.ws-members {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
+  gap: 8px;
+}
+.ws-member {
+  padding: 8px 12px;
+  border-radius: var(--radius-3);
+  background: var(--gray-a2);
+}
+
 .sb__nav {
   padding: 10px 8px;
   display: flex;
@@ -971,6 +1035,9 @@
   .shell { grid-template-columns: 72px 1fr; }
   .sb__brand-name, .sb__brand-sub,
   .sb__user-name, .sb__user-role, .sb__footer { display: none; }
+  /* Workspace switcher: text-only block — hide entirely in narrow mode.
+     Switching is still reachable from the /workspaces page. */
+  .sb__ws { display: none; }
   /* Hide only the text label; keep .sb__item-icon and .sb__item-badge spans. */
   .sb__item > span:not(.sb__item-icon):not(.sb__item-badge) { display: none; }
   .sb__item { justify-content: center; }

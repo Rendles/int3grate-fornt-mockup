@@ -2,9 +2,7 @@
 // clicking one expands inline to show role / apps / sample tasks / approvals
 // and a Hire button that goes through the same API chain as /agents/new.
 //
-// Used in two places:
-//   - src/prototype/screens/sandbox/QuickHireScreen.tsx (standalone preview)
-//   - src/prototype/screens/AgentsScreen.tsx (inline empty-state)
+// Used by src/prototype/screens/AgentsScreen.tsx as an inline empty-state.
 //
 // The hire chain (createAgent → createVersion → setGrants → activateVersion)
 // is shared with AgentNewScreen.tsx; we don't deduplicate because the wizard

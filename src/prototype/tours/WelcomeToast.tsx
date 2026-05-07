@@ -15,9 +15,8 @@ const AUTO_DISMISS_MS = 10_000
  * localStorage["proto.tours.v1"].welcomePromptShown).
  *
  * Suppressed while the workspace is empty — the empty-state surfaces
- * (EmptyHomeHero on /, QuickHireGrid on /agents, /sandbox/welcome-chat)
- * are themselves the onboarding nudge there. Showing both at once just
- * competes for attention.
+ * (EmptyHomeHero on /, QuickHireGrid on /agents) are themselves the
+ * onboarding nudge there. Showing both at once just competes for attention.
  */
 export function WelcomeToast() {
   const { user } = useAuth()

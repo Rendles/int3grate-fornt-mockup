@@ -84,7 +84,9 @@
       "Bash(awk -F: '$1>520 && $1<700')",
       "Bash(awk *)",
       "Bash(sed -i '493,644d' d:/Work/int3grate-fornt-mockup/src/prototype/lib/fixtures.ts)",
-      "Bash(sed -n '490,498p' d:/Work/int3grate-fornt-mockup/src/prototype/lib/fixtures.ts)"
+      "Bash(sed -n '490,498p' d:/Work/int3grate-fornt-mockup/src/prototype/lib/fixtures.ts)",
+      "Bash(grep -n \"^}$\\\\|^} as const\\\\|},$\" src/prototype/lib/api.ts)",
+      "Bash(grep -n \"^  }, *$\\\\|^  },$\" src/prototype/lib/api.ts)"
     ]
   }
 }

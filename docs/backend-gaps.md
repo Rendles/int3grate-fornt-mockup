@@ -108,6 +108,27 @@
 - **Действие 2026-05-06:** панель удалена из UI. `api.getGrantsSnapshot()` и типы `GrantsSnapshot` / `GrantsSnapshotEntry` оставлены в `lib/api.ts` / `lib/types.ts` — на случай будущей admin-only internal-tools UI.
 - **Что нужно от backend (если хотим показывать в UI):** либо публичный аналог endpoint'а с user-scoped permission'ами, либо documented elevation flow (например, отдельный `/admin` namespace с tenant_admin scope).
 
+### 1.15 — Workspaces (multi-membership UI context) ⚠️ high
+
+- **Что это:** концепт «workspace = команда внутри компании» — UI-контейнер, который скопит agents / approvals / activity / costs, и переключается через свитчер в сайдбаре. Пользователь может состоять в нескольких workspace'ах одновременно.
+- **Где в UI (целиком mock):**
+  - `WorkspaceSwitcher` в header сайдбара (между `.sb__brand` и `.sb__nav`) — radio-list, `+ Create workspace`, `Manage workspaces`, MockBadge.
+  - `/workspaces` (`WorkspacesScreen`) — card grid + Create/Edit (через `WorkspaceFormDialog`) + Delete с type-the-name confirm (через `WorkspaceDeleteDialog`) + Members card (read-only).
+  - Filter cascade в `api.list*` — каждый list-метод (`listAgents`, `listApprovals`, `listRuns`, `listAudit`, `listChats`, `getSpend`) фильтрует по `getCurrentWorkspaceId()` через side-table `agentWorkspace: Record<agent_id, workspace_id>` в fixtures.
+- **Что говорит spec:** ничего. В `docs/gateway.yaml` нет `Workspace` schema, нет `/workspaces` namespace, нет membership endpoints. Поле `Agent.workspace_id` тоже отсутствует — мы держим association в side-table в fixtures, чтобы не speculate'ить shape `Agent`.
+- **Что нужно от backend (минимально):**
+  - `Workspace` schema (`id`, `name`, `description?`, `created_at`).
+  - `Membership` schema (`workspace_id`, `user_id`, `joined_at`, optionally `role`).
+  - `GET /workspaces` — workspaces visible to the bearer (via memberships).
+  - `GET /workspaces/{id}` / `POST /workspaces` / `PATCH /workspaces/{id}` / `DELETE /workspaces/{id}`.
+  - `GET /workspaces/{id}/members` (read-only достаточно для v1).
+  - `Agent.workspace_id: string` — для серверной фильтрации в `listAgents`. Без этого frontend не сможет уйти от side-table.
+  - Скоп-механика (либо `X-Workspace-Id` header, либо `?workspace_id=` query param на listAgents/listApprovals/etc) — чтобы list-методы возвращали уже отфильтрованную страницу, без клиентской пост-фильтрации.
+- **Что нужно дополнительно (для invite/remove):** `POST /workspaces/{id}/members`, `DELETE /workspaces/{id}/members/{user_id}`, плюс реальный `GET /users` для resolver'а (он же отсутствует — см. §1.3).
+- **MockBadge:** да — на `/workspaces` (header), в dropdown свитчера, на Members card. `kind="design"` — endpoint'ов нет.
+- **Files:** `src/prototype/lib/workspace-context.ts`, `src/prototype/lib/api.ts` (методы `listWorkspaces` / `getWorkspace` / `createWorkspace` / `updateWorkspace` / `deleteWorkspace` / `listWorkspaceMembers` / `listWorkspaceStats`), `src/prototype/lib/types.ts` (`Workspace` / `WorkspaceMembership` / `WorkspaceList` / `CreateWorkspaceRequest` / `UpdateWorkspaceRequest`), `src/prototype/lib/fixtures.ts` (`workspaces` / `workspaceMemberships` / `agentWorkspace`), `src/prototype/auth.tsx` (`currentWorkspaceId` в `StoredSession`, `useAuth().{myWorkspaces, switchWorkspace, refreshWorkspaces, ...}`), `src/prototype/components/{workspace-switcher,workspace-form-dialog,workspace-delete-dialog,workspace-remount}.tsx`, `src/prototype/screens/WorkspacesScreen.tsx`.
+- **План:** `docs/agent-plans/2026-05-06-2200-workspaces-mock.md`.
+
 ---
 
 ## 2. Synthesized data on the client

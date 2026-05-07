@@ -1,6 +1,6 @@
 // Shared constants + helpers for the quick-hire UI surfaces:
-//   - components/quick-hire-grid.tsx (production /agents empty + sandbox)
-//   - screens/sandbox/WelcomeChatScreen.tsx (onboarding sandbox)
+//   - components/quick-hire-grid.tsx (production /agents empty-state)
+//   - components/welcome-chat-flow.tsx (post-hire greeting)
 //
 // Lives outside the React component file because react-refresh requires
 // component files to export only components.

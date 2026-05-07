@@ -438,3 +438,41 @@ export interface SpendDashboard {
   total_usd: number
   items: SpendRow[]
 }
+
+// ─────────────────────────────────────────────── Workspace (mock-only)
+//
+// Workspace = «team inside a company» — a UI-only context container
+// that scopes which agents / approvals / activity / costs the user
+// sees. NOT in docs/gateway.yaml — no backend endpoints exist for any
+// of these shapes (catalogued in docs/backend-gaps.md § 1.15).
+//
+// Agent → Workspace association is held in a side-table in fixtures
+// (agentWorkspace: Record<agent_id, workspace_id>) so that the Agent
+// type itself stays 1:1 with spec.
+
+export interface Workspace {
+  id: string
+  name: string
+  description?: string
+  created_at: string
+}
+
+export interface WorkspaceMembership {
+  workspace_id: string
+  user_id: string
+  joined_at: string
+}
+
+export interface WorkspaceList {
+  items: Workspace[]
+  total: number
+  limit?: number
+  offset?: number
+}
+
+export interface CreateWorkspaceRequest {
+  name: string
+  description?: string
+}
+
+export type UpdateWorkspaceRequest = Partial<CreateWorkspaceRequest>

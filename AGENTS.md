@@ -163,7 +163,8 @@ Key gaps (validated against live spec 2026-05-01):
 - `GET /approvals/{id}` — absent (deep-link single-fetch). UI hydrates from the list response.
 - `/tasks/*` — absent in live spec entirely. UI fully removed 2026-05-02 (4 screens deleted, routes/types/fixtures cleaned). Approval `task_id` field stays in spec but no UI consumer.
 - Integration registry / OAuth flow (`/integrations/*`) — absent and architecturally out-of-scope (see `docs/handoff-prep.md § 0` — shared backend credentials, no per-tenant OAuth). Apps page hidden.
-- Workspace CRUD / `PATCH /agents/{id}` (Pause/Fire) — absent. Settings page hidden; AgentDetail "Manage employment" surface removed from the visible Settings tab.
+- `PATCH /agents/{id}` (Pause/Fire) — absent. Settings page hidden; AgentDetail "Manage employment" surface removed from the visible Settings tab.
+- Workspace CRUD + membership endpoints — absent (no `Workspace` schema in spec at all). UI ships a mock-only multi-membership flow as of 2026-05-06: switcher in sidebar header, `/workspaces` page (list + Create/Edit/Delete), filter cascade through `listAgents` / `listApprovals` / `listRuns` / `getSpend`. Agent → workspace association is held in side-table `agentWorkspace` in fixtures (Agent type stays 1:1 with spec). MockBadge on every workspace surface. See `docs/backend-gaps.md § 1.15`.
 - Per-week spend buckets — backend exposes only aggregate ranges; 4-week trend is split client-side.
 - Activity sentence summaries — backend doesn't return per-run summary; headlines on `/activity` are derived client-side from `RunStatus`.
 - Naming mismatch: tool catalog endpoint is `/tool-catalog` in live, but `api.listTools()` in mock targets `/tools`. Update at production swap; mock layer is unaffected.
@@ -181,7 +182,8 @@ Current route map (live in `src/prototype/index.tsx`):
 - `/approvals`, `/approvals/:approvalId`.
 - `/activity`, `/activity/:runId` (Technical view — labelled `advanced` in the UI).
 - `/costs`.
-- `/sandbox/team-bridge`, `/sandbox/approvals-inline`, `/sandbox/quick-hire` — design-exploration previews, surfaced in the sidebar with a muted "preview" badge.
+- `/sandbox/team-bridge` — design-exploration preview, surfaced in the sidebar with a muted "preview" badge.
+- `/workspaces` — workspace management (list + Create/Edit/Delete). Reachable from the workspace switcher dropdown (`Manage workspaces`); no sidebar slot.
 - Legacy redirects: `/runs[/...]` → `/activity[/...]`, `/spend` → `/costs`, `/chats` → `/agents`, `/chats/:chatId` → resolves agent_id and forwards to `/agents/:agentId/talk/:chatId`. `/chats/new` still exists as a chat-creation form; after `createChat` it navigates to the embedded path.
 - **Hidden (commented out, not deleted):** `/register`, `/apps` + `/tools` redirect, `/settings` + `/settings/{team,history,developer,diagnostic}`, `/audit`. Their screen files (`RegisterScreen.tsx`, `ToolsScreen.tsx`, `SettingsScreen.tsx`, `AuditScreen.tsx`) are preserved for restoration but no route currently mounts them.
 
@@ -189,7 +191,9 @@ Current route map (live in `src/prototype/index.tsx`):
 
 #### Sidebar (`components/shell.tsx`)
 
-5 production items + 3 sandbox preview items. Apps / Settings / Audit nav entries are commented out (alongside their routes). Settings was admin-only when shipped; the role gate is preserved in the comment block for restoration.
+Header (`.sb__brand` logo) → **WorkspaceSwitcher** (between brand and nav) → 5 production nav items → 1 sandbox preview item → footer (user). Apps / Settings / Audit nav entries are commented out (alongside their routes). Settings was admin-only when shipped; the role gate is preserved in the comment block for restoration.
+
+The **WorkspaceSwitcher** (`components/workspace-switcher.tsx`) is the entry point for everything workspace: shows current workspace (emoji + name + caption), dropdown with radio-list of memberships + `+ Create workspace` (opens `WorkspaceFormDialog`) + `Manage workspaces` (navigates `/workspaces`) + MockBadge. Switching writes through `useAuth().switchWorkspace` to both `localStorage["proto.session.v1"].currentWorkspaceId` and the `lib/workspace-context` singleton; `WorkspaceRemount` (in `index.tsx`) re-mounts the Router subtree so list screens re-fetch with the new scope. Vocabulary: user-facing label is `Workspace`, NOT `Team` (collision with `/agents` nav label — see `docs/ux-spec.md § 8`).
 
 Production:
 1. **Home** (`/`) — operational dashboard.
@@ -200,8 +204,6 @@ Production:
 
 Sandbox preview (muted badge, separated by a divider):
 6. **Team Bridge** (`/sandbox/team-bridge`).
-7. **Approvals preview** (`/sandbox/approvals-inline`).
-8. **Quick hire** (`/sandbox/quick-hire`).
 
 #### Auth (`auth.tsx`)
 
@@ -335,6 +337,7 @@ End users are not engineers. The product is "my little digital team" — agents 
 - `Activity` (instead of Logs / Traces).
 - `Hours worked` / `Monthly bill` (instead of Tokens / Costs — pragmatically, `$X spent` is acceptable on the dashboard hero).
 - `Instruction` / `Brief` (instead of Prompt).
+- `Workspace` (NOT `Team`) for the company-level container. `Team` is reserved for the `/agents` sidebar label (agents = your digital team). See `docs/ux-spec.md § 8` "Workspace ≠ Team".
 
 **Don't show in the UI:** workflow, MCP, tokens, model, prompt, JSON, run, execution, trace, context window, orchestration, system prompt, temperature.
 
@@ -350,7 +353,8 @@ Whenever a UI surface displays data that isn't backed by a real endpoint, mark i
 
 - **HomeScreen → ActivityHeatmap** — heatmap is synthesized client-side; backend doesn't expose hourly action aggregates.
 - **HomeScreen → SavingsBanner** — savings figure synthesized from a fictional baseline (38 min/task at $75/hr).
-- **Sandbox previews** (`/sandbox/team-bridge`, `/sandbox/approvals-inline`, `/sandbox/quick-hire`) — design-only; mutations don't persist and may not call real api endpoints.
+- **Workspaces** (sidebar switcher dropdown + `/workspaces` page header + Members card) — no `Workspace` schema in spec at all. Switching, creating, editing, deleting are all client-side. See `docs/backend-gaps.md § 1.15`.
+- **Sandbox preview** (`/sandbox/team-bridge`) — design-only; mutations don't persist and may not call real api endpoints.
 
 Preserved in source but **not currently routed** (badges remain so they reappear correctly when restored):
 
