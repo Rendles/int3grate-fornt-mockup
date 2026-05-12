@@ -139,7 +139,7 @@ export default function ToolsScreen() {
                       type="button"
                       size="2"
                       variant="soft"
-                      color={isActive ? 'blue' : 'gray'}
+                      color={isActive ? 'cyan' : 'gray'}
                       onClick={() => setFilter(b.key)}
                     >
                       <span>{b.label}</span>
@@ -216,17 +216,17 @@ function AppTile({ app }: { app: AppCard }) {
 
       <Flex align="center" gap="2" wrap="wrap">
         {connected ? (
-          <Badge color="green" variant="soft" radius="full" size="1">Connected</Badge>
+          <Badge color="jade" variant="soft" radius="full" size="1">Connected</Badge>
         ) : (
           <Badge color="gray" variant="outline" radius="full" size="1">Not connected</Badge>
         )}
         {writeCount > 0 && (
-          <Badge color="amber" variant="soft" radius="full" size="1">
+          <Badge color="orange" variant="soft" radius="full" size="1">
             {writeCount} write {writeCount === 1 ? 'tool' : 'tools'}
           </Badge>
         )}
         {approvalCount > 0 && (
-          <Badge color="amber" variant="outline" radius="full" size="1">
+          <Badge color="orange" variant="outline" radius="full" size="1">
             {approvalCount} need approval
           </Badge>
         )}
@@ -272,7 +272,7 @@ function AppTile({ app }: { app: AppCard }) {
               <Flex key={t.name} align="center" justify="between" gap="2">
                 <Text as="span" size="2">{toolLabel(t.name)}</Text>
                 <Badge
-                  color={t.default_mode === 'read_only' ? 'cyan' : t.default_mode === 'requires_approval' ? 'amber' : 'red'}
+                  color={t.default_mode === 'read_only' ? 'cyan' : t.default_mode === 'requires_approval' ? 'orange' : 'red'}
                   variant="soft"
                   radius="small"
                   size="1"
@@ -382,7 +382,7 @@ function ConnectServiceList({ onClose }: { onClose: () => void }) {
             style={{
               border: '1px solid var(--gray-a3)',
               borderRadius: 8,
-              background: isAuthorised ? 'var(--green-a2)' : 'transparent',
+              background: isAuthorised ? 'var(--jade-a2)' : 'transparent',
             }}
           >
             <Avatar initials={s.name.slice(0, 2).toUpperCase()} size={28} />
@@ -391,7 +391,7 @@ function ConnectServiceList({ onClose }: { onClose: () => void }) {
               <Text as="div" size="1" color="gray" mt="1">{s.description}</Text>
             </Box>
             {isAuthorised ? (
-              <Badge color="green" variant="soft" radius="full" size="1">
+              <Badge color="jade" variant="soft" radius="full" size="1">
                 <IconCheck className="ic ic--sm" /> Placeholder OK
               </Badge>
             ) : (
@@ -403,7 +403,7 @@ function ConnectServiceList({ onClose }: { onClose: () => void }) {
         )
       })}
       {authorised && (
-        <Box mt="2" p="3" style={{ background: 'var(--blue-a3)', borderRadius: 8 }}>
+        <Box mt="2" p="3" style={{ background: 'var(--cyan-a3)', borderRadius: 8 }}>
           <Text as="div" size="1" style={{ lineHeight: 1.5 }}>
             <strong>Connection placeholder.</strong> The real OAuth flow is pending — once the backend integration registry ships, this dialog will redirect you to the service's consent page and persist the credentials.
           </Text>

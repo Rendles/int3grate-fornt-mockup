@@ -237,9 +237,9 @@ export function GrantsForm({
               key={group.prefix}
               className="card"
               style={{
-                borderColor: allowedCount > 0 ? 'var(--green-a6)' : undefined,
+                borderColor: allowedCount > 0 ? 'var(--jade-a6)' : undefined,
                 overflow: 'hidden',
-                background: allowedCount > 0 ? 'var(--green-a2)' : 'var(--gray-2)',
+                background: allowedCount > 0 ? 'var(--jade-a2)' : 'var(--gray-2)',
               }}
             >
               <button
@@ -276,7 +276,7 @@ export function GrantsForm({
                   </Flex>
                   <Flex gap="1" align="center" onClick={e => e.stopPropagation()}>
                     {!allAllowed && allowable.length > 0 && (
-                      <Button size="1" variant="soft" color="green" onClick={() => allowAllInApp(group)}>
+                      <Button size="1" variant="soft" color="jade" onClick={() => allowAllInApp(group)}>
                         <IconPlus className="ic ic--sm" />
                         Allow all
                       </Button>
@@ -338,7 +338,7 @@ export function GrantsForm({
                               </IconButton>
                             </Flex>
                           ) : (
-                            <Button size="1" variant="soft" color="green" onClick={() => allowOne(row.tool)}>
+                            <Button size="1" variant="soft" color="jade" onClick={() => allowOne(row.tool)}>
                               <IconPlus className="ic ic--sm" />
                               Allow
                             </Button>
@@ -536,7 +536,7 @@ function ReadOnlyGrants({ grants }: { grants: ToolGrant[] }) {
           >
             <ToolNameCell name={g.tool_name} />
             <Badge
-              color={level === 'read' ? 'cyan' : level === 'write_approval' ? 'amber' : 'red'}
+              color={level === 'read' ? 'cyan' : level === 'write_approval' ? 'orange' : 'red'}
               variant="soft"
               radius="full"
               size="1"

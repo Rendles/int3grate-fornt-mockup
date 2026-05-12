@@ -9,7 +9,7 @@ import { IconAlert, IconArrowRight } from '../components/icons'
 import { Link } from '../router'
 import { api } from '../lib/api'
 import type { Run, RunStep, RunStepType, RunToolError } from '../lib/types'
-import { absTime, domainLabel, durationMs, errorKindLabel, money, num, runStepStatusLabel, shortRef, stageLabel, toolErrorStatusLabel, toolLabel } from '../lib/format'
+import { absTime, durationMs, errorKindLabel, money, num, runStepStatusLabel, shortRef, stageLabel, toolErrorStatusLabel, toolLabel, workspaceLabel } from '../lib/format'
 
 const STEP_KIND_LABEL: Record<RunStepType, string> = {
   llm_call: 'LLM call',
@@ -18,13 +18,14 @@ const STEP_KIND_LABEL: Record<RunStepType, string> = {
   memory_write: 'Memory write',
   approval_gate: 'Approval gate',
   validation: 'Validation',
+  agent_call: 'Agent call',
 }
 
-type ToneColor = { color: 'green' | 'amber' | 'red' | 'cyan' | 'gray'; variant: 'soft' | 'outline' }
+type ToneColor = { color: 'jade' | 'orange' | 'red' | 'cyan' | 'gray'; variant: 'soft' | 'outline' }
 function statusTone(status: string): ToneColor {
-  if (status === 'ok') return { color: 'green', variant: 'soft' }
+  if (status === 'ok') return { color: 'jade', variant: 'soft' }
   if (status === 'failed') return { color: 'red', variant: 'soft' }
-  if (status === 'blocked' || status === 'pending') return { color: 'amber', variant: 'soft' }
+  if (status === 'blocked' || status === 'pending') return { color: 'orange', variant: 'soft' }
   if (status === 'running') return { color: 'cyan', variant: 'soft' }
   return { color: 'gray', variant: 'outline' }
 }
@@ -139,19 +140,19 @@ export default function RunDetailScreen({ runId }: { runId: string }) {
             <div
               className="card"
               style={{
-                borderColor: 'var(--amber-a6)',
-                background: 'var(--amber-a3)',
+                borderColor: 'var(--orange-a6)',
+                background: 'var(--orange-a3)',
                 borderStyle: 'dashed',
               }}
             >
               <div style={{ padding: '14px 18px' }}>
                 <Flex align="center" gap="2" mb="2">
-                  <IconAlert className="ic" style={{ color: 'var(--amber-11)' }} />
-                  <Text as="span" size="5" style={{ color: 'var(--amber-11)' }}>
+                  <IconAlert className="ic" style={{ color: 'var(--orange-11)' }} />
+                  <Text as="span" size="5" style={{ color: 'var(--orange-11)' }}>
                     Completed with errors
                   </Text>
                   {run.error_kind && run.error_kind !== 'none' && (
-                    <Badge color="amber" variant="soft" radius="small" size="1">{errorKindLabel(run.error_kind)}</Badge>
+                    <Badge color="orange" variant="soft" radius="small" size="1">{errorKindLabel(run.error_kind)}</Badge>
                   )}
                 </Flex>
                 <Text as="div" size="2" style={{ lineHeight: 1.55 }}>
@@ -210,7 +211,7 @@ export default function RunDetailScreen({ runId }: { runId: string }) {
         <div className="card">
           <div className="card__head"><Text as="div" size="2" weight="medium" className="card__title">Activity details</Text></div>
           <div className="card__body">
-            <MetaRow label="team" value={domainLabel(run.domain_id)} />
+            <MetaRow label="workspace" value={workspaceLabel(run.domain_id)} />
             <MetaRow
               label="task"
               value={run.task_id
@@ -349,7 +350,7 @@ function ToolErrorsCard({ errors }: { errors: RunToolError[] }) {
           <Text as="span" size="1" color="gray">at</Text>
         </div>
         {errors.map((e, i) => {
-          const color = e.status === 'timeout' ? 'amber' : e.status === 'denied' ? 'gray' : 'red'
+          const color = e.status === 'timeout' ? 'orange' : e.status === 'denied' ? 'gray' : 'red'
           const variant = e.status === 'denied' ? 'outline' : 'soft'
           return (
             <div

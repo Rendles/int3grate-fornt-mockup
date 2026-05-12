@@ -2,9 +2,9 @@ import { Card, Code, Flex, Text } from '@radix-ui/themes'
 
 type Tone = 'accent' | 'warn' | 'muted'
 
-const VALUE_COLOR: Partial<Record<Tone, 'blue' | 'amber' | 'gray'>> = {
-  accent: 'blue',
-  warn: 'amber',
+const VALUE_COLOR: Partial<Record<Tone, 'cyan' | 'orange' | 'gray'>> = {
+  accent: 'cyan',
+  warn: 'orange',
   muted: 'gray',
 }
 

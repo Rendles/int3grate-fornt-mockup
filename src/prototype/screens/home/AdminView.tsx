@@ -18,12 +18,12 @@ import { SpendByAgentCard } from './SpendByAgentCard'
 // import { SavingsBanner } from './SavingsBanner'
 
 const STATUS_TONE: Record<RunStatus, string> = {
-  completed: 'var(--green-9)',
-  completed_with_errors: 'var(--amber-9)',
+  completed: 'var(--jade-9)',
+  completed_with_errors: 'var(--orange-9)',
   failed: 'var(--red-9)',
-  suspended: 'var(--amber-9)',
-  running: 'var(--blue-9)',
-  pending: 'var(--blue-9)',
+  suspended: 'var(--orange-9)',
+  running: 'var(--cyan-9)',
+  pending: 'var(--cyan-9)',
   cancelled: 'var(--gray-9)',
 }
 
@@ -66,13 +66,13 @@ export function AdminView({
       </Grid>
 
       <Grid columns={{ initial: '1', lg: '1fr 1fr' }} gap="4" mb="5">
-        <div className="card card--flush" style={{ borderColor: pendingApprovals.length > 0 ? 'var(--amber-a6)' : undefined }}>
+        <div className="card card--flush" style={{ borderColor: pendingApprovals.length > 0 ? 'var(--orange-a6)' : undefined }}>
           <div className="card__head">
             <Text as="div" size="2" weight="medium" className="card__title">
               <IconApproval className="ic" />
               Pending approvals
             </Text>
-            <Badge color={pendingApprovals.length > 0 ? 'amber' : 'gray'} variant={pendingApprovals.length > 0 ? 'soft' : 'outline'} radius="full" size="1">{pendingApprovals.length}</Badge>
+            <Badge color={pendingApprovals.length > 0 ? 'orange' : 'gray'} variant={pendingApprovals.length > 0 ? 'soft' : 'outline'} radius="full" size="1">{pendingApprovals.length}</Badge>
           </div>
           {pendingApprovals.length === 0 ? (
             <div className="card__body">

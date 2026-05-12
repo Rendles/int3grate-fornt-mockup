@@ -3,7 +3,7 @@ import { Box, Button, Code, Flex, Grid, IconButton, SegmentedControl, Text } fro
 import { GridViewIcon, Menu01Icon } from '@hugeicons/core-free-icons'
 
 import { AppShell } from '../components/shell'
-import { Avatar, Caption, PageHeader, Status } from '../components/common'
+import { Avatar, Caption, PageHeader, Status, WorkspaceContextPill, WorkspaceFilter } from '../components/common'
 import { Banner, EmptyState, ErrorState, LoadingList } from '../components/states'
 import { IconApproval, IconArrowRight, IconCheck, IconX } from '../components/icons'
 import { Icon } from '../components/icon'
@@ -18,6 +18,7 @@ import type { ApprovalStatusFilter } from '../lib/filters'
 import type { Agent, ApprovalRequest, RunListItem } from '../lib/types'
 import { makeToastId, nowMs, type UndoToast } from '../lib/undo-toast'
 import { ago, prettifyRequestedAction } from '../lib/format'
+import { shouldShowWorkspacePill, useScopeFilter } from '../lib/scope-filter'
 
 // Reject reason — UI-only validation. Backend spec has no minimum length;
 // 4 chars is the same threshold used in the sandbox preview to discourage
@@ -66,7 +67,8 @@ interface RejectTarget {
 }
 
 export default function ApprovalsScreen() {
-  const { user } = useAuth()
+  const { user, myWorkspaces } = useAuth()
+  const { filter: workspaceFilter } = useScopeFilter()
   const { navigate } = useRouter()
   // Items are appended page-by-page as the user scrolls. Order = server
   // order (newest first per spec). We don't re-sort client-side — that
@@ -271,7 +273,10 @@ export default function ApprovalsScreen() {
         status: statusFilter === 'all' ? undefined : statusFilter,
         limit: PAGE_SIZE,
         offset: 0,
+        workspace_ids: workspaceFilter,
       }),
+      // Run + agent lookups stay broad so the rendered approval rows can
+      // resolve names from any workspace the user belongs to (no scope here).
       api.listRuns({ limit: 100 }),
       api.listAgents(),
     ])
@@ -305,7 +310,7 @@ export default function ApprovalsScreen() {
         setLoading(false)
       })
     return () => { cancelled = true }
-  }, [statusFilter, reloadTick])
+  }, [statusFilter, reloadTick, workspaceFilter])
 
   // Append the next page. Guarded so concurrent triggers (scroll + ad-hoc
   // calls) don't fire two parallel requests. Mirrors RunsScreen / sandbox.
@@ -319,6 +324,7 @@ export default function ApprovalsScreen() {
         status: statusFilter === 'all' ? undefined : statusFilter,
         limit: PAGE_SIZE,
         offset: nextPage * PAGE_SIZE,
+        workspace_ids: workspaceFilter,
       })
       setItems(prev => [...prev, ...list.items])
       setPageNum(nextPage)
@@ -357,6 +363,16 @@ export default function ApprovalsScreen() {
     return m
   }, [runs, agents])
 
+  // run_id → agent_id, used by the WorkspaceContextPill to resolve which
+  // workspace the approval's agent belongs to.
+  const agentIdByRun = useMemo(() => {
+    const m = new Map<string, string>()
+    for (const r of runs) {
+      if (r.agent_id) m.set(r.id, r.agent_id)
+    }
+    return m
+  }, [runs])
+
   // Rows hidden during the 5s undo window are filtered out of the visible
   // list and out of filter-chip counts — both should stay in sync. Sandbox
   // does the same. Counts are approximate ("what's been loaded so far") —
@@ -384,27 +400,30 @@ export default function ApprovalsScreen() {
 
         <PolicyBanner />
 
-        <Flex align="center" gap="2" mb="4" wrap="wrap" data-tour="approvals-filter">
-          <Caption mr="1">status</Caption>
-          {APPROVAL_STATUS_FILTERS.map(f => {
-            const isActive = statusFilter === f
-            const activeColor = f === 'pending' ? 'amber' : 'blue'
-            return (
-              <Button
-                key={f}
-                type="button"
-                size="2"
-                variant="soft"
-                color={isActive ? activeColor : 'gray'}
-                onClick={() => setStatusFilter(f)}
-              >
-                <span style={{ textTransform: 'capitalize' }}>{f}</span>
-                <Code variant="ghost" size="1" color="gray">{counts[f] ?? 0}</Code>
-              </Button>
-            )
-          })}
-          <Box flexGrow="1" />
-          <ViewModeToggle viewMode={viewMode} onChange={setViewMode} />
+        <Flex direction="column" gap="2" mb="4">
+          <WorkspaceFilter />
+          <Flex align="center" gap="2" wrap="wrap" data-tour="approvals-filter">
+            <Caption mr="1">status</Caption>
+            {APPROVAL_STATUS_FILTERS.map(f => {
+              const isActive = statusFilter === f
+              const activeColor = f === 'pending' ? 'orange' : 'cyan'
+              return (
+                <Button
+                  key={f}
+                  type="button"
+                  size="2"
+                  variant="soft"
+                  color={isActive ? activeColor : 'gray'}
+                  onClick={() => setStatusFilter(f)}
+                >
+                  <span style={{ textTransform: 'capitalize' }}>{f}</span>
+                  <Code variant="ghost" size="1" color="gray">{counts[f] ?? 0}</Code>
+                </Button>
+              )
+            })}
+            <Box flexGrow="1" />
+            <ViewModeToggle viewMode={viewMode} onChange={setViewMode} />
+          </Flex>
         </Flex>
 
         {error ? (
@@ -461,15 +480,18 @@ export default function ApprovalsScreen() {
                         size={32}
                       />
                       <Box minWidth="0">
-                        <Text as="div" size="2" weight="medium" className="truncate">
-                          {agentName}
-                          <Text as="span" size="2" color="gray">
-                            {' '}wants to{' '}
+                        <Flex align="center" gap="2" wrap="wrap">
+                          <Text as="div" size="2" weight="medium" className="truncate">
+                            {agentName}
+                            <Text as="span" size="2" color="gray">
+                              {' '}wants to{' '}
+                            </Text>
+                            <Text as="span" size="2" className="truncate">
+                              {actionVerb}
+                            </Text>
                           </Text>
-                          <Text as="span" size="2" className="truncate">
-                            {actionVerb}
-                          </Text>
-                        </Text>
+                          <WorkspaceContextPill agentId={agentIdByRun.get(a.run_id)} show={shouldShowWorkspacePill(workspaceFilter, myWorkspaces.length)} />
+                        </Flex>
                         {a.requested_by_name && (
                           <Text as="div" size="1" color="gray" mt="1">
                             Triggered by {a.requested_by_name}
@@ -485,7 +507,7 @@ export default function ApprovalsScreen() {
                           <IconButton
                             size="2"
                             variant="soft"
-                            color="green"
+                            color="jade"
                             title="Quick approve"
                             aria-label={`Approve — ${agentName} ${actionVerb}`}
                             onClick={e => {
@@ -541,12 +563,15 @@ export default function ApprovalsScreen() {
             >
               {visible.map(a => {
                 const agentName = agentNameByRun.get(a.run_id) ?? 'Agent'
+                const agentId = agentIdByRun.get(a.run_id) ?? null
                 const actionVerb = prettifyRequestedAction(a.requested_action).toLowerCase()
                 return (
                   <ApprovalCard
                     key={a.id}
                     approval={a}
                     agentName={agentName}
+                    agentId={agentId}
+                    showWorkspacePill={shouldShowWorkspacePill(workspaceFilter, myWorkspaces.length)}
                     actionVerb={actionVerb}
                     isRejectExpanded={rejectTarget?.approval.id === a.id}
                     rejectReason={rejectReason}

@@ -49,6 +49,45 @@
 
 ---
 
+## 0.1. Domain ≡ Workspace — backend semantics decision
+
+> **Подтверждено пользователем 2026-05-08.** Это **корневой факт** по той же модели, что и § 0 (shared backend credentials). Все будущие UI- и backend-решения должны его учитывать.
+
+### Базовый факт
+
+- На бэкенде есть поле **`Agent.domain_id`** (nullable UUID, см. `docs/gateway.yaml:1146`) и роль **`domain_admin`**. Никакого поля `workspace_id` и схемы `Workspace` в spec'е НЕТ.
+- На фронте есть концепт **«workspace»** — пользователь-видимый контейнер для agents / approvals / activity / costs (см. § 1.15 в `backend-gaps.md`).
+- **Решение:** backend `domain` и frontend `workspace` — это **одна и та же сущность**. Бэкенд `domain_id` будет работать как FK к workspace; роль `domain_admin` = workspace admin.
+- Это не «совпадение» и не «временный мок» — это сознательное продуктовое решение: организационная единица, к которой привязаны агенты и которая определяет approval-скоуп — называется в UI «Workspace», а в backend-контракте остаётся `domain` для backwards-compat со spec'ом.
+
+### Что это значит для UI
+
+- **Имя в UI = `Workspace`** везде, где сейчас рендерится `domainLabel(agent.domain_id)`. Конкретно — `AgentDetailScreen.tsx:193` (Overview stat-tile «Team»), `AgentDetailScreen.tsx:467` (Settings → MetaRow «team»), `RunDetailScreen.tsx:214`. Лейблы переименовываются в `Workspace`, значения тянутся через workspace lookup, а не через `domainLabel`.
+- **Hardcoded `DOMAIN_LABELS` в `lib/format.ts:124-128`** (`dom_hq → 'HQ'`, `dom_sales → 'Sales'`, `dom_support → 'Support'`) — это **псевдо-workspaces из старой модели**. Они должны быть заменены на реальные имена workspaces из фикстур.
+- **`agentWorkspace` side-table в фикстурах** становится симуляцией реального FK `Agent.domain_id`, а не отдельной фантазией. После слияния side-table уходит — `Agent.domain_id` становится единственным источником правды.
+- **`Settings → Workspace card`** на AgentDetail (`WorkspaceCard`) перестаёт быть полностью mock-only: само поле существует на бэке, MockBadge должен говорить только про CRUD-операции (move, edit), не про сам факт привязки.
+
+### Что это значит для бэкенд-планирования
+
+- **`Workspace` schema на бэке = renamed `Domain`** (или просто alias). Это договорный уровень: либо бэкенд переименует во всём API на `workspace`, либо оставит `domain_*` и UI замапит на свою сторону. Решение за бэкенд-командой.
+- Поле `Agent.domain_id` на спеке остаётся как есть — UI читает его и интерпретирует как workspace_id.
+- `domain_admin` роль = workspace admin. Никаких новых ролей не нужно.
+- Endpoint'ы CRUD (`GET /workspaces`, `POST /workspaces`, …) из § 1.15 backend-gaps все ещё требуются — это не следует автоматически из факта `domain_id` существует. Если бэкенд хочет — можно сделать это `GET /domains` / `POST /domains`; UI замапит названия.
+- Membership endpoints (`GET /workspaces/{id}/members`) — отдельная история, не следует из `domain_id`.
+
+### Что меняется в коде (план — отдельный файл)
+
+См. `docs/agent-plans/2026-05-08-1900-domain-workspace-merge.md` (создаётся в этой же сессии). Кратко:
+
+1. Фикстуры agents переписать так, чтобы `Agent.domain_id` ссылалось на `Workspace.id`. Side-table `agentWorkspace` уходит.
+2. `api.getAgentWorkspace(agentId)` читает напрямую `agent.domain_id` и резолвит через `fxWorkspaces`.
+3. `api.setAgentWorkspace(agentId, workspaceId)` мутирует `agent.domain_id` (а не side-table).
+4. `lib/format.ts`: `DOMAIN_LABELS` хардкод удаляется. `domainLabel` либо удаляется, либо тоньшает до thin wrapper над workspace lookup.
+5. Stat-tile «Team» на `AgentDetail` Overview → «Workspace», значение через workspace name. То же на Settings и RunDetail.
+6. Filter cascade в `inSelectedWorkspaces` теперь читает `agent.domain_id`, а не `agentWorkspace[id]`.
+
+---
+
 ## 1. Ship-blockers — must be wired before production
 
 Без этих эндпоинтов прототип нельзя выкатывать в прод. UI уже честно помечен `<MockBadge>`, поэтому пользователь не «обманут», но **бэкенд обязан** дать эти ручки до релиза.
@@ -295,6 +334,9 @@
 ---
 
 ## Лог решений
+
+- 2026-05-12 — **Брендовая Radix-палитра внедрена + `blue` свеп'нут в `cyan`.** Два прохода в один день. **Утро** (`docs/agent-plans/2026-05-12-1700-radix-brand-color-system.md`): через `src/prototype/brand-colors.css` переопределены 3 Radix-шкалы — `violet` = Logic Purple `#701DFD`, `cyan` = Signal Cyan `#01C9FA`, `orange` = Deploy Orange `#FD9C12` (12 шагов + 12 alpha × 2 темы, alpha сгенерированы скриптом `scripts/gen-radix-alphas.mjs`). Theme accent переключён `indigo → violet`. Миграция `color="amber"` → `"orange"` (23 файла) и `color="green"` → `"jade"` (20 файлов). Solid-contrast fix для bright scales (cyan/orange step 9) — глобальный CSS override на `[data-accent-color][data-variant="solid"]`. `--color-panel-solid` перенесён из `prototype.css` в `brand-colors.css` (dark → Graphite `#0E1117`, light → `var(--gray-2)`). **Вечер** (`docs/agent-plans/2026-05-12-1900-blue-to-cyan-accent-split.md`): отдельная итерация — `blue` (~30 точек, Radix-дефолтная шкала, не наш бренд) полностью заменён на `cyan`. Финальное состояние: в `src/` нет упоминаний `amber/green/indigo/blue`; единственное `'violet'` — `accentColor='violet'` в Theme config. Source-of-truth палитры — `docs/int3grate-radix-color-system.md`. CLAUDE.md, AGENTS.md, ux-spec.md § 9 синхронизированы с новой палитрой. Lint + build clean.
+
 
 - 2026-05-02 — **AgentDetail Activity tab: row title fixed**. Было `r.suspended_stage ? 'Waiting for your approval' : 'Activity'` — все non-suspended runs показывали placeholder «Activity» (тот же mock-pattern что мы убрали ранее в RunsScreen). Теперь: title = `statusLabel(r.status)` («Completed» / «Got stuck» / «Waiting for approval» / etc.); secondary line добавляет `stageLabel(r.suspended_stage)` когда стадия известна. Все данные real backend (RunListItem.status / suspended_stage / created_at). Импорты: добавлен `statusLabel` from common/status-label, `stageLabel` from lib/format. Lint + build clean.
 

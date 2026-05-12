@@ -86,7 +86,18 @@
       "Bash(sed -i '493,644d' d:/Work/int3grate-fornt-mockup/src/prototype/lib/fixtures.ts)",
       "Bash(sed -n '490,498p' d:/Work/int3grate-fornt-mockup/src/prototype/lib/fixtures.ts)",
       "Bash(grep -n \"^}$\\\\|^} as const\\\\|},$\" src/prototype/lib/api.ts)",
-      "Bash(grep -n \"^  }, *$\\\\|^  },$\" src/prototype/lib/api.ts)"
+      "Bash(grep -n \"^  }, *$\\\\|^  },$\" src/prototype/lib/api.ts)",
+      "Bash(grep -n \"^/\\\\*\\\\|^\\\\..*{$\\\\|sandbox\\\\|team-bridge\" src/prototype/prototype.css)",
+      "Bash(grep -vE \"//|className|team-map|interface |const |function |type |aria-\")",
+      "Bash(grep -cE \"^  \\(\\\\\\\\{$|name:|status:\\)\" src/prototype/lib/fixtures.ts)",
+      "Bash(grep -cE \"agentWorkspace\\\\[|: 'ws_ops'$\" src/prototype/lib/fixtures.ts)",
+      "Bash(grep -nE \"^  \\\\{$|defaultName:|id: '\" src/prototype/lib/templates.ts)",
+      "Bash(grep -vE \"//|className|interface |^[^:]+: *\\(import|from|const|function|type |export \\)\")",
+      "Bash(grep -nE \"function ActivityRow|<ActivityRow|agentName:|<Text.*\\\\\\\\{agentName\" src/prototype/screens/RunsScreen.tsx)",
+      "Bash(grep -vE \"//|className|interface |const |function |type |multi-scope\")",
+      "Bash(grep -vE \"//|className|interface |const |function |type \")",
+      "Bash(node scripts/gen-radix-alphas.mjs)",
+      "Bash(git -C \"D:/Work/int3grate-fornt-mockup\" status --short)"
     ]
   }
 }

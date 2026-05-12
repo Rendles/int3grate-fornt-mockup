@@ -2,14 +2,16 @@ import { useEffect, useMemo, useRef, useState } from 'react'
 import { Box, Button, Flex, Text } from '@radix-ui/themes'
 
 import { AppShell } from '../components/shell'
-import { Caption, PageHeader } from '../components/common'
+import { Caption, PageHeader, WorkspaceContextPill, WorkspaceFilter } from '../components/common'
 import { statusLabel } from '../components/common/status-label'
 import { EmptyState, ErrorState, LoadingList } from '../components/states'
 import { IconArrowRight, IconRun } from '../components/icons'
 import { Link } from '../router'
+import { useAuth } from '../auth'
 import { api } from '../lib/api'
 import type { Agent, RunDetail, RunListItem, RunStatus, RunToolError } from '../lib/types'
 import { ago, appLabel, appPrefix, durationMs, money, num, stageLabel, toolLabel } from '../lib/format'
+import { shouldShowWorkspacePill, useScopeFilter } from '../lib/scope-filter'
 
 const PAGE_SIZE = 25
 
@@ -31,10 +33,10 @@ interface ToneSpec {
 }
 
 const TONE: Record<'success' | 'warn' | 'error' | 'info' | 'muted', ToneSpec> = {
-  success: { bg: 'var(--green-9)', fg: 'var(--green-11)' },
-  warn:    { bg: 'var(--amber-9)', fg: 'var(--amber-11)' },
+  success: { bg: 'var(--jade-9)', fg: 'var(--jade-11)' },
+  warn:    { bg: 'var(--orange-9)', fg: 'var(--orange-11)' },
   error:   { bg: 'var(--red-9)',   fg: 'var(--red-11)' },
-  info:    { bg: 'var(--blue-9)',  fg: 'var(--blue-11)' },
+  info:    { bg: 'var(--cyan-9)',  fg: 'var(--cyan-11)' },
   muted:   { bg: 'var(--gray-9)',  fg: 'var(--gray-11)' },
 }
 
@@ -70,6 +72,8 @@ const GROUP_LABEL: Record<'today' | 'yesterday' | 'week' | 'earlier', string> = 
 }
 
 export default function RunsScreen() {
+  const { myWorkspaces } = useAuth()
+  const { filter: workspaceFilter } = useScopeFilter()
   const [items, setItems] = useState<RunListItem[]>([])
   const [total, setTotal] = useState(0)
   const [agents, setAgents] = useState<Agent[]>([])
@@ -102,7 +106,11 @@ export default function RunsScreen() {
         status: statusFilter === 'all' ? undefined : statusFilter,
         limit: PAGE_SIZE,
         offset: 0,
+        workspace_ids: workspaceFilter,
       }),
+      // Agents lookup is for name resolution only; broaden to all user
+      // memberships so a run from any in-scope workspace renders its
+      // agent name correctly.
       agents.length === 0 ? api.listAgents().then(r => r.items) : Promise.resolve(agents),
     ])
       .then(([list, ags]) => {
@@ -121,7 +129,7 @@ export default function RunsScreen() {
       })
     return () => { cancelled = true }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [statusFilter, reloadTick])
+  }, [statusFilter, reloadTick, workspaceFilter])
 
   // Append the next page. Guarded so concurrent triggers (scroll + click)
   // don't fire two parallel requests.
@@ -135,6 +143,7 @@ export default function RunsScreen() {
         status: statusFilter === 'all' ? undefined : statusFilter,
         limit: PAGE_SIZE,
         offset: nextPage * PAGE_SIZE,
+        workspace_ids: workspaceFilter,
       })
       setItems(prev => [...prev, ...list.items])
       setPage(nextPage)
@@ -214,10 +223,13 @@ export default function RunsScreen() {
           />
         ) : (
           <>
-            <Filters
-              statusFilter={statusFilter}
-              onStatusFilter={setStatusFilter}
-            />
+            <Flex direction="column" gap="2" mb="2">
+              <WorkspaceFilter />
+              <Filters
+                statusFilter={statusFilter}
+                onStatusFilter={setStatusFilter}
+              />
+            </Flex>
 
             {loading ? (
               <LoadingList rows={6} />
@@ -246,6 +258,7 @@ export default function RunsScreen() {
                               key={r.id}
                               run={r}
                               agentName={agentName(r.agent_id)}
+                              showWorkspacePill={shouldShowWorkspacePill(workspaceFilter, myWorkspaces.length)}
                               isExpanded={expanded.has(r.id)}
                               detail={details[r.id]}
                               onToggle={() => toggle(r)}
@@ -325,7 +338,7 @@ function FilterChip({
       type="button"
       size="2"
       variant="soft"
-      color={active ? 'blue' : 'gray'}
+      color={active ? 'cyan' : 'gray'}
       onClick={onClick}
     >
       <span>{children}</span>
@@ -338,12 +351,14 @@ function FilterChip({
 function ActivityRow({
   run,
   agentName,
+  showWorkspacePill,
   isExpanded,
   detail,
   onToggle,
 }: {
   run: RunListItem
   agentName: string
+  showWorkspacePill: boolean
   isExpanded: boolean
   detail: RunDetail | 'loading' | 'error' | undefined
   onToggle: () => void
@@ -374,9 +389,12 @@ function ActivityRow({
       >
         <StatusDot tone={tone} />
         <Box minWidth="0">
-          <Text as="div" size="2" weight="medium" className="truncate">
-            {agentName} · <Text as="span" size="2" color="gray" weight="regular">{statusLabel(run.status)}</Text>
-          </Text>
+          <Flex align="center" gap="2" wrap="wrap">
+            <Text as="div" size="2" weight="medium" className="truncate">
+              {agentName} · <Text as="span" size="2" color="gray" weight="regular">{statusLabel(run.status)}</Text>
+            </Text>
+            <WorkspaceContextPill agentId={run.agent_id} show={showWorkspacePill} />
+          </Flex>
           <SecondaryLine run={run} />
         </Box>
         <Text as="span" size="1" color="gray">
@@ -560,7 +578,7 @@ function FactBlock({ label, children }: { label: string; children: React.ReactNo
 
 function ToolErrorsHint({ errors }: { errors: RunToolError[] }) {
   return (
-    <Box style={{ padding: '10px 12px', background: 'var(--amber-a3)', borderRadius: 8 }}>
+    <Box style={{ padding: '10px 12px', background: 'var(--orange-a3)', borderRadius: 8 }}>
       <Text as="div" size="2" weight="medium" mb="1">
         {errors.length} app {errors.length === 1 ? 'error' : 'errors'}
       </Text>

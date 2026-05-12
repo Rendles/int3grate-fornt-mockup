@@ -252,7 +252,19 @@ Spend: `SpendDashboard`, `SpendRow`, `SpendRange`, `SpendGroupBy`.
 
 #### Styling (`prototype.css`)
 
-All prototype styles are scoped under `.prototype-root` (the wrapper in `index.tsx`). Dark "instrument-panel" aesthetic on top of Radix Themes — colours come from Radix CSS variables (`--gray-*`, `--accent-*`, `--amber-*`, `--green-*`, `--red-*`, including alpha scales `--gray-a*`). Use Radix tokens rather than hardcoding colors. Inter is the only font family.
+All prototype styles are scoped under `.prototype-root` (the wrapper in `index.tsx`). Dark "instrument-panel" aesthetic on top of Radix Themes — colours come from Radix CSS variables (`--gray-*`, `--accent-*`, `--violet-*`, `--cyan-*`, `--orange-*`, `--jade-*`, `--red-*`, including alpha scales `--gray-a*` / `--violet-a*` / `--cyan-a*` / `--orange-a*`). Use Radix tokens rather than hardcoding colors. Inter is the only font family.
+
+**Brand palette** (sourced from `docs/int3grate-radix-color-system.md`). `src/prototype/brand-colors.css` is loaded after `prototype.css` in `index.tsx` and overrides three Radix scales end-to-end (steps 1–12 + alpha 1–12 in both themes):
+
+- `violet` → **Logic Purple `#701DFD`** — Theme accent. Primary CTA, active sidebar item, focus ring, `<PageHeader em>`.
+- `cyan` → **Signal Cyan `#01C9FA`** — info / in-progress / identity tags. Streaming/running states, info banners, role/version/plan badges, active filter tabs, link refs, "Active workspace" pill.
+- `orange` → **Deploy Orange `#FD9C12`** — warn / attention. Pending approvals, partial-error borders, TrainingBanner, mock-badge.
+- `jade` (Radix default) — success. Allow buttons, completed badges, success banner.
+- `red` (Radix default) — danger. Reject, failed, destructive actions.
+
+Theme is configured in `index.tsx`: `accentColor='violet'`, `grayColor='slate'`. Surface tokens are pinned in `brand-colors.css`: dark `--color-background` = Core Black `#05070A`, `--color-panel-solid` = Graphite `#0E1117`; light `--color-panel-solid` = `var(--gray-2)`.
+
+**Forbidden Radix scales in component code:** `amber`, `green`, `indigo`, `blue`. All were migrated 2026-05-12 (amber → orange, green → jade, indigo accent → violet, blue → cyan). Grepping for them in `src/prototype/` should return zero matches. If you need warn use `orange`, if you need info use `cyan`, if you need accent use Theme accent (drop the `color` prop) or explicit `violet`.
 
 Layout escape hatches:
 
@@ -265,7 +277,7 @@ Layout escape hatches:
 
 > ⚠️ **Radix class overrides are intentionally global** (no `.prototype-root` prefix). The block in `prototype.css` under `RADIX OVERRIDES` (button / icon-button / badge radius, `rt-TextFieldRoot` / `rt-TextAreaRoot` / `rt-SelectTrigger` radius + surface) controls the styling of Radix-emitted classes everywhere — including portaled dialog / popover / select content on `<body>`. If these were scoped to `.prototype-root`, every new dialog would re-discover wrong-radius buttons/inputs. Don't re-add the prefix.
 
-> ⚠️ **`--color-panel-solid` override**: at the top of `.prototype-root` we redefine `--color-panel-solid: var(--gray-2)`. Don't remove it without a replacement strategy.
+> ⚠️ **`--color-panel-solid` override** now lives in `src/prototype/brand-colors.css` (dark → Graphite `#0E1117`, light → `var(--gray-2)`). It used to be in `prototype.css` but moved alongside the brand-palette migration on 2026-05-12. Don't remove it without a replacement strategy — light-mode cards collapse into the page bg without it.
 
 ### Adding a screen
 

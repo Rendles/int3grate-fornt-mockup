@@ -456,10 +456,10 @@ function StreamingBubble({ streaming, modelLabel }: { streaming: StreamingState;
         }}
       >
         <Flex align="center" gap="2" mb="2">
-          <Badge color="blue" variant="soft" radius="full" size="1" style={{ fontFamily: 'var(--font-mono)' }} className="status-pulse">
+          <Badge color="cyan" variant="soft" radius="full" size="1" style={{ fontFamily: 'var(--font-mono)' }} className="status-pulse">
             {modelLabel}
           </Badge>
-          <Text size="1" color="blue">streaming…</Text>
+          <Text size="1" color="cyan">streaming…</Text>
         </Flex>
         {streaming.content && (
           <Text as="div" size="2" style={{ whiteSpace: 'pre-wrap', lineHeight: 1.55 }}>
@@ -510,11 +510,11 @@ function ToolCallChip({ tc }: { tc: ChatToolCall }) {
 
 function ToolCallInflight({ tc }: { tc: { id: string; tool: string; args: Record<string, unknown>; resultStatus?: 'ok' | 'error'; output?: Record<string, unknown> | null } }) {
   const status = tc.resultStatus
-  const color = status === 'ok' ? 'var(--green-11)' : status === 'error' ? 'var(--red-11)' : 'var(--accent-9)'
+  const color = status === 'ok' ? 'var(--jade-11)' : status === 'error' ? 'var(--red-11)' : 'var(--accent-9)'
   const bg = status === 'error'
     ? 'var(--red-a3)'
     : status === 'ok'
-      ? 'var(--green-a3)'
+      ? 'var(--jade-a3)'
       : 'var(--accent-a3)'
   return (
     <div
@@ -531,7 +531,7 @@ function ToolCallInflight({ tc }: { tc: { id: string; tool: string; args: Record
           : <IconPlay className="ic ic--sm" style={{ color }} />}
         <Caption>tool call</Caption>
         <Code variant="ghost" size="1">{toolLabel(tc.tool)}</Code>
-        {!status && <Text size="1" color="blue" className="status-pulse">running…</Text>}
+        {!status && <Text size="1" color="cyan" className="status-pulse">running…</Text>}
       </Flex>
       <Text as="div" size="1" color="gray" style={{ fontFamily: 'var(--font-mono)' }}>
         {JSON.stringify(tc.args).slice(0, 140)}
@@ -557,7 +557,7 @@ function ToolResultCard({ message }: { message: ChatMessage }) {
         }}
       >
         <Flex align="center" gap="2" mb="1">
-          <IconCheck className="ic ic--sm" style={{ color: 'var(--green-11)' }} />
+          <IconCheck className="ic ic--sm" style={{ color: 'var(--jade-11)' }} />
           <Caption>tool result</Caption>
           {message.tool_name && <Code variant="ghost" size="1">{toolLabel(message.tool_name)}</Code>}
           <Text size="1" color="gray">{ago(message.created_at)}</Text>

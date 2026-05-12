@@ -81,7 +81,12 @@ type WelcomeMsg =
       chatId?: string
     }
   | { kind: 'hiring'; id: string; templateId: string }
-  | { kind: 'hired'; id: string; templateId: string }
+  | {
+      kind: 'hired'
+      id: string
+      templateId: string
+      workspaceName?: string
+    }
   | { kind: 'modify-form'; id: string; baseTemplateId: string }
   | { kind: 'error'; id: string; message: string }
 
@@ -125,6 +130,7 @@ type Action =
       template: AssistantTemplate
       agentId: string
       chatId?: string
+      workspaceName: string
     }
   | { type: 'hire-error'; template: AssistantTemplate; message: string }
   | { type: 'add-another' }
@@ -269,10 +275,11 @@ function reducer(state: State, action: Action): State {
     }
     case 'hire-success': {
       // Replace the still-spinning hiring bubble with a "hired" status
-      // bubble (green check + ready-message). Same id keeps React's DOM
-      // node stable so the swap is instant — no re-mount, no flicker.
-      // The agent's own welcome message stays in the real chat (seeded
-      // via createChat); we don't echo it here in the welcome overlay.
+      // bubble (green check + ready-message + workspace placement). Same id
+      // keeps React's DOM node stable so the swap is instant — no re-mount,
+      // no flicker. The agent's own welcome message stays in the real chat
+      // (seeded via createChat); we don't echo it here in the welcome
+      // overlay.
       const lastIdx = messages.length - 1
       const last = messages[lastIdx]
       if (last && last.kind === 'hiring') {
@@ -280,6 +287,7 @@ function reducer(state: State, action: Action): State {
           kind: 'hired',
           id: last.id,
           templateId: last.templateId,
+          workspaceName: action.workspaceName,
         }
       }
       messages.push({
@@ -394,8 +402,14 @@ export function WelcomeChatFlow({
   const onHire = async (template: AssistantTemplate) => {
     dispatch({ type: 'start-hire', template })
     try {
-      const { agentId, chatId } = await hire(template, { withSeedChat: true })
-      dispatch({ type: 'hire-success', template, agentId, chatId })
+      const { agentId, chatId, workspace } = await hire(template, { withSeedChat: true })
+      dispatch({
+        type: 'hire-success',
+        template,
+        agentId,
+        chatId,
+        workspaceName: workspace.name,
+      })
     } catch (e) {
       dispatch({
         type: 'hire-error',
@@ -604,7 +618,10 @@ function MessageRenderer(props: RendererProps) {
       if (!t) return null
       return (
         <div className={wrapperClass}>
-          <HiredBubble templateName={t.defaultName} />
+          <HiredBubble
+            templateName={t.defaultName}
+            workspaceName={msg.workspaceName}
+          />
         </div>
       )
     }
@@ -702,7 +719,6 @@ function BigTemplateCard({
           size="3"
           radius="full"
           variant="soft"
-          color="indigo"
           fallback={template.initials}
         />
         <Box minWidth="0" style={{ flex: 1 }}>
@@ -739,7 +755,6 @@ function TemplateChip({
             size="2"
             radius="full"
             variant="soft"
-            color="indigo"
             fallback={template.initials}
           />
           <Text as="span" size="2" weight="medium">{template.defaultName}</Text>
@@ -903,7 +918,19 @@ function HiringBubble({ templateName }: { templateName: string }) {
   )
 }
 
-function HiredBubble({ templateName }: { templateName: string }) {
+function HiredBubble({
+  templateName,
+  workspaceName,
+}: {
+  templateName: string
+  workspaceName?: string
+}) {
+  // Workspace context line appears when we know where the agent landed.
+  // The user stays in their current scope; line nudges them on how to
+  // find the new agent later if they're elsewhere.
+  const workspaceLine = workspaceName
+    ? `Working in your ${workspaceName} workspace — switch from the sidebar if you're not there.`
+    : null
   return (
     <SystemBubble>
       <Flex align="center" gap="3">
@@ -913,8 +940,8 @@ function HiredBubble({ templateName }: { templateName: string }) {
             height: 28,
             flexShrink: 0,
             borderRadius: '50%',
-            background: 'var(--green-a4)',
-            color: 'var(--green-11)',
+            background: 'var(--jade-a4)',
+            color: 'var(--jade-11)',
             display: 'grid',
             placeItems: 'center',
           }}
@@ -925,6 +952,11 @@ function HiredBubble({ templateName }: { templateName: string }) {
           <Text as="div" size="3" weight="medium">
             {templateName} is hired and ready.
           </Text>
+          {workspaceLine && (
+            <Text as="div" size="1" color="gray" mt="1">
+              {workspaceLine}
+            </Text>
+          )}
           <Text as="div" size="1" color="gray" mt="1">
             Open the chat to begin — or add another agent.
           </Text>
@@ -1231,7 +1263,7 @@ function AddAppMenu({
 const SYSTEM_BUBBLE_RADIUS = '12px 12px 12px 4px'
 const USER_BUBBLE_RADIUS = '12px 12px 4px 12px'
 
-// Default "system" speaker — flat indigo circle with "i" initial. NOT a
+// Default "system" speaker — flat accent circle with "i" initial. NOT a
 // robot or sparkle icon (UX-spec § 9-10).
 function SystemAvatar() {
   return (
@@ -1239,7 +1271,6 @@ function SystemAvatar() {
       size="2"
       radius="full"
       variant="soft"
-      color="indigo"
       fallback="i"
     />
   )

@@ -8,6 +8,7 @@ import type {
   ApprovalRequest,
   Chat,
   ChatMessage,
+  Handoff,
   Run,
   RunStep,
   SpendDashboard,
@@ -33,7 +34,7 @@ export const users: User[] = [
   {
     id: 'usr_ada',
     tenant_id: 'ten_acme',
-    domain_id: 'dom_hq',
+    domain_id: null,
     email: 'frontend@int3grate.ai',
     name: 'Ada Fernsby',
     role: 'admin',
@@ -43,7 +44,7 @@ export const users: User[] = [
   {
     id: 'usr_marcelo',
     tenant_id: 'ten_acme',
-    domain_id: 'dom_sales',
+    domain_id: 'ws_growth',
     email: 'domain@int3grate.ai',
     name: 'Marcelo Ito',
     role: 'domain_admin',
@@ -53,7 +54,7 @@ export const users: User[] = [
   {
     id: 'usr_priya',
     tenant_id: 'ten_acme',
-    domain_id: 'dom_support',
+    domain_id: 'ws_ops',
     email: 'member@int3grate.ai',
     name: 'Priya Vasan',
     role: 'member',
@@ -62,11 +63,12 @@ export const users: User[] = [
   },
 ]
 
-// ══════════════════════════════════════════════════ WORKSPACES (mock-only)
+// ══════════════════════════════════════════════════ WORKSPACES
 //
-// No backend support for any of these shapes — see docs/backend-gaps.md § 1.15.
-// Memberships use a flat list (workspace_id × user_id × joined_at). Agent
-// association is a side-table (agentWorkspace) — keeps Agent type 1:1 with spec.
+// Workspace ≡ backend `domain` (see docs/handoff-prep.md § 0.1). The Workspace
+// schema itself isn't in docs/gateway.yaml yet, but `Agent.domain_id` is — so
+// agent → workspace association lives directly on `Agent.domain_id`, not in a
+// side-table. Memberships are still mock-only (no backend membership endpoint).
 
 export const workspaces: Workspace[] = [
   {
@@ -101,17 +103,32 @@ export const workspaceMemberships: WorkspaceMembership[] = [
   { workspace_id: 'ws_ops',     user_id: 'usr_priya',   joined_at: days(190) },
 ]
 
-// agent_id → workspace_id. Side-table because Agent.workspace_id isn't in
-// docs/gateway.yaml. Used by api list-filtering to scope visible agents
-// (and by cascade — approvals / runs / spend — to inherit the same scope).
-export const agentWorkspace: Record<string, string> = {
-  agt_lead_qualifier:    'ws_growth',
-  agt_campaign_drafter:  'ws_growth',
-  agt_refund_resolver:   'ws_ops',
-  agt_kb_sync:           'ws_ops',
-  agt_access_provisioner:'ws_ops',
-  agt_legacy_triage:     'ws_ops',
-  agt_invoice_reconciler:'ws_finance',
+// agent_id → static {x,y} on the Team Map canvas (sandbox preview).
+// Coordinates are relative to a virtual 1200×620 canvas. Force-directed
+// layout was rejected (looks chaotic on 2-4 nodes); see § 4 of
+// docs/agent-plans/2026-05-07-1900-team-map-impl.md.
+export const agentPositions: Record<string, { x: number; y: number }> = {
+  // ws_ops — 8 agents on an ellipse around (600, 310), rx=480, ry=230.
+  // The 4×2 grid we used previously caused two visual bugs: (a) horizontal
+  // edges (e.g. rr↔kb) ran straight through other cards in the same row,
+  // and the cards intercepted both clicks and the visible stroke; (b) the
+  // constant card-half-width inset overshot for vertical/diagonal lines so
+  // arrows hung short of the card border. The radial layout puts every
+  // pair through the empty centre, eliminating cross-through entirely.
+  // Order (clockwise from top): entry → escalation → policy → archive.
+  agt_ticket_triage:          { x: 600, y: 80 },   //  0°  top
+  agt_escalation_specialist:  { x: 939, y: 147 },  // 45°  top-right
+  agt_kb_sync:                { x: 1080, y: 310 }, // 90°  right
+  agt_compliance_checker:     { x: 939, y: 473 },  // 135° bottom-right
+  agt_legacy_triage:          { x: 600, y: 540 },  // 180° bottom
+  agt_customer_data_enricher: { x: 261, y: 473 },  // 225° bottom-left
+  agt_access_provisioner:     { x: 120, y: 310 },  // 270° left
+  agt_refund_resolver:        { x: 261, y: 147 },  // 315° top-left
+  // ws_growth — only 1 active agent, draft companion sits next to it.
+  agt_lead_qualifier:         { x: 440, y: 310 },
+  agt_campaign_drafter:       { x: 760, y: 310 },
+  // ws_finance — single-agent workspace (empty-graph case).
+  agt_invoice_reconciler:     { x: 600, y: 310 },
 }
 
 // ══════════════════════════════════════════════════ AGENT VERSIONS
@@ -207,6 +224,62 @@ export const agentVersions: AgentVersion[] = [
     created_by: 'usr_priya',
     created_at: days(18),
   },
+  {
+    id: 'ver_tt_06',
+    agent_id: 'agt_ticket_triage',
+    version: 6,
+    instruction_spec:
+      'You are a Ticket Triage Agent. Categorise inbound support tickets and route to the right specialist.',
+    memory_scope_config: defaultMemoryScope(),
+    tool_scope_config: defaultToolScope(),
+    approval_rules: { rules: [] },
+    model_chain_config: defaultModelChain('claude-haiku-4-5'),
+    is_active: true,
+    created_by: 'usr_priya',
+    created_at: days(28),
+  },
+  {
+    id: 'ver_es_04',
+    agent_id: 'agt_escalation_specialist',
+    version: 4,
+    instruction_spec:
+      'You are an Escalation Specialist. Pick up tickets the front line could not resolve and drive them to closure.',
+    memory_scope_config: defaultMemoryScope(),
+    tool_scope_config: defaultToolScope(),
+    approval_rules: { rules: [{ id: 'rule_es_1', when: 'crm.discount > 100', required_approver_level: 3 }] },
+    model_chain_config: defaultModelChain('claude-sonnet-4-6'),
+    is_active: true,
+    created_by: 'usr_priya',
+    created_at: days(40),
+  },
+  {
+    id: 'ver_cde_03',
+    agent_id: 'agt_customer_data_enricher',
+    version: 3,
+    instruction_spec:
+      'You are a Customer Data Enricher. Pull recent usage and account history to add context to support cases.',
+    memory_scope_config: defaultMemoryScope(),
+    tool_scope_config: defaultToolScope(),
+    approval_rules: { rules: [] },
+    model_chain_config: defaultModelChain('claude-haiku-4-5'),
+    is_active: true,
+    created_by: 'usr_marcelo',
+    created_at: days(33),
+  },
+  {
+    id: 'ver_cc_02',
+    agent_id: 'agt_compliance_checker',
+    version: 2,
+    instruction_spec:
+      'You are a Compliance Checker. Validate proposed actions against company policy before they execute.',
+    memory_scope_config: defaultMemoryScope(),
+    tool_scope_config: defaultToolScope(),
+    approval_rules: { rules: [{ id: 'rule_cc_1', when: 'policy.flag_severe', required_approver_level: 4 }] },
+    model_chain_config: defaultModelChain('claude-sonnet-4-6'),
+    is_active: true,
+    created_by: 'usr_ada',
+    created_at: days(52),
+  },
 ]
 
 const versionById: Record<string, AgentVersion> = Object.fromEntries(
@@ -230,7 +303,7 @@ function agent(
 export const agents: Agent[] = [
   agent('agt_lead_qualifier', {
     tenant_id: 'ten_acme',
-    domain_id: 'dom_sales',
+    domain_id: 'ws_growth',
     owner_user_id: 'usr_marcelo',
     name: 'Lead Qualifier',
     description: 'Triages inbound leads, enriches records, drafts personalised outreach.',
@@ -241,7 +314,7 @@ export const agents: Agent[] = [
   }),
   agent('agt_refund_resolver', {
     tenant_id: 'ten_acme',
-    domain_id: 'dom_support',
+    domain_id: 'ws_ops',
     owner_user_id: 'usr_priya',
     name: 'Refund Resolver',
     description: 'Reads charges, applies refund policy, issues refunds under cap.',
@@ -252,7 +325,7 @@ export const agents: Agent[] = [
   }),
   agent('agt_access_provisioner', {
     tenant_id: 'ten_acme',
-    domain_id: 'dom_hq',
+    domain_id: 'ws_ops',
     owner_user_id: 'usr_ada',
     name: 'Access Provisioner',
     description: 'On- and offboards SaaS accounts for new hires and leavers.',
@@ -263,7 +336,7 @@ export const agents: Agent[] = [
   }),
   agent('agt_invoice_reconciler', {
     tenant_id: 'ten_acme',
-    domain_id: 'dom_hq',
+    domain_id: 'ws_ops',
     owner_user_id: 'usr_ada',
     name: 'Invoice Reconciler',
     description: 'Reconciles invoices against purchase orders, flags variances.',
@@ -274,7 +347,7 @@ export const agents: Agent[] = [
   }),
   agent('agt_kb_sync', {
     tenant_id: 'ten_acme',
-    domain_id: 'dom_support',
+    domain_id: 'ws_ops',
     owner_user_id: 'usr_priya',
     name: 'Knowledge Base Sync',
     description: 'Syncs internal runbook changes into the customer-facing help center.',
@@ -285,7 +358,7 @@ export const agents: Agent[] = [
   }),
   agent('agt_campaign_drafter', {
     tenant_id: 'ten_acme',
-    domain_id: 'dom_sales',
+    domain_id: 'ws_growth',
     owner_user_id: 'usr_marcelo',
     name: 'Campaign Drafter',
     description: 'Generates email nurture sequences from briefs.',
@@ -296,7 +369,7 @@ export const agents: Agent[] = [
   }),
   agent('agt_legacy_triage', {
     tenant_id: 'ten_acme',
-    domain_id: 'dom_support',
+    domain_id: 'ws_ops',
     owner_user_id: 'usr_priya',
     name: 'Legacy Triage Bot',
     description: 'Pre-2024 triage agent. Superseded by Lead Qualifier; kept for audit continuity.',
@@ -304,6 +377,50 @@ export const agents: Agent[] = [
     created_at: days(420),
     updated_at: days(90),
     active_version_id: null,
+  }),
+  agent('agt_ticket_triage', {
+    tenant_id: 'ten_acme',
+    domain_id: 'ws_ops',
+    owner_user_id: 'usr_priya',
+    name: 'Ticket Triage',
+    description: 'First-line support agent — categorises incoming tickets and routes them to the right specialist.',
+    status: 'active',
+    created_at: days(95),
+    updated_at: days(2),
+    active_version_id: 'ver_tt_06',
+  }),
+  agent('agt_escalation_specialist', {
+    tenant_id: 'ten_acme',
+    domain_id: 'ws_ops',
+    owner_user_id: 'usr_priya',
+    name: 'Escalation Specialist',
+    description: 'Picks up tickets the front line cannot resolve and drives them to closure with the right team.',
+    status: 'active',
+    created_at: days(140),
+    updated_at: days(3),
+    active_version_id: 'ver_es_04',
+  }),
+  agent('agt_customer_data_enricher', {
+    tenant_id: 'ten_acme',
+    domain_id: 'ws_ops',
+    owner_user_id: 'usr_marcelo',
+    name: 'Customer Data Enricher',
+    description: 'Pulls recent usage and account history to add context to support cases.',
+    status: 'active',
+    created_at: days(110),
+    updated_at: days(2),
+    active_version_id: 'ver_cde_03',
+  }),
+  agent('agt_compliance_checker', {
+    tenant_id: 'ten_acme',
+    domain_id: 'ws_ops',
+    owner_user_id: 'usr_ada',
+    name: 'Compliance Checker',
+    description: 'Validates proposed actions against company policy before they execute.',
+    status: 'active',
+    created_at: days(180),
+    updated_at: days(4),
+    active_version_id: 'ver_cc_02',
   }),
 ]
 
@@ -330,11 +447,11 @@ function grant(
 
 export const grantsByAgent: Record<string, ToolGrant[]> = {
   agt_lead_qualifier: [
-    // Domain-wide grant shared by all sales-domain agents.
+    // Workspace-wide grant shared by all Growth-workspace agents.
     {
       id: 'grt_domain_sales_crm',
       scope_type: 'domain',
-      scope_id: 'dom_sales',
+      scope_id: 'ws_growth',
       tool_name: 'zoho_crm.read_contact',
       mode: 'read',
       approval_required: false,
@@ -584,7 +701,7 @@ export const runs: Record<string, Run> = {
   run_4081: {
     id: 'run_4081',
     tenant_id: 'ten_acme',
-    domain_id: 'dom_support',
+    domain_id: 'ws_ops',
     task_id: 'tsk_4081',
     agent_version_id: 'ver_rr_08',
     status: 'suspended',
@@ -668,7 +785,7 @@ export const runs: Record<string, Run> = {
   run_4080: {
     id: 'run_4080',
     tenant_id: 'ten_acme',
-    domain_id: 'dom_sales',
+    domain_id: 'ws_growth',
     task_id: 'tsk_4080',
     agent_version_id: 'ver_lq_14',
     status: 'running',
@@ -744,7 +861,7 @@ export const runs: Record<string, Run> = {
   run_4079: {
     id: 'run_4079',
     tenant_id: 'ten_acme',
-    domain_id: 'dom_hq',
+    domain_id: 'ws_ops',
     task_id: 'tsk_4079',
     agent_version_id: 'ver_ir_05',
     status: 'completed',
@@ -817,7 +934,7 @@ export const runs: Record<string, Run> = {
   run_4077: {
     id: 'run_4077',
     tenant_id: 'ten_acme',
-    domain_id: 'dom_hq',
+    domain_id: 'ws_ops',
     task_id: 'tsk_4077',
     agent_version_id: 'ver_ap_02',
     status: 'suspended',
@@ -876,7 +993,7 @@ export const runs: Record<string, Run> = {
   run_4076: {
     id: 'run_4076',
     tenant_id: 'ten_acme',
-    domain_id: 'dom_hq',
+    domain_id: 'ws_ops',
     task_id: 'tsk_4076',
     agent_version_id: 'ver_ir_05',
     status: 'failed',
@@ -958,7 +1075,7 @@ export const runs: Record<string, Run> = {
   run_4082: {
     id: 'run_4082',
     tenant_id: 'ten_acme',
-    domain_id: 'dom_sales',
+    domain_id: 'ws_growth',
     task_id: null,
     agent_version_id: 'ver_lq_14',
     status: 'completed_with_errors',
@@ -1055,7 +1172,7 @@ export const runs: Record<string, Run> = {
   run_4083: {
     id: 'run_4083',
     tenant_id: 'ten_acme',
-    domain_id: 'dom_support',
+    domain_id: 'ws_ops',
     task_id: 'tsk_4075',
     agent_version_id: 'ver_rr_08',
     status: 'pending',
@@ -1073,7 +1190,7 @@ export const runs: Record<string, Run> = {
   run_4078: {
     id: 'run_4078',
     tenant_id: 'ten_acme',
-    domain_id: 'dom_hq',
+    domain_id: 'ws_ops',
     task_id: 'tsk_4071',
     agent_version_id: 'ver_ap_02',
     status: 'cancelled',
@@ -1115,7 +1232,7 @@ export const runs: Record<string, Run> = {
   run_4075: {
     id: 'run_4075',
     tenant_id: 'ten_acme',
-    domain_id: 'dom_sales',
+    domain_id: 'ws_growth',
     task_id: null,
     agent_version_id: 'ver_lq_14',
     status: 'failed',
@@ -1148,7 +1265,7 @@ export const runs: Record<string, Run> = {
   run_4073: {
     id: 'run_4073',
     tenant_id: 'ten_acme',
-    domain_id: 'dom_hq',
+    domain_id: 'ws_ops',
     task_id: 'tsk_4073',
     agent_version_id: 'ver_ir_05',
     status: 'failed',
@@ -1648,3 +1765,369 @@ export function getAgentStats(agentId: string): { total_spend_usd: number; runs_
   // for demo purposes (real backend will return cumulative numbers).
   return { total_spend_usd: row.total_usd, runs_count: row.run_count }
 }
+
+// ══════════════════════════════════════════════════ HANDOFFS (mock-only)
+//
+// Surfaces on /sandbox/team-map. Backend doesn't emit this concept yet —
+// see docs/backend-gaps.md § 1.16. All seeded handoffs originate inside
+// ws_ops; ws_growth (1 active agent) and ws_finance (1 agent) are
+// intentionally empty to exercise the empty-state branches.
+//
+// kb_sync (paused) and legacy_triage (archived) appear only as targets,
+// not initiators — they have no live runs to originate from. This is
+// realistic: paused / archived agents don't kick off new asks.
+
+export const handoffs: Handoff[] = [
+  // ── run_4081 (refund_resolver, fresh ~12 minutes ago) ──
+  {
+    id: 'hnd_4081_a',
+    run_id: 'run_4081',
+    from_agent_id: 'agt_refund_resolver',
+    to_agent_id: 'agt_access_provisioner',
+    summary: 'Does this customer still have an active SaaS sub before I refund?',
+    status: 'answered',
+    created_at: mins(12),
+    resolved_at: mins(11),
+    workspace_id: 'ws_ops',
+  },
+  {
+    id: 'hnd_4081_b',
+    run_id: 'run_4081',
+    from_agent_id: 'agt_refund_resolver',
+    to_agent_id: 'agt_kb_sync',
+    summary: 'What is the refund eligibility window for tier-B subscriptions?',
+    status: 'answered',
+    created_at: mins(12),
+    resolved_at: mins(10),
+    workspace_id: 'ws_ops',
+  },
+  {
+    id: 'hnd_4081_c',
+    run_id: 'run_4081',
+    from_agent_id: 'agt_refund_resolver',
+    to_agent_id: 'agt_legacy_triage',
+    summary: 'Old policy doc — was the $200 cap ever waived for VIPs?',
+    status: 'declined',
+    created_at: mins(12),
+    resolved_at: mins(11),
+    workspace_id: 'ws_ops',
+  },
+
+  // ── run_4077 (access_provisioner, ~5 hours ago, completed) ──
+  {
+    id: 'hnd_4077_a',
+    run_id: 'run_4077',
+    from_agent_id: 'agt_access_provisioner',
+    to_agent_id: 'agt_kb_sync',
+    summary: 'Where is the offboarding checklist for sales AE roles?',
+    status: 'answered',
+    created_at: hrs(5),
+    resolved_at: hrs(4.5),
+    workspace_id: 'ws_ops',
+  },
+  {
+    id: 'hnd_4077_b',
+    run_id: 'run_4077',
+    from_agent_id: 'agt_access_provisioner',
+    to_agent_id: 'agt_refund_resolver',
+    summary: 'Did the refund for cus_N0a2vX actually go through last week?',
+    status: 'answered',
+    created_at: hrs(5),
+    resolved_at: hrs(4.8),
+    workspace_id: 'ws_ops',
+  },
+
+  // ── run_4078 (access_provisioner, ~48 hours ago) ──
+  {
+    id: 'hnd_4078_a',
+    run_id: 'run_4078',
+    from_agent_id: 'agt_access_provisioner',
+    to_agent_id: 'agt_kb_sync',
+    summary: 'Where is the policy doc on sales-team onboarding scopes?',
+    status: 'answered',
+    created_at: hrs(48),
+    resolved_at: hrs(47.5),
+    workspace_id: 'ws_ops',
+  },
+  {
+    id: 'hnd_4078_b',
+    run_id: 'run_4078',
+    from_agent_id: 'agt_access_provisioner',
+    to_agent_id: 'agt_legacy_triage',
+    summary: 'Pre-2024 onboarding flow — any QA notes worth carrying over?',
+    status: 'declined',
+    created_at: hrs(48),
+    resolved_at: hrs(47.7),
+    workspace_id: 'ws_ops',
+  },
+  {
+    id: 'hnd_4078_c',
+    run_id: 'run_4078',
+    from_agent_id: 'agt_access_provisioner',
+    to_agent_id: 'agt_refund_resolver',
+    summary: 'Did this user have any pending refund threads I should hold for?',
+    status: 'timed_out',
+    created_at: hrs(48),
+    resolved_at: null,
+    workspace_id: 'ws_ops',
+  },
+
+  // ── run_4083 (refund_resolver, ~2 minutes ago, in flight) ──
+  {
+    id: 'hnd_4083_a',
+    run_id: 'run_4083',
+    from_agent_id: 'agt_refund_resolver',
+    to_agent_id: 'agt_access_provisioner',
+    summary: 'Any pending account changes on this user before I issue the refund?',
+    status: 'pending',
+    created_at: mins(2),
+    resolved_at: null,
+    workspace_id: 'ws_ops',
+  },
+  {
+    id: 'hnd_4083_b',
+    run_id: 'run_4083',
+    from_agent_id: 'agt_refund_resolver',
+    to_agent_id: 'agt_kb_sync',
+    summary: 'Is the refund-policy KB current as of this quarter?',
+    status: 'pending',
+    created_at: mins(2),
+    resolved_at: null,
+    workspace_id: 'ws_ops',
+  },
+
+  // ── Extended seed batch — covers the 4 newer ws_ops agents ──
+  // run_id reuses existing ws_ops runs for navigation. The semantic owner of
+  // these handoffs is the from_agent_id; in production the orchestrator
+  // would create a fresh run for each new agent's work.
+
+  // ticket_triage as the front-line hub.
+  {
+    id: 'hnd_n01',
+    run_id: 'run_4081',
+    from_agent_id: 'agt_ticket_triage',
+    to_agent_id: 'agt_refund_resolver',
+    summary: 'Customer says they were charged twice — does this look refundable to you?',
+    status: 'answered',
+    created_at: mins(45),
+    resolved_at: mins(40),
+    workspace_id: 'ws_ops',
+  },
+  {
+    id: 'hnd_n02',
+    run_id: 'run_4083',
+    from_agent_id: 'agt_ticket_triage',
+    to_agent_id: 'agt_kb_sync',
+    summary: 'Tier-A complaint — what\'s our current response template?',
+    status: 'answered',
+    created_at: hrs(2.1),
+    resolved_at: hrs(2),
+    workspace_id: 'ws_ops',
+  },
+  {
+    id: 'hnd_n03',
+    run_id: 'run_4083',
+    from_agent_id: 'agt_ticket_triage',
+    to_agent_id: 'agt_escalation_specialist',
+    summary: 'Angry user, threatening to churn. Can you take this one?',
+    status: 'pending',
+    created_at: mins(15),
+    resolved_at: null,
+    workspace_id: 'ws_ops',
+  },
+  {
+    id: 'hnd_n04',
+    run_id: 'run_4077',
+    from_agent_id: 'agt_ticket_triage',
+    to_agent_id: 'agt_customer_data_enricher',
+    summary: 'Pull account history for cus_82A1 — when did they last upgrade?',
+    status: 'answered',
+    created_at: hrs(6),
+    resolved_at: hrs(5.7),
+    workspace_id: 'ws_ops',
+  },
+  {
+    id: 'hnd_n05',
+    run_id: 'run_4078',
+    from_agent_id: 'agt_ticket_triage',
+    to_agent_id: 'agt_compliance_checker',
+    summary: 'Is it OK to offer store credit on a tier-B churned account?',
+    status: 'answered',
+    created_at: hrs(14),
+    resolved_at: hrs(13.5),
+    workspace_id: 'ws_ops',
+  },
+  {
+    id: 'hnd_n06',
+    run_id: 'run_4078',
+    from_agent_id: 'agt_ticket_triage',
+    to_agent_id: 'agt_escalation_specialist',
+    summary: 'Complex billing dispute — needs senior eyes.',
+    status: 'answered',
+    created_at: hrs(36),
+    resolved_at: hrs(34),
+    workspace_id: 'ws_ops',
+  },
+
+  // escalation_specialist — second hub.
+  {
+    id: 'hnd_n07',
+    run_id: 'run_4077',
+    from_agent_id: 'agt_escalation_specialist',
+    to_agent_id: 'agt_kb_sync',
+    summary: 'Where\'s the override procedure for SLA breaches?',
+    status: 'answered',
+    created_at: hrs(8),
+    resolved_at: hrs(7.5),
+    workspace_id: 'ws_ops',
+  },
+  {
+    id: 'hnd_n08',
+    run_id: 'run_4078',
+    from_agent_id: 'agt_escalation_specialist',
+    to_agent_id: 'agt_refund_resolver',
+    summary: 'Can you process this refund directly? Customer is on a flight tomorrow.',
+    status: 'answered',
+    created_at: hrs(20),
+    resolved_at: hrs(19.4),
+    workspace_id: 'ws_ops',
+  },
+  {
+    id: 'hnd_n09',
+    run_id: 'run_4078',
+    from_agent_id: 'agt_escalation_specialist',
+    to_agent_id: 'agt_access_provisioner',
+    summary: 'Can you reset this user\'s SSO?',
+    status: 'declined',
+    created_at: hrs(50),
+    resolved_at: hrs(49.8),
+    workspace_id: 'ws_ops',
+  },
+  {
+    id: 'hnd_n10',
+    run_id: 'run_4083',
+    from_agent_id: 'agt_escalation_specialist',
+    to_agent_id: 'agt_compliance_checker',
+    summary: 'Proposed 25% discount — is that within policy for this segment?',
+    status: 'pending',
+    created_at: hrs(3),
+    resolved_at: null,
+    workspace_id: 'ws_ops',
+  },
+  {
+    id: 'hnd_n11',
+    run_id: 'run_4078',
+    from_agent_id: 'agt_escalation_specialist',
+    to_agent_id: 'agt_customer_data_enricher',
+    summary: 'Need usage trend for the last 90 days on this account.',
+    status: 'timed_out',
+    created_at: hrs(72),
+    resolved_at: null,
+    workspace_id: 'ws_ops',
+  },
+
+  // compliance_checker — gate-keeper, often inbound but also asks back.
+  {
+    id: 'hnd_n12',
+    run_id: 'run_4078',
+    from_agent_id: 'agt_compliance_checker',
+    to_agent_id: 'agt_refund_resolver',
+    summary: 'Validating: was this refund logged against the right tax bucket?',
+    status: 'answered',
+    created_at: hrs(18),
+    resolved_at: hrs(17.5),
+    workspace_id: 'ws_ops',
+  },
+  {
+    id: 'hnd_n13',
+    run_id: 'run_4078',
+    from_agent_id: 'agt_compliance_checker',
+    to_agent_id: 'agt_access_provisioner',
+    summary: 'Was this Okta change recorded with a ticket reference?',
+    status: 'answered',
+    created_at: hrs(45),
+    resolved_at: hrs(44),
+    workspace_id: 'ws_ops',
+  },
+  {
+    id: 'hnd_n14',
+    run_id: 'run_4077',
+    from_agent_id: 'agt_compliance_checker',
+    to_agent_id: 'agt_escalation_specialist',
+    summary: 'Draft response to this complaint — can you double-check the tone?',
+    status: 'pending',
+    created_at: hrs(5),
+    resolved_at: null,
+    workspace_id: 'ws_ops',
+  },
+
+  // customer_data_enricher.
+  {
+    id: 'hnd_n15',
+    run_id: 'run_4078',
+    from_agent_id: 'agt_customer_data_enricher',
+    to_agent_id: 'agt_ticket_triage',
+    summary: 'Account history attached. They\'ve had 3 prior issues — flagged.',
+    status: 'answered',
+    created_at: hrs(38),
+    resolved_at: hrs(37.5),
+    workspace_id: 'ws_ops',
+  },
+  {
+    id: 'hnd_n16',
+    run_id: 'run_4078',
+    from_agent_id: 'agt_customer_data_enricher',
+    to_agent_id: 'agt_access_provisioner',
+    summary: 'List of recent permission changes for cus_82A1?',
+    status: 'timed_out',
+    created_at: hrs(60),
+    resolved_at: null,
+    workspace_id: 'ws_ops',
+  },
+
+  // Tail — declined / timed_out scattered across the rest.
+  {
+    id: 'hnd_n17',
+    run_id: 'run_4078',
+    from_agent_id: 'agt_ticket_triage',
+    to_agent_id: 'agt_legacy_triage',
+    summary: 'Old playbook lookup — pre-2024 escalation pattern?',
+    status: 'declined',
+    created_at: hrs(72),
+    resolved_at: hrs(71.8),
+    workspace_id: 'ws_ops',
+  },
+  {
+    id: 'hnd_n18',
+    run_id: 'run_4081',
+    from_agent_id: 'agt_refund_resolver',
+    to_agent_id: 'agt_ticket_triage',
+    summary: 'What was the original ticket category? Looks like it shifted mid-thread.',
+    status: 'pending',
+    created_at: mins(30),
+    resolved_at: null,
+    workspace_id: 'ws_ops',
+  },
+  {
+    id: 'hnd_n19',
+    run_id: 'run_4078',
+    from_agent_id: 'agt_access_provisioner',
+    to_agent_id: 'agt_ticket_triage',
+    summary: 'Is the user in this access request the same one in ticket #4421?',
+    status: 'timed_out',
+    created_at: hrs(15),
+    resolved_at: null,
+    workspace_id: 'ws_ops',
+  },
+  {
+    id: 'hnd_n20',
+    run_id: 'run_4078',
+    from_agent_id: 'agt_compliance_checker',
+    to_agent_id: 'agt_kb_sync',
+    summary: 'Need the current data-retention policy doc.',
+    status: 'timed_out',
+    created_at: hrs(96),
+    resolved_at: null,
+    workspace_id: 'ws_ops',
+  },
+]

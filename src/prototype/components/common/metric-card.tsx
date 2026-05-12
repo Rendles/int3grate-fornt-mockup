@@ -19,7 +19,7 @@ export function MetricCard({
   href?: string
   tone?: 'warn'
 }) {
-  const borderColor = tone === 'warn' ? 'var(--amber-6)' : undefined
+  const borderColor = tone === 'warn' ? 'var(--orange-6)' : undefined
   const grayTen: React.CSSProperties = { color: 'var(--gray-10)' }
   const iconWrap: React.CSSProperties = {
     display: 'inline-flex',

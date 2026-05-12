@@ -28,8 +28,8 @@ import type { Agent, ApprovalRequest, RunListItem } from '../../lib/types'
 type LiveStatus = 'working' | 'waiting' | 'stuck' | 'idle'
 
 const STATUS_META: Record<LiveStatus, { label: string; color: string; tint: string }> = {
-  working: { label: 'Working', color: 'var(--green-9)', tint: 'var(--green-a3)' },
-  waiting: { label: 'Waiting on you', color: 'var(--amber-9)', tint: 'var(--amber-a3)' },
+  working: { label: 'Working', color: 'var(--jade-9)', tint: 'var(--jade-a3)' },
+  waiting: { label: 'Waiting on you', color: 'var(--orange-9)', tint: 'var(--orange-a3)' },
   stuck: { label: 'Got stuck', color: 'var(--red-9)', tint: 'var(--red-a3)' },
   idle: { label: 'Idle', color: 'var(--gray-9)', tint: 'var(--gray-a3)' },
 }
@@ -467,7 +467,7 @@ function AgentTile({ snapshot }: { snapshot: AgentSnapshot }) {
           {pendingNow > 0 && (
             <>
               {' · '}
-              <Text weight="medium" style={{ color: 'var(--amber-11)' }}>{pendingNow}</Text> waiting
+              <Text weight="medium" style={{ color: 'var(--orange-11)' }}>{pendingNow}</Text> waiting
             </>
           )}
         </Text>
@@ -528,14 +528,14 @@ function ApprovalsDeck({
         alignSelf: 'start',
       }}
     >
-      <div className="card card--flush" style={{ borderColor: pending.length > 0 ? 'var(--amber-a6)' : undefined }}>
+      <div className="card card--flush" style={{ borderColor: pending.length > 0 ? 'var(--orange-a6)' : undefined }}>
         <div className="card__head">
           <Text as="div" size="2" weight="medium" className="card__title">
             <IconApproval className="ic" />
             Needs you
           </Text>
           <Badge
-            color={pending.length > 0 ? 'amber' : 'gray'}
+            color={pending.length > 0 ? 'orange' : 'gray'}
             variant={pending.length > 0 ? 'soft' : 'outline'}
             radius="full"
             size="1"
@@ -600,12 +600,12 @@ function ApprovalsDeck({
 // line per row) so it reads as a stream, not a queue.
 
 const RUN_TONE: Record<RunStatus, string> = {
-  completed: 'var(--green-9)',
-  completed_with_errors: 'var(--amber-9)',
+  completed: 'var(--jade-9)',
+  completed_with_errors: 'var(--orange-9)',
   failed: 'var(--red-9)',
-  suspended: 'var(--amber-9)',
-  running: 'var(--blue-9)',
-  pending: 'var(--blue-9)',
+  suspended: 'var(--orange-9)',
+  running: 'var(--cyan-9)',
+  pending: 'var(--cyan-9)',
   cancelled: 'var(--gray-9)',
 }
 

@@ -1,0 +1,625 @@
+/* Hero-chat-loop scripted scene — self-contained styles.
+   Sibling of hero-loop/. Brand tokens inlined for portability.
+   Reference: docs/landing-colors-handoff.md (palette of record). */
+
+.hero-chat-loop,
+.hero-chat-loop *,
+.hero-chat-loop *::before,
+.hero-chat-loop *::after {
+  box-sizing: border-box;
+}
+
+.hero-chat-loop {
+  --hcl-bg: #05070A;
+  --hcl-panel: #0E1117;
+  --hcl-text: #F7F8FA;
+  --hcl-text-muted: #9499A3;
+  --hcl-text-faint: #6E737D;
+  --hcl-violet: #701DFD;
+  --hcl-cyan: #01C9FA;
+  --hcl-orange: #FD9C12;
+  --hcl-jade: #2EBE6F;
+  --hcl-jade-strong: #3DD68C;
+  --hcl-red: #E5484D;
+
+  font-family: Inter, ui-sans-serif, system-ui, -apple-system, "Segoe UI", sans-serif;
+  font-size: 13px;
+  line-height: 1.45;
+  letter-spacing: -0.005em;
+  color: var(--hcl-text);
+  display: inline-block;
+}
+
+.hero-chat-loop__stage {
+  width: 500px;
+  height: 600px;
+  background: var(--hcl-panel);
+  border-radius: 16px;
+  padding: 20px;
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+  overflow: hidden;
+  position: relative;
+  box-shadow:
+    0 1px 0 rgba(255, 255, 255, 0.04) inset,
+    0 30px 80px rgba(0, 0, 0, 0.5);
+}
+
+/* ─── Two-view stack (picker ↔ chat) ──────────────────────────────────
+   Both views absolutely positioned inside the stage, occupying the same
+   460×560 inner rect. Cross-fade via opacity on the .hcl-view--visible
+   class. Only one is fully opaque at a time except during
+   hire-transition (where they overlap mid-fade). */
+
+.hcl-view {
+  position: absolute;
+  inset: 20px;
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 600ms ease;
+}
+
+.hcl-view--visible {
+  opacity: 1;
+}
+
+/* ─── Template picker ────────────────────────────────────────────────
+   First half of the scene. Vertical list of 4 starter templates. The
+   synthetic cursor clicks the first (Sales) → press feedback → cross-
+   fade to chat view. */
+
+.hcl-picker {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+  flex: 1;
+  min-height: 0;
+}
+
+.hcl-picker__header {
+  padding: 8px 2px 0;
+}
+
+.hcl-picker__eyebrow {
+  font-size: 9.5px;
+  font-weight: 600;
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+  color: var(--hcl-text-muted);
+  margin-bottom: 6px;
+}
+
+.hcl-picker__title {
+  font-size: 19px;
+  font-weight: 500;
+  letter-spacing: -0.015em;
+  color: var(--hcl-text);
+  margin: 0;
+  line-height: 1.25;
+}
+
+.hcl-picker__list {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.hcl-tpl {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 12px 14px;
+  background: rgba(255, 255, 255, 0.04);
+  border-radius: 10px;
+  min-height: 64px;
+  transition:
+    background 160ms ease,
+    transform 140ms ease;
+}
+
+.hcl-tpl--pressed {
+  transform: scale(0.985);
+  background: rgba(112, 29, 253, 0.22);
+}
+
+.hcl-tpl__avatar {
+  width: 36px;
+  height: 36px;
+  flex-shrink: 0;
+  border-radius: 8px;
+  background: linear-gradient(135deg, var(--hcl-violet), var(--hcl-cyan));
+  color: var(--hcl-text);
+  font-size: 12px;
+  font-weight: 600;
+  letter-spacing: 0.04em;
+  display: grid;
+  place-items: center;
+}
+
+.hcl-tpl__body {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.hcl-tpl__name {
+  font-size: 13px;
+  font-weight: 500;
+  color: var(--hcl-text);
+}
+
+.hcl-tpl__pitch {
+  font-size: 11.5px;
+  color: var(--hcl-text-muted);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+/* ─── Agent header ──────────────────────────────────────────────────── */
+
+.hcl-header {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 10px 12px;
+  background: rgba(255, 255, 255, 0.04);
+  border-radius: 10px;
+  flex-shrink: 0;
+}
+
+.hcl-header__avatar {
+  width: 32px;
+  height: 32px;
+  flex-shrink: 0;
+  border-radius: 50%;
+  background: linear-gradient(135deg, var(--hcl-violet), var(--hcl-cyan));
+  color: var(--hcl-text);
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.04em;
+  display: grid;
+  place-items: center;
+}
+
+.hcl-header__id {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.hcl-header__name {
+  font-size: 13.5px;
+  font-weight: 500;
+  letter-spacing: -0.008em;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.hcl-header__caption {
+  font-size: 10.5px;
+  color: var(--hcl-text-muted);
+}
+
+.hcl-header__dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: var(--hcl-jade);
+  flex-shrink: 0;
+  box-shadow: 0 0 0 0 rgba(46, 190, 111, 0.4);
+  animation: hcl-pulse-jade 2.4s ease-out infinite;
+}
+
+@keyframes hcl-pulse-jade {
+  0% {
+    box-shadow: 0 0 0 0 rgba(46, 190, 111, 0.45);
+  }
+  60% {
+    box-shadow: 0 0 0 6px rgba(46, 190, 111, 0);
+  }
+  100% {
+    box-shadow: 0 0 0 0 rgba(46, 190, 111, 0);
+  }
+}
+
+/* ─── Chat area ─────────────────────────────────────────────────────── */
+
+.hcl-chat {
+  flex: 1;
+  min-height: 0;
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  padding: 4px 0;
+}
+
+/* ─── Message bubble ────────────────────────────────────────────────── */
+
+.hcl-msg {
+  display: flex;
+  align-items: flex-end;
+  gap: 8px;
+  max-width: 88%;
+  opacity: 0;
+  transform: translateY(8px);
+  transition:
+    opacity 280ms ease,
+    transform 360ms cubic-bezier(0.25, 0.1, 0.25, 1);
+}
+
+.hcl-msg--visible {
+  opacity: 1;
+  transform: translateY(0);
+}
+
+.hcl-msg--agent {
+  align-self: flex-start;
+}
+
+.hcl-msg--user {
+  align-self: flex-end;
+  max-width: 78%;
+}
+
+.hcl-msg__avatar {
+  width: 24px;
+  height: 24px;
+  flex-shrink: 0;
+  border-radius: 50%;
+  background: linear-gradient(135deg, var(--hcl-violet), var(--hcl-cyan));
+  color: var(--hcl-text);
+  font-size: 9.5px;
+  font-weight: 600;
+  letter-spacing: 0.04em;
+  display: grid;
+  place-items: center;
+  margin-bottom: 2px;
+}
+
+.hcl-msg__bubble {
+  padding: 10px 13px;
+  border-radius: 12px;
+  font-size: 12.5px;
+  line-height: 1.5;
+  color: var(--hcl-text);
+}
+
+.hcl-msg--agent .hcl-msg__bubble {
+  background: rgba(255, 255, 255, 0.05);
+  border-top-left-radius: 4px;
+}
+
+.hcl-msg--user .hcl-msg__bubble {
+  background: rgba(112, 29, 253, 0.20);
+  color: var(--hcl-text);
+  border-top-right-radius: 4px;
+}
+
+/* ─── Agent response body ──────────────────────────────────────────── */
+/* Lives inside an agent MessageBubble as children. Lines cascade in
+   after the bubble's own fade-in (280ms) finishes — staggered 160ms. */
+
+.hcl-resp__intro {
+  margin-bottom: 6px;
+  opacity: 0;
+  transform: translateY(4px);
+}
+
+.hcl-resp__list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+
+.hcl-resp__list li {
+  position: relative;
+  padding: 1px 0 1px 14px;
+  font-size: 12px;
+  color: var(--hcl-text);
+  opacity: 0;
+  transform: translateY(4px);
+}
+
+.hcl-resp__list li::before {
+  content: '•';
+  position: absolute;
+  left: 2px;
+  top: 1px;
+  color: var(--hcl-text-faint);
+}
+
+/* Stream-in cascade triggered only when the parent bubble is visible.
+   Last bullet finishes at 1240ms → 160ms buffer before action-cta phase. */
+.hcl-msg--visible .hcl-resp__intro {
+  animation: hcl-line-in 320ms ease 280ms forwards;
+}
+.hcl-msg--visible .hcl-resp__list li:nth-child(1) {
+  animation: hcl-line-in 320ms ease 440ms forwards;
+}
+.hcl-msg--visible .hcl-resp__list li:nth-child(2) {
+  animation: hcl-line-in 320ms ease 600ms forwards;
+}
+.hcl-msg--visible .hcl-resp__list li:nth-child(3) {
+  animation: hcl-line-in 320ms ease 760ms forwards;
+}
+.hcl-msg--visible .hcl-resp__list li:nth-child(4) {
+  animation: hcl-line-in 320ms ease 920ms forwards;
+}
+
+@keyframes hcl-line-in {
+  to { opacity: 1; transform: translateY(0); }
+}
+
+/* ─── Typing indicator (agent thinking) ────────────────────────────── */
+
+.hcl-typing {
+  display: flex;
+  align-items: flex-end;
+  gap: 8px;
+  align-self: flex-start;
+  opacity: 0;
+  transform: translateY(8px);
+  transition:
+    opacity 220ms ease,
+    transform 320ms cubic-bezier(0.25, 0.1, 0.25, 1);
+}
+
+.hcl-typing--visible {
+  opacity: 1;
+  transform: translateY(0);
+}
+
+.hcl-typing__avatar {
+  width: 24px;
+  height: 24px;
+  flex-shrink: 0;
+  border-radius: 50%;
+  background: linear-gradient(135deg, var(--hcl-violet), var(--hcl-cyan));
+  color: var(--hcl-text);
+  font-size: 9.5px;
+  font-weight: 600;
+  letter-spacing: 0.04em;
+  display: grid;
+  place-items: center;
+  margin-bottom: 2px;
+}
+
+.hcl-typing__bubble {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 11px 14px;
+  background: rgba(255, 255, 255, 0.05);
+  border-radius: 12px;
+  border-top-left-radius: 4px;
+}
+
+.hcl-typing__dot {
+  width: 5px;
+  height: 5px;
+  border-radius: 50%;
+  background: var(--hcl-text-muted);
+  animation: hcl-typing-bounce 1.2s ease-in-out infinite;
+}
+
+.hcl-typing__dot:nth-child(2) { animation-delay: 0.15s; }
+.hcl-typing__dot:nth-child(3) { animation-delay: 0.30s; }
+
+@keyframes hcl-typing-bounce {
+  0%, 60%, 100% {
+    opacity: 0.35;
+    transform: translateY(0);
+  }
+  30% {
+    opacity: 1;
+    transform: translateY(-2px);
+  }
+}
+
+/* ─── Action CTA pill ──────────────────────────────────────────────── */
+
+.hcl-cta {
+  padding-left: 32px; /* align with agent bubble (24 avatar + 8 gap) */
+  opacity: 0;
+  transform: translateY(8px);
+  transition:
+    opacity 240ms ease,
+    transform 360ms cubic-bezier(0.25, 0.1, 0.25, 1);
+}
+
+.hcl-cta--visible {
+  opacity: 1;
+  transform: translateY(0);
+}
+
+.hcl-cta__pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 12px;
+  background: rgba(46, 190, 111, 0.20);
+  color: var(--hcl-jade-strong);
+  border-radius: 8px;
+  font-size: 12px;
+  font-weight: 500;
+  letter-spacing: -0.005em;
+}
+
+.hcl-cta__dot {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: var(--hcl-jade-strong);
+  flex-shrink: 0;
+}
+
+/* ─── Input bar ─────────────────────────────────────────────────────── */
+
+.hcl-input {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 8px 8px 14px;
+  background: rgba(255, 255, 255, 0.04);
+  border-radius: 10px;
+  flex-shrink: 0;
+}
+
+.hcl-input__field {
+  flex: 1;
+  min-width: 0;
+  min-height: 28px;
+  display: flex;
+  align-items: center;
+  font-size: 12.5px;
+  line-height: 1.4;
+  color: var(--hcl-text);
+  white-space: nowrap;
+  overflow: hidden;
+}
+
+.hcl-input__placeholder {
+  color: var(--hcl-text-faint);
+}
+
+/* Text is always in DOM with full content; CSS reveals it via max-width.
+   On the typing phase, a steps() keyframe gives the typewriter feel. */
+.hcl-input__text {
+  display: inline-block;
+  overflow: hidden;
+  white-space: nowrap;
+  max-width: 0;
+  vertical-align: middle;
+}
+
+.hcl-input--typing .hcl-input__text {
+  animation: hcl-input-reveal 2400ms steps(26, end) forwards;
+}
+
+.hcl-input--full .hcl-input__text {
+  max-width: 30em;
+}
+
+@keyframes hcl-input-reveal {
+  from { max-width: 0; }
+  to { max-width: 30em; }
+}
+
+/* Blinking caret — visible while text is being "typed" or after. */
+.hcl-input__caret {
+  display: inline-block;
+  width: 1.5px;
+  height: 14px;
+  margin-left: 1px;
+  background: var(--hcl-text);
+  vertical-align: middle;
+  animation: hcl-caret 1s steps(2, start) infinite;
+}
+
+@keyframes hcl-caret {
+  0%, 50% { opacity: 1; }
+  51%, 100% { opacity: 0; }
+}
+
+/* State-driven visibility of placeholder vs typed-text + caret. */
+.hcl-input--empty .hcl-input__text,
+.hcl-input--empty .hcl-input__caret {
+  display: none;
+}
+
+.hcl-input--typing .hcl-input__placeholder,
+.hcl-input--full .hcl-input__placeholder {
+  display: none;
+}
+
+.hcl-input__send {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 32px;
+  height: 32px;
+  flex-shrink: 0;
+  border-radius: 8px;
+  cursor: pointer;
+  border: 0;
+  background: rgba(255, 255, 255, 0.06);
+  color: var(--hcl-text-muted);
+  transition:
+    background 160ms ease,
+    color 160ms ease,
+    transform 140ms ease,
+    filter 140ms ease;
+}
+
+/* Active state — input has text, send is ready. */
+.hcl-input__send--ready {
+  background: rgba(112, 29, 253, 0.22);
+  color: var(--hcl-text);
+}
+
+.hcl-input__send--pressed {
+  transform: scale(0.94);
+  filter: brightness(1.18);
+}
+
+/* ─── Synthetic cursor ─────────────────────────────────────────────── */
+
+.hcl-cursor {
+  position: absolute;
+  left: 0;
+  top: 0;
+  pointer-events: none;
+  z-index: 10;
+  transform: translate3d(var(--hcl-cursor-x, 0px), var(--hcl-cursor-y, 0px), 0);
+  filter: drop-shadow(0 2px 3px rgba(0, 0, 0, 0.55));
+  /* Single transition for all phase moves. 1.08s glide fits inside
+     every cursor-move phase after the 20% slowdown:
+     cursor-to-template 1200, cursor-to-input 960, cursor-to-send 720
+     (cursor arrives just before the send-click beat — intentional).
+     Phases with the same coords re-apply the same transform → no
+     transition fires. */
+  transition: transform 1.08s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+/* ─── Static mode: small viewport OR reduced motion ────────────────── */
+
+@media (max-width: 640px), (prefers-reduced-motion: reduce) {
+  .hcl-cursor {
+    display: none;
+  }
+
+  .hcl-view,
+  .hcl-msg,
+  .hcl-typing,
+  .hcl-cta,
+  .hcl-tpl,
+  .hcl-input__send {
+    transition: opacity 220ms ease, background 220ms ease;
+    transform: none;
+  }
+
+  .hcl-header__dot,
+  .hcl-input__caret,
+  .hcl-typing__dot {
+    animation: none;
+  }
+
+  /* Stream-in cascade collapses to a single fade. */
+  .hcl-msg--visible .hcl-resp__intro,
+  .hcl-msg--visible .hcl-resp__list li {
+    animation: none;
+    opacity: 1;
+    transform: none;
+  }
+}

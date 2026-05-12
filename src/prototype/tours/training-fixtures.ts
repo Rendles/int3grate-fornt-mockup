@@ -68,7 +68,7 @@ export const APPROVAL_REVIEW: TrainingScenario = {
     {
       id: APPROVAL_REVIEW_USER_ID,
       tenant_id: 'ten_acme',
-      domain_id: 'dom_support',
+      domain_id: 'ws_ops',
       email: 'training@example.com',
       name: 'You (training)',
       role: 'admin',
@@ -80,7 +80,7 @@ export const APPROVAL_REVIEW: TrainingScenario = {
     {
       id: APPROVAL_REVIEW_AGENT_ID,
       tenant_id: 'ten_acme',
-      domain_id: 'dom_support',
+      domain_id: 'ws_ops',
       owner_user_id: APPROVAL_REVIEW_USER_ID,
       name: 'Refunds Concierge',
       description: 'Handles customer refund requests through Stripe.',
@@ -121,7 +121,7 @@ export const APPROVAL_REVIEW: TrainingScenario = {
     {
       id: APPROVAL_REVIEW_RUN_ID,
       tenant_id: 'ten_acme',
-      domain_id: 'dom_support',
+      domain_id: 'ws_ops',
       task_id: null,
       agent_version_id: APPROVAL_REVIEW_VERSION_ID,
       status: 'suspended',
@@ -244,7 +244,7 @@ export const START_A_CHAT: TrainingScenario = {
     {
       id: START_CHAT_USER_ID,
       tenant_id: 'ten_acme',
-      domain_id: 'dom_support',
+      domain_id: 'ws_ops',
       email: 'training-chat@example.com',
       name: 'You (training)',
       role: 'member',
@@ -256,7 +256,7 @@ export const START_A_CHAT: TrainingScenario = {
     {
       id: START_CHAT_ACTIVE_AGENT_ID,
       tenant_id: 'ten_acme',
-      domain_id: 'dom_support',
+      domain_id: 'ws_ops',
       owner_user_id: START_CHAT_USER_ID,
       name: 'Support Concierge',
       description: 'Answers customer questions with account context.',

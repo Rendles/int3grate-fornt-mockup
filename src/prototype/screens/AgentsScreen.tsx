@@ -2,7 +2,7 @@ import { useEffect, useMemo, useState } from 'react'
 import { Box, Button, Code, Dialog, Flex, Grid, Text, TextField, VisuallyHidden } from '@radix-ui/themes'
 
 import { AppShell } from '../components/shell'
-import { Avatar, Caption, PageHeader, Status } from '../components/common'
+import { Avatar, Caption, PageHeader, Status, WorkspaceContextPill, WorkspaceFilter } from '../components/common'
 import { TextInput } from '../components/fields'
 import { EmptyState, ErrorState, LoadingList } from '../components/states'
 import { IconAgent, IconArrowRight, IconChat, IconLock, IconPlus, IconSearch } from '../components/icons'
@@ -14,9 +14,11 @@ import { AGENT_STATUS_FILTERS } from '../lib/filters'
 import type { AgentStatusFilter } from '../lib/filters'
 import type { Agent, RunListItem } from '../lib/types'
 import { ago } from '../lib/format'
+import { shouldShowWorkspacePill, useScopeFilter } from '../lib/scope-filter'
 
 export default function AgentsScreen() {
-  const { user } = useAuth()
+  const { user, myWorkspaces } = useAuth()
+  const { filter: workspaceFilter } = useScopeFilter()
   const [agents, setAgents] = useState<Agent[] | null>(null)
   const [runs, setRuns] = useState<RunListItem[]>([])
   const [error, setError] = useState<string | null>(null)
@@ -33,7 +35,10 @@ export default function AgentsScreen() {
 
   useEffect(() => {
     let cancelled = false
-    Promise.all([api.listAgents(), api.listRuns({ limit: 100 })])
+    Promise.all([
+      api.listAgents({ workspace_ids: workspaceFilter }),
+      api.listRuns({ limit: 100, workspace_ids: workspaceFilter }),
+    ])
       .then(([a, r]) => {
         if (cancelled) return
         setAgents(a.items)
@@ -45,7 +50,7 @@ export default function AgentsScreen() {
         setError((e as Error).message ?? 'Failed to load your agents')
       })
     return () => { cancelled = true }
-  }, [reloadTick])
+  }, [reloadTick, workspaceFilter])
 
   // agent_id → most-recent run timestamp. Lets us show "last seen 2h ago".
   const lastRunByAgent = useMemo(() => {
@@ -77,7 +82,7 @@ export default function AgentsScreen() {
   }, [agents])
 
   return (
-    <AppShell crumbs={[{ label: 'home', to: '/' }, { label: 'team' }]}>
+    <AppShell crumbs={[{ label: 'home', to: '/' }, { label: 'agents' }]}>
       <div className="page page--wide">
         <PageHeader
           eyebrow="TEAM"
@@ -90,41 +95,44 @@ export default function AgentsScreen() {
           }
         />
 
-        {agents && agents.length > 0 && (
-          <Flex align="center" gap="2" mb="4" wrap="wrap">
-            <Flex align="center" gap="2">
-              {AGENT_STATUS_FILTERS.map(f => {
-                const isActive = filter === f
-                return (
-                  <Button
-                    key={f}
-                    type="button"
-                    size="2"
-                    variant="soft"
-                    color={isActive ? 'blue' : 'gray'}
-                    onClick={() => { setFilter(f) }}
-                  >
-                    <span style={{ textTransform: 'capitalize' }}>{f}</span>
-                    <Code variant="ghost" size="1" color="gray">{counts[f] ?? 0}</Code>
-                  </Button>
-                )
-              })}
+        <Flex direction="column" gap="2" mb="4">
+          <WorkspaceFilter />
+          {agents && agents.length > 0 && (
+            <Flex align="center" gap="2" wrap="wrap">
+              <Flex align="center" gap="2">
+                {AGENT_STATUS_FILTERS.map(f => {
+                  const isActive = filter === f
+                  return (
+                    <Button
+                      key={f}
+                      type="button"
+                      size="2"
+                      variant="soft"
+                      color={isActive ? 'cyan' : 'gray'}
+                      onClick={() => { setFilter(f) }}
+                    >
+                      <span style={{ textTransform: 'capitalize' }}>{f}</span>
+                      <Code variant="ghost" size="1" color="gray">{counts[f] ?? 0}</Code>
+                    </Button>
+                  )
+                })}
+              </Flex>
+              <Box flexGrow="1" />
+              <Box width="260px">
+                <TextInput
+                  size="2"
+                  placeholder="Filter by name or description..."
+                  value={query}
+                  onChange={e => setQuery(e.target.value)}
+                >
+                  <TextField.Slot side="left">
+                    <IconSearch className="ic ic--sm" />
+                  </TextField.Slot>
+                </TextInput>
+              </Box>
             </Flex>
-            <Box flexGrow="1" />
-            <Box width="260px">
-              <TextInput
-                size="2"
-                placeholder="Filter by name or description..."
-                value={query}
-                onChange={e => setQuery(e.target.value)}
-              >
-                <TextField.Slot side="left">
-                  <IconSearch className="ic ic--sm" />
-                </TextField.Slot>
-              </TextInput>
-            </Box>
-          </Flex>
-        )}
+          )}
+        </Flex>
 
         {error ? (
           <ErrorState
@@ -163,6 +171,7 @@ export default function AgentsScreen() {
                 key={a.id}
                 agent={a}
                 lastRun={lastRunByAgent.get(a.id) ?? null}
+                showWorkspacePill={shouldShowWorkspacePill(workspaceFilter, myWorkspaces.length)}
               />
             ))}
             {canCreate && filter === 'all' && !query && (
@@ -222,7 +231,15 @@ export default function AgentsScreen() {
   )
 }
 
-function AssistantCard({ agent, lastRun }: { agent: Agent; lastRun: RunListItem | null }) {
+function AssistantCard({
+  agent,
+  lastRun,
+  showWorkspacePill,
+}: {
+  agent: Agent
+  lastRun: RunListItem | null
+  showWorkspacePill: boolean
+}) {
   const canTalk = agent.status === 'active' && agent.active_version != null
   return (
     <div
@@ -242,8 +259,11 @@ function AssistantCard({ agent, lastRun }: { agent: Agent; lastRun: RunListItem 
         </Box>
       </Flex>
 
-      <Flex align="center" justify="between" gap="2">
-        <Status status={agent.status} />
+      <Flex align="center" justify="between" gap="2" wrap="wrap">
+        <Flex align="center" gap="2" wrap="wrap">
+          <Status status={agent.status} />
+          <WorkspaceContextPill agentId={agent.id} show={showWorkspacePill} />
+        </Flex>
         <Text size="1" color="gray">
           {lastRun ? `last active ${ago(lastRun.created_at)}` : 'no activity yet'}
         </Text>

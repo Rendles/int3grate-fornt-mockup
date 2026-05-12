@@ -15,16 +15,18 @@ import { Badge, Box, Button, Card, Flex, Spinner, Text } from '@radix-ui/themes'
 
 import { Avatar, Caption } from './common'
 import { Banner, NoAccessState } from './states'
-import { IconArrowLeft, IconCheck } from './icons'
+import { IconArrowLeft, IconArrowRight, IconCheck } from './icons'
 import { Link, useRouter } from '../router'
 import { useAuth } from '../auth'
 import { useHireTemplate } from '../lib/use-hire-template'
+import type { HireResult } from '../lib/use-hire-template'
 import {
   QUICK_HIRE_TEMPLATES,
   appsFromGrants,
   extractSampleTasks,
 } from '../lib/quick-hire'
 import type { AssistantTemplate } from '../lib/templates'
+import type { Workspace } from '../lib/types'
 
 export type QuickHireGridMode = 'standalone' | 'embedded'
 
@@ -36,25 +38,48 @@ export interface QuickHireGridProps {
 }
 
 export function QuickHireGrid({ mode, onAfterHire }: QuickHireGridProps) {
-  const { user } = useAuth()
+  const { user, activeWorkspaceId, myWorkspaces } = useAuth()
   const { navigate } = useRouter()
   const isMember = user?.role === 'member'
   const { hire: hireTemplate, busy, error: hireError, clearError } = useHireTemplate()
 
   const [expandedId, setExpandedId] = useState<string | null>(null)
+  // Per-card success state. Keyed by template id so multiple expanded cards
+  // (we don't allow that today, but defensive) wouldn't crosstalk. Cleared
+  // on collapse / "Hire another".
+  const [hireResultByTemplate, setHireResultByTemplate] = useState<Record<string, HireResult>>({})
 
   const hire = async (template: AssistantTemplate) => {
     if (busy) return
     try {
-      const { agentId } = await hireTemplate(template)
-      if (onAfterHire) {
-        onAfterHire(agentId)
-      } else {
-        navigate(`/agents/${agentId}`)
-      }
+      const result = await hireTemplate(template)
+      setHireResultByTemplate(prev => ({ ...prev, [template.id]: result }))
+      // Note: we intentionally do NOT navigate or call onAfterHire here.
+      // Maria sees the success state in the card with the workspace info,
+      // then chooses to open the agent or hire another. That gives her time
+      // to read where the agent landed before context-switching.
     } catch {
       // useHireTemplate already populated `error` state — banner will show.
     }
+  }
+
+  const onOpenAgent = (template: AssistantTemplate) => {
+    const result = hireResultByTemplate[template.id]
+    if (!result) return
+    if (onAfterHire) {
+      onAfterHire(result.agentId)
+    } else {
+      navigate(`/agents/${result.agentId}`)
+    }
+  }
+
+  const onHireAnother = (templateId: string) => {
+    setHireResultByTemplate(prev => {
+      const next = { ...prev }
+      delete next[templateId]
+      return next
+    })
+    setExpandedId(null)
   }
 
   // Member-guard: in standalone, render a full NoAccessState. In embedded,
@@ -94,6 +119,12 @@ export function QuickHireGrid({ mode, onAfterHire }: QuickHireGridProps) {
       >
         {QUICK_HIRE_TEMPLATES.map(t => {
           const isExpanded = expandedId === t.id
+          // One-click hire always lands in the user's active workspace
+          // (see lib/use-hire-template.ts). The card preview surfaces
+          // that placement so there are no surprises.
+          const targetWorkspace = activeWorkspaceId
+            ? myWorkspaces.find(w => w.id === activeWorkspaceId)
+            : undefined
           return (
             <Box
               key={t.id}
@@ -110,6 +141,10 @@ export function QuickHireGrid({ mode, onAfterHire }: QuickHireGridProps) {
                 busy={isExpanded && busy}
                 error={isExpanded ? hireError : null}
                 onHire={() => hire(t)}
+                hireResult={hireResultByTemplate[t.id] ?? null}
+                targetWorkspace={targetWorkspace ?? null}
+                onOpenAgent={() => onOpenAgent(t)}
+                onHireAnother={() => onHireAnother(t.id)}
               />
             </Box>
           )
@@ -126,6 +161,10 @@ function TemplateCard({
   busy,
   error,
   onHire,
+  hireResult,
+  targetWorkspace,
+  onOpenAgent,
+  onHireAnother,
 }: {
   template: AssistantTemplate
   expanded: boolean
@@ -133,6 +172,10 @@ function TemplateCard({
   busy: boolean
   error: string | null
   onHire: () => void
+  hireResult: HireResult | null
+  targetWorkspace: Workspace | null
+  onOpenAgent: () => void
+  onHireAnother: () => void
 }) {
   const cardStyle: CSSProperties = expanded
     ? { borderColor: 'var(--accent-7)' }
@@ -166,13 +209,22 @@ function TemplateCard({
         </Box>
       </Flex>
 
-      {expanded && (
+      {expanded && hireResult && (
+        <SuccessBody
+          template={template}
+          hireResult={hireResult}
+          onOpenAgent={onOpenAgent}
+          onHireAnother={onHireAnother}
+        />
+      )}
+      {expanded && !hireResult && (
         <ExpandedBody
           template={template}
           onCancel={onToggle}
           onHire={onHire}
           busy={busy}
           error={error}
+          targetWorkspace={targetWorkspace}
         />
       )}
     </Card>
@@ -185,21 +237,38 @@ function ExpandedBody({
   onHire,
   busy,
   error,
+  targetWorkspace,
 }: {
   template: AssistantTemplate
   onCancel: () => void
   onHire: () => void
   busy: boolean
   error: string | null
+  targetWorkspace: Workspace | null
 }) {
   const apps = appsFromGrants(template.defaultGrants)
   const sampleTasks = extractSampleTasks(template.defaultInstructions)
+  // Quick-hire always lands in the user's active workspace — see
+  // lib/use-hire-template.ts. The line tells the user where exactly
+  // so there's no surprise after the click.
+  const wsCopy = targetWorkspace
+    ? { line: `In your ${targetWorkspace.name} workspace.` }
+    : null
 
   return (
     <Box mt="4">
       <Text as="p" size="2" color="gray">
         {template.longPitch}
       </Text>
+
+      {wsCopy && (
+        <Box mt="4">
+          <Caption>Where they'll work</Caption>
+          <Box mt="2">
+            <Text as="div" size="2">{wsCopy.line}</Text>
+          </Box>
+        </Box>
+      )}
 
       {apps.length > 0 && (
         <Box mt="4">
@@ -265,6 +334,42 @@ function ExpandedBody({
               Hire {template.defaultName}
             </>
           )}
+        </Button>
+      </Flex>
+    </Box>
+  )
+}
+
+// Post-hire success state inside the expanded card. Shows where the
+// agent landed and offers two next steps: open the agent or hire
+// another from a fresh card.
+function SuccessBody({
+  template,
+  hireResult,
+  onOpenAgent,
+  onHireAnother,
+}: {
+  template: AssistantTemplate
+  hireResult: HireResult
+  onOpenAgent: () => void
+  onHireAnother: () => void
+}) {
+  const { workspace } = hireResult
+  return (
+    <Box mt="4">
+      <Banner tone="success" title={`Hired ${template.defaultName}.`}>
+        <Text as="span" size="2">
+          They're on duty in your <strong>{workspace.name}</strong> workspace.
+          {' '}You can switch to it from the sidebar at any time.
+        </Text>
+      </Banner>
+      <Flex justify="end" gap="2" mt="4">
+        <Button variant="soft" color="gray" onClick={onHireAnother}>
+          Hire another
+        </Button>
+        <Button variant="solid" onClick={onOpenAgent}>
+          Open {template.defaultName}
+          <IconArrowRight />
         </Button>
       </Flex>
     </Box>

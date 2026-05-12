@@ -309,12 +309,12 @@ function ReviewCard({
   const hasLeadingSteps = getLeadingSteps(run).length > 0
 
   return (
-    <div className="card" style={{ borderColor: 'var(--amber-a6)' }}>
+    <div className="card" style={{ borderColor: 'var(--orange-a6)' }}>
       <Flex justify="end" px="4" pt="3">
         <Button
           size="1"
           variant="ghost"
-          color="green"
+          color="jade"
           onClick={onQuickApprove}
           disabled={busy}
           title="Approve without adding a reason"
@@ -336,7 +336,7 @@ function ReviewCard({
 
         <Section title="What happens if you approve">
           <Flex align="start" gap="2">
-            <Box style={{ color: 'var(--green-11)', paddingTop: 2 }}>
+            <Box style={{ color: 'var(--jade-11)', paddingTop: 2 }}>
               <IconPlay className="ic ic--sm" />
             </Box>
             <Text as="p" size="2" style={{ lineHeight: 1.6 }}>
@@ -365,7 +365,7 @@ function ReviewCard({
       >
         <Button
           size="3"
-          color="green"
+          color="jade"
           onClick={onApprove}
           style={{ flex: '1 1 200px', minWidth: 200 }}
         >
@@ -434,8 +434,8 @@ function DecisionConfirmCard({
   onConfirm: () => void
 }) {
   const isApprove = decision === 'approved'
-  const color = isApprove ? 'var(--green-11)' : 'var(--red-11)'
-  const border = isApprove ? 'var(--green-a6)' : 'var(--red-a6)'
+  const color = isApprove ? 'var(--jade-11)' : 'var(--red-11)'
+  const border = isApprove ? 'var(--jade-a6)' : 'var(--red-a6)'
 
   return (
     <div className="card" style={{ borderColor: border }}>
@@ -491,7 +491,7 @@ function DecisionConfirmCard({
           <IconArrowLeft className="ic ic--sm" /> Back
         </Button>
         <Button
-          color={isApprove ? 'green' : 'red'}
+          color={isApprove ? 'jade' : 'red'}
           onClick={onConfirm}
           disabled={!canSubmit}
           size="3"
@@ -513,7 +513,7 @@ function DecisionConfirmCard({
 
 function ResolvedCard({ approval }: { approval: ApprovalRequest }) {
   const toneColor =
-    approval.status === 'approved' ? 'var(--green-11)' :
+    approval.status === 'approved' ? 'var(--jade-11)' :
     approval.status === 'rejected' ? 'var(--red-11)' :
     'var(--gray-10)'
   const iconTone =
@@ -525,7 +525,7 @@ function ResolvedCard({ approval }: { approval: ApprovalRequest }) {
       className="card"
       style={{
         borderColor:
-          approval.status === 'approved' ? 'var(--green-a6)' :
+          approval.status === 'approved' ? 'var(--jade-a6)' :
           approval.status === 'rejected' ? 'var(--red-a6)' :
           undefined,
       }}
@@ -596,7 +596,7 @@ function ResumeBanner({
         tone="info"
         icon={<IconPlay className="ic" />}
         title={`Action ${statusLabel(approval.status).toLowerCase()} · agent resuming`}
-        action={<Badge color="blue" variant="soft" radius="small" size="1">running</Badge>}
+        action={<Badge color="cyan" variant="soft" radius="small" size="1">running</Badge>}
       >
         Your decision is being applied. Waiting for the activity to finish…
       </Banner>
@@ -704,10 +704,10 @@ function StepLine({ step }: { step: RunStep }) {
 }
 
 function stepTone(status: string): { bg: string; fg: string } {
-  if (status === 'ok') return { bg: 'var(--green-a4)', fg: 'var(--green-11)' }
+  if (status === 'ok') return { bg: 'var(--jade-a4)', fg: 'var(--jade-11)' }
   if (status === 'failed') return { bg: 'var(--red-a4)', fg: 'var(--red-11)' }
-  if (status === 'blocked') return { bg: 'var(--amber-a4)', fg: 'var(--amber-11)' }
-  if (status === 'pending') return { bg: 'var(--blue-a4)', fg: 'var(--blue-11)' }
+  if (status === 'blocked') return { bg: 'var(--orange-a4)', fg: 'var(--orange-11)' }
+  if (status === 'pending') return { bg: 'var(--cyan-a4)', fg: 'var(--cyan-11)' }
   return { bg: 'var(--gray-a4)', fg: 'var(--gray-11)' }
 }
 

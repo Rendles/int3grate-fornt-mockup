@@ -47,6 +47,12 @@ export interface AssistantTemplate {
   // Stored client-side and seeded into the chat via mock-only
   // CreateChatRequest.seed_assistant_message — see docs/backend-gaps.md.
   welcomeMessage: string
+  // Workspace this template belongs to by default. Resolved at hire time:
+  // if a workspace with this name exists, the new agent is assigned there;
+  // otherwise the workspace is auto-created (the user is added as a member,
+  // their current scope is NOT switched). `null` = no preset, the user picks
+  // their target workspace at hire time (Custom template).
+  defaultWorkspaceName: string | null
 }
 
 export const TEMPLATES: AssistantTemplate[] = [
@@ -80,6 +86,7 @@ You never make up information. If you don't know something about a prospect, ask
     initials: 'SA',
     welcomeMessage:
       "Hi — I'm your Sales Agent. I can scan your CRM for new leads, draft personalised intros for your approval, and follow up on prospects that go quiet. Want me to start with this week's inbound?",
+    defaultWorkspaceName: 'Sales',
   },
   {
     id: 'marketing',
@@ -107,6 +114,7 @@ Your job:
     initials: 'MA',
     welcomeMessage:
       "Hi — I'm your Marketing Agent. I can draft this week's newsletter in your brand voice, schedule social posts, and surface mentions worth a reply. Want me to put together a draft for review?",
+    defaultWorkspaceName: 'Marketing',
   },
   {
     id: 'reports',
@@ -133,6 +141,7 @@ Your job:
     initials: 'RA',
     welcomeMessage:
       "Hi — I'm your Reports Analyst. I read your numbers and summarise them in plain language, with comparisons to last period and anything that looks off. Want me to pull this week's snapshot?",
+    defaultWorkspaceName: 'Reports',
   },
   {
     id: 'support',
@@ -161,6 +170,7 @@ Your job:
     initials: 'CS',
     welcomeMessage:
       "Hi — I'm your Customer Support agent. I can read a customer's history, look up answers in your knowledge base, and draft replies for your approval. Want me to take a look at the open tickets?",
+    defaultWorkspaceName: 'Customer Support',
   },
   {
     id: 'finance',
@@ -189,6 +199,7 @@ Your job:
     initials: 'FH',
     welcomeMessage:
       "Hi — I'm your Finance Helper. I reconcile Stripe charges against QuickBooks, flag duplicates and refund-eligible cases, and prepare refunds for your approval — never on my own. Should I run this week's reconciliation?",
+    defaultWorkspaceName: 'Finance',
   },
   {
     id: 'operations',
@@ -217,6 +228,7 @@ Your job:
     initials: 'OH',
     welcomeMessage:
       "Hi — I'm your Operations Helper. I handle Okta and AWS access changes for new joiners and leavers, post Slack updates, and watch for stale entitlements. Want me to check who's still around but shouldn't be?",
+    defaultWorkspaceName: 'Operations',
   },
   {
     id: 'custom',
@@ -232,6 +244,7 @@ Your job:
     featured: false,
     initials: 'CW',
     welcomeMessage: '',
+    defaultWorkspaceName: null,
   },
 ]
 

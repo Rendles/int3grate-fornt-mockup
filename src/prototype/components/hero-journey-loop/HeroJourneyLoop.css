@@ -1,0 +1,1229 @@
+/* Hero-journey-loop scripted scene — self-contained styles.
+   Brand tokens inlined for portability.
+   Reference: docs/landing-colors-handoff.md (palette of record). */
+
+.hero-journey-loop,
+.hero-journey-loop *,
+.hero-journey-loop *::before,
+.hero-journey-loop *::after {
+  box-sizing: border-box;
+}
+
+.hero-journey-loop {
+  --hjl-bg: #05070A;
+  --hjl-panel: #0E1117;
+  --hjl-text: #F7F8FA;
+  --hjl-text-muted: #9499A3;
+  --hjl-text-faint: #6E737D;
+  --hjl-violet: #701DFD;
+  --hjl-cyan: #01C9FA;
+  --hjl-orange: #FD9C12;
+  --hjl-jade: #2EBE6F;
+  --hjl-jade-strong: #3DD68C;
+  --hjl-red: #E5484D;
+
+  font-family: Inter, ui-sans-serif, system-ui, -apple-system, "Segoe UI", sans-serif;
+  font-size: 13px;
+  line-height: 1.45;
+  letter-spacing: -0.005em;
+  color: var(--hjl-text);
+  display: inline-block;
+}
+
+.hero-journey-loop__stage {
+  width: 500px;
+  height: 600px;
+  background: var(--hjl-panel);
+  border-radius: 16px;
+  padding: 20px;
+  overflow: hidden;
+  position: relative;
+  box-shadow:
+    0 1px 0 rgba(255, 255, 255, 0.04) inset,
+    0 30px 80px rgba(0, 0, 0, 0.5);
+}
+
+/* ─── View stack (dashboard / wizard / chat / activity) ──────────────
+   Each view absolutely fills the stage's content area; visibility toggles
+   via the .hjl-view--visible class with a cross-fade. P5.1 only has the
+   dashboard view; others land in P5.2-P5.4. */
+
+.hjl-view {
+  position: absolute;
+  inset: 20px;
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 500ms ease;
+}
+
+.hjl-view--visible {
+  opacity: 1;
+}
+
+/* ─── Wizard view: template picker ──────────────────────────────────
+   Second surface of the journey. Vertical list of 4 starter templates.
+   In the phase machine (P5.6+) the synthetic cursor clicks the first
+   card (Sales) → press feedback → cross-fade to chat view. */
+
+.hjl-picker {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+  flex: 1;
+  min-height: 0;
+}
+
+.hjl-picker__header {
+  padding: 8px 2px 0;
+}
+
+.hjl-picker__eyebrow {
+  font-size: 9.5px;
+  font-weight: 600;
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+  color: var(--hjl-text-muted);
+  margin-bottom: 6px;
+}
+
+.hjl-picker__title {
+  font-size: 19px;
+  font-weight: 500;
+  letter-spacing: -0.015em;
+  color: var(--hjl-text);
+  margin: 0;
+  line-height: 1.25;
+}
+
+.hjl-picker__list {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.hjl-tpl {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 12px 14px;
+  background: rgba(255, 255, 255, 0.04);
+  border-radius: 10px;
+  min-height: 64px;
+  transition:
+    background 160ms ease,
+    transform 140ms ease;
+}
+
+.hjl-tpl--pressed {
+  transform: scale(0.985);
+  background: rgba(112, 29, 253, 0.22);
+}
+
+.hjl-tpl__avatar {
+  width: 36px;
+  height: 36px;
+  flex-shrink: 0;
+  border-radius: 8px;
+  background: linear-gradient(135deg, var(--hjl-violet), var(--hjl-cyan));
+  color: var(--hjl-text);
+  font-size: 12px;
+  font-weight: 600;
+  letter-spacing: 0.04em;
+  display: grid;
+  place-items: center;
+}
+
+.hjl-tpl__body {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.hjl-tpl__name {
+  font-size: 13px;
+  font-weight: 500;
+  color: var(--hjl-text);
+}
+
+.hjl-tpl__pitch {
+  font-size: 11.5px;
+  color: var(--hjl-text-muted);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+/* ─── Topbar (greeting + hire button) ──────────────────────────────── */
+
+.hjl-topbar {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.hjl-greeting {
+  display: flex;
+  align-items: baseline;
+  gap: 8px;
+  flex: 1;
+  min-width: 0;
+  font-size: 14px;
+  letter-spacing: -0.01em;
+}
+
+.hjl-greeting__primary {
+  font-weight: 500;
+  color: var(--hjl-text);
+}
+
+.hjl-greeting__divider {
+  color: var(--hjl-text-faint);
+}
+
+.hjl-greeting__secondary {
+  font-size: 12.5px;
+  color: var(--hjl-text-muted);
+}
+
+.hjl-hire {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  height: 30px;
+  padding: 0 12px 0 10px;
+  border-radius: 7px;
+  font-size: 12px;
+  font-weight: 500;
+  letter-spacing: -0.005em;
+  font-family: inherit;
+  cursor: pointer;
+  border: 0;
+  background: var(--hjl-violet);
+  color: #FFFFFF;
+  flex-shrink: 0;
+  transition:
+    background 140ms ease,
+    transform 140ms ease,
+    filter 140ms ease;
+}
+
+.hjl-hire--pressed {
+  transform: scale(0.96);
+  filter: brightness(1.15);
+}
+
+/* ─── KPI strip ─────────────────────────────────────────────────────── */
+
+.hjl-kpi {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 8px;
+  transition: opacity 320ms ease;
+}
+
+.hjl-kpi--dim {
+  opacity: 0.55;
+}
+
+.hjl-kpi__tile {
+  padding: 12px 14px 11px;
+  background: rgba(255, 255, 255, 0.04);
+  border-radius: 10px;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  min-width: 0;
+  position: relative;
+  overflow: hidden;
+  transition: background 380ms ease;
+}
+
+.hjl-kpi__tile--warn {
+  background: linear-gradient(180deg, rgba(253, 156, 18, 0.10), rgba(255, 255, 255, 0.04));
+}
+
+.hjl-kpi__tile--warn::before {
+  content: '';
+  position: absolute;
+  inset: 0 0 auto 0;
+  height: 2px;
+  background: var(--hjl-orange);
+  opacity: 0.75;
+}
+
+.hjl-kpi__tile--pulse::after {
+  content: '';
+  position: absolute;
+  top: 12px;
+  right: 12px;
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background: var(--hjl-orange);
+  animation: hjl-pulse-dot 1.8s ease-out infinite;
+}
+
+.hjl-kpi__tile--flash {
+  animation: hjl-flash 420ms ease;
+}
+
+@keyframes hjl-flash {
+  0%   { background-color: rgba(253, 156, 18, 0.22); }
+  100% { background-color: rgba(255, 255, 255, 0.04); }
+}
+
+.hjl-kpi__label {
+  font-size: 9.5px;
+  font-weight: 600;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--hjl-text-muted);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.hjl-kpi__value {
+  font-size: 22px;
+  font-weight: 500;
+  letter-spacing: -0.025em;
+  line-height: 1;
+  font-variant-numeric: tabular-nums;
+  color: var(--hjl-text);
+  transition: color 240ms ease;
+}
+
+.hjl-kpi__tile--warn .hjl-kpi__value {
+  color: var(--hjl-orange);
+}
+
+.hjl-kpi__caption {
+  font-size: 10px;
+  color: var(--hjl-text-faint);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+/* ─── Queue ─────────────────────────────────────────────────────────── */
+
+.hjl-queue {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  min-height: 0;
+  flex: 1;
+}
+
+.hjl-queue__head {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 0 2px 2px;
+}
+
+.hjl-queue__title {
+  font-size: 10px;
+  font-weight: 600;
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+  color: var(--hjl-text-muted);
+}
+
+.hjl-queue__count {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 18px;
+  height: 18px;
+  padding: 0 6px;
+  border-radius: 999px;
+  background: rgba(253, 156, 18, 0.20);
+  color: var(--hjl-orange);
+  font-size: 10px;
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+}
+
+/* ─── Queue row ─────────────────────────────────────────────────────── */
+
+.hjl-row {
+  background: rgba(255, 255, 255, 0.04);
+  border-radius: 10px;
+  padding: 12px 14px;
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+  overflow: hidden;
+  max-height: 220px;
+  transition:
+    background 320ms ease,
+    opacity 320ms ease,
+    max-height 480ms cubic-bezier(0.4, 0, 0.2, 1),
+    transform 240ms ease,
+    padding 380ms cubic-bezier(0.4, 0, 0.2, 1),
+    box-shadow 320ms ease;
+}
+
+.hjl-row--focal {
+  background: linear-gradient(180deg, rgba(253, 156, 18, 0.10), rgba(255, 255, 255, 0.045));
+}
+
+.hjl-row--expanded {
+  background: linear-gradient(180deg, rgba(253, 156, 18, 0.15), rgba(255, 255, 255, 0.06));
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.32);
+}
+
+.hjl-row--success {
+  background: linear-gradient(180deg, rgba(46, 190, 111, 0.14), rgba(255, 255, 255, 0.045));
+}
+
+.hjl-row--dim {
+  opacity: 0.4;
+}
+
+.hjl-row--hidden {
+  opacity: 0;
+  max-height: 0;
+  padding-top: 0;
+  padding-bottom: 0;
+  pointer-events: none;
+}
+
+.hjl-row--pressed {
+  transform: scale(0.99);
+}
+
+.hjl-row__head {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  min-width: 0;
+}
+
+.hjl-row__avatar {
+  width: 32px;
+  height: 32px;
+  flex-shrink: 0;
+  border-radius: 50%;
+  background: linear-gradient(135deg, var(--hjl-violet), var(--hjl-cyan));
+  color: var(--hjl-text);
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.04em;
+  display: grid;
+  place-items: center;
+}
+
+.hjl-row--focal .hjl-row__avatar {
+  animation: hjl-pulse-dot 1.8s ease-out infinite;
+}
+
+.hjl-row__head-text {
+  min-width: 0;
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.hjl-row__caption {
+  font-size: 10.5px;
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  min-width: 0;
+}
+
+.hjl-row__name {
+  font-weight: 500;
+  color: var(--hjl-text);
+}
+
+.hjl-row__sep {
+  color: var(--hjl-text-faint);
+}
+
+.hjl-row__ago {
+  color: var(--hjl-text-muted);
+}
+
+.hjl-row__action {
+  font-size: 13.5px;
+  font-weight: 500;
+  letter-spacing: -0.008em;
+  color: var(--hjl-text);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  min-width: 0;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  transition: color 240ms ease;
+}
+
+.hjl-row--success .hjl-row__action {
+  color: var(--hjl-jade-strong);
+}
+
+.hjl-row__success-icon {
+  display: inline-grid;
+  place-items: center;
+  width: 18px;
+  height: 18px;
+  border-radius: 50%;
+  background: rgba(46, 190, 111, 0.18);
+  color: var(--hjl-jade-strong);
+  flex-shrink: 0;
+}
+
+.hjl-row__indicator {
+  flex-shrink: 0;
+  display: flex;
+  align-items: center;
+}
+
+.hjl-row__pill {
+  display: none;
+  align-items: center;
+  height: 20px;
+  padding: 0 8px;
+  border-radius: 999px;
+  font-size: 9px;
+  font-weight: 600;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+}
+
+.hjl-row__pill--pending {
+  color: var(--hjl-orange);
+  background: rgba(253, 156, 18, 0.20);
+}
+
+.hjl-row__pill--done {
+  color: var(--hjl-jade-strong);
+  background: rgba(46, 190, 111, 0.22);
+}
+
+.hjl-row__arrow {
+  display: inline-grid;
+  place-items: center;
+  color: var(--hjl-text-muted);
+  opacity: 0.8;
+}
+
+.hjl-row--focal    .hjl-row__pill--pending,
+.hjl-row--expanded .hjl-row__pill--pending {
+  display: inline-flex;
+}
+
+.hjl-row--success .hjl-row__pill--done {
+  display: inline-flex;
+}
+
+.hjl-row--focal    .hjl-row__arrow,
+.hjl-row--expanded .hjl-row__arrow,
+.hjl-row--success  .hjl-row__arrow {
+  display: none;
+}
+
+/* Body + footer collapse unless expanded. */
+.hjl-row__body,
+.hjl-row__footer {
+  max-height: 0;
+  opacity: 0;
+  overflow: hidden;
+  margin-top: 0;
+  transition:
+    max-height 380ms cubic-bezier(0.4, 0, 0.2, 1),
+    opacity 240ms ease,
+    margin-top 380ms ease;
+}
+
+.hjl-row--expanded .hjl-row__body {
+  max-height: 30px;
+  opacity: 1;
+  margin-top: 8px;
+}
+
+.hjl-row--expanded .hjl-row__footer {
+  max-height: 44px;
+  opacity: 1;
+  margin-top: 10px;
+}
+
+.hjl-row__context {
+  font-size: 11.5px;
+  color: var(--hjl-text-muted);
+}
+
+.hjl-row__footer {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 6px;
+}
+
+/* ─── Soft buttons (Approve / Reject) ──────────────────────────────── */
+
+.hjl-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  height: 32px;
+  padding: 0 12px;
+  border-radius: 6px;
+  font-size: 12px;
+  font-weight: 500;
+  letter-spacing: -0.005em;
+  font-family: inherit;
+  cursor: pointer;
+  border: 0;
+  transition:
+    background 140ms ease,
+    transform 140ms ease,
+    filter 140ms ease;
+}
+
+.hjl-btn--approve {
+  color: var(--hjl-jade-strong);
+  background: rgba(46, 190, 111, 0.20);
+}
+
+.hjl-btn--reject {
+  color: #FF8A8E;
+  background: rgba(229, 72, 77, 0.18);
+}
+
+.hjl-btn--pressed {
+  transform: scale(0.965);
+  filter: brightness(1.18);
+}
+
+/* ─── Chat view: agent header ──────────────────────────────────────── */
+
+.hjl-header {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 10px 12px;
+  background: rgba(255, 255, 255, 0.04);
+  border-radius: 10px;
+  flex-shrink: 0;
+}
+
+.hjl-header__avatar {
+  width: 32px;
+  height: 32px;
+  flex-shrink: 0;
+  border-radius: 50%;
+  background: linear-gradient(135deg, var(--hjl-violet), var(--hjl-cyan));
+  color: var(--hjl-text);
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.04em;
+  display: grid;
+  place-items: center;
+}
+
+.hjl-header__id {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.hjl-header__name {
+  font-size: 13.5px;
+  font-weight: 500;
+  letter-spacing: -0.008em;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.hjl-header__caption {
+  font-size: 10.5px;
+  color: var(--hjl-text-muted);
+}
+
+.hjl-header__dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: var(--hjl-jade);
+  flex-shrink: 0;
+  box-shadow: 0 0 0 0 rgba(46, 190, 111, 0.4);
+  animation: hjl-pulse-jade 2.4s ease-out infinite;
+}
+
+@keyframes hjl-pulse-jade {
+  0% {
+    box-shadow: 0 0 0 0 rgba(46, 190, 111, 0.45);
+  }
+  60% {
+    box-shadow: 0 0 0 6px rgba(46, 190, 111, 0);
+  }
+  100% {
+    box-shadow: 0 0 0 0 rgba(46, 190, 111, 0);
+  }
+}
+
+/* ─── Chat area ─────────────────────────────────────────────────────── */
+
+.hjl-chat {
+  flex: 1;
+  min-height: 0;
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  padding: 4px 0;
+}
+
+/* ─── Message bubble ────────────────────────────────────────────────── */
+
+.hjl-msg {
+  display: flex;
+  align-items: flex-end;
+  gap: 8px;
+  max-width: 88%;
+  opacity: 0;
+  transform: translateY(8px);
+  transition:
+    opacity 280ms ease,
+    transform 360ms cubic-bezier(0.25, 0.1, 0.25, 1);
+}
+
+.hjl-msg--visible {
+  opacity: 1;
+  transform: translateY(0);
+}
+
+.hjl-msg--agent {
+  align-self: flex-start;
+}
+
+.hjl-msg--user {
+  align-self: flex-end;
+  max-width: 78%;
+}
+
+.hjl-msg__avatar {
+  width: 24px;
+  height: 24px;
+  flex-shrink: 0;
+  border-radius: 50%;
+  background: linear-gradient(135deg, var(--hjl-violet), var(--hjl-cyan));
+  color: var(--hjl-text);
+  font-size: 9.5px;
+  font-weight: 600;
+  letter-spacing: 0.04em;
+  display: grid;
+  place-items: center;
+  margin-bottom: 2px;
+}
+
+.hjl-msg__bubble {
+  padding: 10px 13px;
+  border-radius: 12px;
+  font-size: 12.5px;
+  line-height: 1.5;
+  color: var(--hjl-text);
+}
+
+.hjl-msg--agent .hjl-msg__bubble {
+  background: rgba(255, 255, 255, 0.05);
+  border-top-left-radius: 4px;
+}
+
+.hjl-msg--user .hjl-msg__bubble {
+  background: rgba(112, 29, 253, 0.20);
+  color: var(--hjl-text);
+  border-top-right-radius: 4px;
+}
+
+/* ─── Agent response body ──────────────────────────────────────────── */
+/* Lives inside an agent MessageBubble as children. Lines cascade in
+   after the bubble's own fade-in (280ms) finishes — staggered 160ms. */
+
+.hjl-resp__intro {
+  margin-bottom: 6px;
+  opacity: 0;
+  transform: translateY(4px);
+}
+
+.hjl-resp__list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+
+.hjl-resp__list li {
+  position: relative;
+  padding: 1px 0 1px 14px;
+  font-size: 12px;
+  color: var(--hjl-text);
+  opacity: 0;
+  transform: translateY(4px);
+}
+
+.hjl-resp__list li::before {
+  content: '•';
+  position: absolute;
+  left: 2px;
+  top: 1px;
+  color: var(--hjl-text-faint);
+}
+
+/* Cascade tightened from 280→160 ms stagger to 240→140 ms stagger so the
+   last bullet ends at 240 + 4×140 + 320 = 1120 ms, fitting inside the
+   1200 ms `agent-responds` phase with 80 ms of buffer before the CTA
+   fades in. */
+.hjl-msg--visible .hjl-resp__intro {
+  animation: hjl-line-in 320ms ease 240ms forwards;
+}
+.hjl-msg--visible .hjl-resp__list li:nth-child(1) {
+  animation: hjl-line-in 320ms ease 380ms forwards;
+}
+.hjl-msg--visible .hjl-resp__list li:nth-child(2) {
+  animation: hjl-line-in 320ms ease 520ms forwards;
+}
+.hjl-msg--visible .hjl-resp__list li:nth-child(3) {
+  animation: hjl-line-in 320ms ease 660ms forwards;
+}
+.hjl-msg--visible .hjl-resp__list li:nth-child(4) {
+  animation: hjl-line-in 320ms ease 800ms forwards;
+}
+
+@keyframes hjl-line-in {
+  to { opacity: 1; transform: translateY(0); }
+}
+
+/* ─── Typing indicator ─────────────────────────────────────────────── */
+
+.hjl-typing {
+  display: flex;
+  align-items: flex-end;
+  gap: 8px;
+  align-self: flex-start;
+  opacity: 0;
+  transform: translateY(8px);
+  transition:
+    opacity 220ms ease,
+    transform 320ms cubic-bezier(0.25, 0.1, 0.25, 1);
+}
+
+.hjl-typing--visible {
+  opacity: 1;
+  transform: translateY(0);
+}
+
+.hjl-typing__avatar {
+  width: 24px;
+  height: 24px;
+  flex-shrink: 0;
+  border-radius: 50%;
+  background: linear-gradient(135deg, var(--hjl-violet), var(--hjl-cyan));
+  color: var(--hjl-text);
+  font-size: 9.5px;
+  font-weight: 600;
+  letter-spacing: 0.04em;
+  display: grid;
+  place-items: center;
+  margin-bottom: 2px;
+}
+
+.hjl-typing__bubble {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 11px 14px;
+  background: rgba(255, 255, 255, 0.05);
+  border-radius: 12px;
+  border-top-left-radius: 4px;
+}
+
+.hjl-typing__dot {
+  width: 5px;
+  height: 5px;
+  border-radius: 50%;
+  background: var(--hjl-text-muted);
+  animation: hjl-typing-bounce 1.2s ease-in-out infinite;
+}
+
+.hjl-typing__dot:nth-child(2) { animation-delay: 0.15s; }
+.hjl-typing__dot:nth-child(3) { animation-delay: 0.30s; }
+
+@keyframes hjl-typing-bounce {
+  0%, 60%, 100% {
+    opacity: 0.35;
+    transform: translateY(0);
+  }
+  30% {
+    opacity: 1;
+    transform: translateY(-2px);
+  }
+}
+
+/* ─── Action CTA pill ──────────────────────────────────────────────── */
+
+.hjl-cta {
+  padding-left: 32px; /* align with agent bubble (24 avatar + 8 gap) */
+  opacity: 0;
+  transform: translateY(8px);
+  transition:
+    opacity 240ms ease,
+    transform 360ms cubic-bezier(0.25, 0.1, 0.25, 1);
+}
+
+.hjl-cta--visible {
+  opacity: 1;
+  transform: translateY(0);
+}
+
+.hjl-cta__pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 12px;
+  background: rgba(46, 190, 111, 0.20);
+  color: var(--hjl-jade-strong);
+  border-radius: 8px;
+  font-size: 12px;
+  font-weight: 500;
+  letter-spacing: -0.005em;
+}
+
+.hjl-cta__dot {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: var(--hjl-jade-strong);
+  flex-shrink: 0;
+}
+
+/* ─── Input bar ─────────────────────────────────────────────────────── */
+
+.hjl-input {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 8px 8px 14px;
+  background: rgba(255, 255, 255, 0.04);
+  border-radius: 10px;
+  flex-shrink: 0;
+}
+
+.hjl-input__field {
+  flex: 1;
+  min-width: 0;
+  min-height: 28px;
+  display: flex;
+  align-items: center;
+  font-size: 12.5px;
+  line-height: 1.4;
+  color: var(--hjl-text);
+  white-space: nowrap;
+  overflow: hidden;
+}
+
+.hjl-input__placeholder {
+  color: var(--hjl-text-faint);
+}
+
+/* Text always in DOM; CSS reveals it via max-width. On the typing phase,
+   a steps() keyframe gives the typewriter feel. */
+.hjl-input__text {
+  display: inline-block;
+  overflow: hidden;
+  white-space: nowrap;
+  max-width: 0;
+  vertical-align: middle;
+}
+
+.hjl-input--typing .hjl-input__text {
+  animation: hjl-input-reveal 1800ms steps(26, end) forwards;
+}
+
+.hjl-input--full .hjl-input__text {
+  max-width: 30em;
+}
+
+@keyframes hjl-input-reveal {
+  from { max-width: 0; }
+  to { max-width: 30em; }
+}
+
+.hjl-input__caret {
+  display: inline-block;
+  width: 1.5px;
+  height: 14px;
+  margin-left: 1px;
+  background: var(--hjl-text);
+  vertical-align: middle;
+  animation: hjl-caret 1s steps(2, start) infinite;
+}
+
+@keyframes hjl-caret {
+  0%, 50% { opacity: 1; }
+  51%, 100% { opacity: 0; }
+}
+
+.hjl-input--empty .hjl-input__text,
+.hjl-input--empty .hjl-input__caret {
+  display: none;
+}
+
+.hjl-input--typing .hjl-input__placeholder,
+.hjl-input--full .hjl-input__placeholder {
+  display: none;
+}
+
+.hjl-input__send {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 32px;
+  height: 32px;
+  flex-shrink: 0;
+  border-radius: 8px;
+  cursor: pointer;
+  border: 0;
+  background: rgba(255, 255, 255, 0.06);
+  color: var(--hjl-text-muted);
+  transition:
+    background 160ms ease,
+    color 160ms ease,
+    transform 140ms ease,
+    filter 140ms ease;
+}
+
+.hjl-input__send--ready {
+  background: rgba(112, 29, 253, 0.22);
+  color: var(--hjl-text);
+}
+
+.hjl-input__send--pressed {
+  transform: scale(0.94);
+  filter: brightness(1.18);
+}
+
+/* ─── Activity view: recent activity ticker ────────────────────────── */
+
+.hjl-activity {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  flex: 1;
+  min-height: 0;
+}
+
+.hjl-activity__head {
+  display: flex;
+  align-items: baseline;
+  gap: 10px;
+  padding: 4px 2px 0;
+}
+
+.hjl-activity__eyebrow {
+  font-size: 9.5px;
+  font-weight: 600;
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+  color: var(--hjl-text-muted);
+}
+
+.hjl-activity__hint {
+  font-size: 11px;
+  color: var(--hjl-text-faint);
+}
+
+.hjl-activity__list {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.hjl-act {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 10px 14px;
+  background: rgba(255, 255, 255, 0.04);
+  border-radius: 10px;
+  min-height: 56px;
+  transition: background 220ms ease;
+}
+
+.hjl-act--fresh {
+  background: linear-gradient(180deg, rgba(1, 201, 250, 0.10), rgba(255, 255, 255, 0.045));
+}
+
+/* Brief cyan flash on the fresh row when the activity view becomes
+   visible. Scoped to `.hjl-view--activity.hjl-view--visible` so it
+   re-fires every time the activity beat plays. Settles back to the
+   default tint above. */
+.hjl-view--activity.hjl-view--visible .hjl-act--fresh {
+  animation: hjl-fresh-flash 1000ms ease-out;
+}
+
+@keyframes hjl-fresh-flash {
+  0% {
+    background: linear-gradient(180deg, rgba(1, 201, 250, 0.32), rgba(255, 255, 255, 0.04));
+  }
+  100% {
+    background: linear-gradient(180deg, rgba(1, 201, 250, 0.10), rgba(255, 255, 255, 0.045));
+  }
+}
+
+.hjl-act__avatar {
+  width: 28px;
+  height: 28px;
+  flex-shrink: 0;
+  border-radius: 50%;
+  background: linear-gradient(135deg, var(--hjl-violet), var(--hjl-cyan));
+  color: var(--hjl-text);
+  font-size: 10px;
+  font-weight: 600;
+  letter-spacing: 0.04em;
+  display: grid;
+  place-items: center;
+}
+
+.hjl-act__body {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.hjl-act__agent {
+  font-size: 12px;
+  font-weight: 500;
+  color: var(--hjl-text);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.hjl-act__action {
+  font-size: 11.5px;
+  color: var(--hjl-text-muted);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.hjl-act__ago {
+  flex-shrink: 0;
+  font-size: 10.5px;
+  color: var(--hjl-text-faint);
+  font-variant-numeric: tabular-nums;
+}
+
+.hjl-act--fresh .hjl-act__ago {
+  color: var(--hjl-cyan);
+}
+
+/* ─── Shared pulse keyframe ────────────────────────────────────────── */
+
+@keyframes hjl-pulse-dot {
+  0% {
+    box-shadow: 0 0 0 0 rgba(253, 156, 18, 0.55);
+  }
+  70% {
+    box-shadow: 0 0 0 8px rgba(253, 156, 18, 0);
+  }
+  100% {
+    box-shadow: 0 0 0 0 rgba(253, 156, 18, 0);
+  }
+}
+
+/* ─── Synthetic cursor ─────────────────────────────────────────────── */
+
+.hjl-cursor {
+  position: absolute;
+  left: 0;
+  top: 0;
+  pointer-events: none;
+  z-index: 10;
+  transform: translate3d(var(--hjl-cursor-x, 0px), var(--hjl-cursor-y, 0px), 0);
+  filter: drop-shadow(0 2px 3px rgba(0, 0, 0, 0.55));
+  /* Glide between phase targets. The shortest cursor-move phase in
+     phases.ts is `cursor-to-send` at 600 ms; we set the transition
+     just under that so the cursor reaches its target before the next
+     phase fires. For 1000–1400 ms phases the glide finishes early and
+     the cursor parks at the target — acceptable. Phases that re-apply
+     the same coords (e.g. expand-pending after cursor-to-pending-row)
+     skip the transition because the custom property is unchanged. */
+  transition: transform 0.58s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+/* ─── Static mode: small viewport OR reduced motion ────────────────── */
+
+@media (max-width: 640px), (prefers-reduced-motion: reduce) {
+  .hjl-cursor {
+    display: none;
+  }
+
+  .hjl-view,
+  .hjl-kpi,
+  .hjl-kpi__tile,
+  .hjl-row,
+  .hjl-row__body,
+  .hjl-row__footer,
+  .hjl-btn,
+  .hjl-hire,
+  .hjl-tpl,
+  .hjl-msg,
+  .hjl-typing,
+  .hjl-cta,
+  .hjl-input__send,
+  .hjl-act,
+  .hjl-row__action {
+    transition: opacity 220ms ease, background 220ms ease;
+    transform: none;
+  }
+
+  .hjl-row,
+  .hjl-row--pressed,
+  .hjl-btn--pressed,
+  .hjl-hire--pressed,
+  .hjl-tpl--pressed,
+  .hjl-input__send--pressed {
+    transform: none;
+  }
+
+  .hjl-kpi__tile--pulse::after,
+  .hjl-row--focal .hjl-row__avatar,
+  .hjl-header__dot,
+  .hjl-input__caret,
+  .hjl-typing__dot {
+    animation: none;
+  }
+
+  .hjl-kpi__tile--flash,
+  .hjl-view--activity.hjl-view--visible .hjl-act--fresh {
+    animation: none;
+  }
+
+  /* Response cascade collapses to a single fade. */
+  .hjl-msg--visible .hjl-resp__intro,
+  .hjl-msg--visible .hjl-resp__list li {
+    animation: none;
+    opacity: 1;
+    transform: none;
+  }
+}

@@ -206,6 +206,10 @@ export type RunStepType =
   | 'memory_write'
   | 'approval_gate'
   | 'validation'
+  // Mock-only — emitted when one agent asks another inside a run. Surfaces
+  // on /sandbox/team-map. Backend doesn't emit this kind today; see
+  // docs/backend-gaps.md § 1.16.
+  | 'agent_call'
 
 export interface RunStep {
   id: string
@@ -439,16 +443,15 @@ export interface SpendDashboard {
   items: SpendRow[]
 }
 
-// ─────────────────────────────────────────────── Workspace (mock-only)
+// ─────────────────────────────────────────────── Workspace
 //
-// Workspace = «team inside a company» — a UI-only context container
-// that scopes which agents / approvals / activity / costs the user
-// sees. NOT in docs/gateway.yaml — no backend endpoints exist for any
-// of these shapes (catalogued in docs/backend-gaps.md § 1.15).
-//
-// Agent → Workspace association is held in a side-table in fixtures
-// (agentWorkspace: Record<agent_id, workspace_id>) so that the Agent
-// type itself stays 1:1 with spec.
+// Workspace ≡ backend `domain` (see docs/handoff-prep.md § 0.1) — the
+// UI-level container scoping which agents / approvals / activity /
+// costs the user sees. Agent → Workspace association lives directly
+// on `Agent.domain_id` (the spec field; no side-table). The Workspace
+// schema itself isn't in docs/gateway.yaml yet — see § 1.15 of
+// docs/backend-gaps.md for what's still missing on the backend (CRUD
+// endpoints, members, PATCH /agents/{id}).
 
 export interface Workspace {
   id: string
@@ -476,3 +479,33 @@ export interface CreateWorkspaceRequest {
 }
 
 export type UpdateWorkspaceRequest = Partial<CreateWorkspaceRequest>
+
+// ─────────────────────────────────────────────── Handoff (mock-only)
+//
+// Recorded when one agent asks another for help inside a run. Surfaces on
+// /sandbox/team-map as edges between agent cards. NOT in docs/gateway.yaml —
+// no backend behavior exists today; catalogued in docs/backend-gaps.md § 1.16.
+//
+// `workspace_id` is denormalized for filter-cascade convenience. The real
+// backend would derive it via the agent (which itself doesn't carry
+// workspace_id in spec — see backend-gaps § 1.15). Lives here only as long
+// as the surface is mock-only.
+
+export type HandoffStatus = 'pending' | 'answered' | 'timed_out' | 'declined'
+
+export interface Handoff {
+  id: string
+  run_id: string
+  from_agent_id: string
+  to_agent_id: string
+  summary: string
+  status: HandoffStatus
+  created_at: string
+  resolved_at: string | null
+  workspace_id: string
+}
+
+export interface HandoffList {
+  items: Handoff[]
+  total: number
+}

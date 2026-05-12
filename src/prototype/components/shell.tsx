@@ -48,6 +48,11 @@ export function Sidebar() {
   const { path } = useRouter()
   const [pendingApprovals, setPendingApprovals] = useState<number>(0)
 
+  // The badge counts pending approvals across ALL user memberships,
+  // matching the default scope of every list screen (filter == [] →
+  // union of memberships). We omit `workspace_ids` so the api falls
+  // back to the user's full membership list — see lib/api.ts and
+  // docs/plans/workspaces-redesign-spec.md § 9.
   useEffect(() => {
     api.listApprovals({ status: 'pending' }).then(list => setPendingApprovals(list.total))
   }, [])
@@ -64,7 +69,7 @@ export function Sidebar() {
       badge: pendingApprovals > 0 ? { count: pendingApprovals, tone: 'warn' } : undefined,
     },
     { key: 'activity', label: 'Activity', to: '/activity', icon: <IconRun /> },
-    { key: 'assistants', label: 'Team', to: '/agents', icon: <IconAgent /> },
+    { key: 'assistants', label: 'Agents', to: '/agents', icon: <IconAgent /> },
     // Apps nav item hidden in MVP — per-agent permissions cover the same need.
     // See docs/handoff-prep.md (Apps hide entry). Restore together with the
     // /apps route in index.tsx when re-enabling.
@@ -80,6 +85,15 @@ export function Sidebar() {
       icon: <IconAgent />,
       badge: { count: 'preview', tone: 'muted' },
       dividerAbove: true,
+    },
+    {
+      key: 'team-map',
+      label: 'Team Map',
+      to: '/sandbox/team-map',
+      icon: <IconAgent />,
+      badge: { count: 'preview', tone: 'muted' },
+      // dividerAbove not needed — team-bridge already provides the sandbox
+      // section divider.
     },
     // Settings is hidden in MVP; the Audit log was extracted into its own
     // top-level admin route. See docs/handoff-prep.md (Settings hide entry).
@@ -138,7 +152,7 @@ export function Sidebar() {
               <Text as="span" size="2">{item.label}</Text>
               {item.badge && (
                 <Badge
-                  color={item.badge.tone === 'warn' ? 'amber' : item.badge.tone === 'muted' ? 'gray' : 'blue'}
+                  color={item.badge.tone === 'warn' ? 'orange' : item.badge.tone === 'muted' ? 'gray' : 'cyan'}
                   variant={item.badge.tone === 'muted' ? 'outline' : 'soft'}
                   radius="full"
                   size="1"
@@ -303,7 +317,7 @@ export function AppShell({
 // ─── DevModeMenu ────────────────────────────────────────────────────────
 // Topbar dropdown for forcing every read endpoint into a synthetic state
 // (empty / loading / error). Session-only — refresh resets to 'real'.
-// Trigger glows amber when a non-real mode is active so it's never invisible
+// Trigger glows orange when a non-real mode is active so it's never invisible
 // that the data on screen is fake.
 
 const DEV_MODES: { id: DevMode; label: string; hint: string }[] = [
@@ -322,7 +336,7 @@ function DevModeMenu() {
       <DropdownMenu.Trigger>
         <IconButton
           variant={isActive ? 'soft' : 'ghost'}
-          color={isActive ? 'amber' : undefined}
+          color={isActive ? 'orange' : undefined}
           size="1"
           title={`Dev: forcing ${current?.label.toLowerCase() ?? 'real'} state`}
           aria-label="Dev mode menu"

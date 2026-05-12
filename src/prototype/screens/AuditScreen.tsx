@@ -27,10 +27,10 @@ const STEP_TYPE_LABEL: Record<string, string> = {
 type HistorySource = 'all' | 'runs' | 'chats'
 const HISTORY_SOURCES: HistorySource[] = ['all', 'runs', 'chats']
 
-function historyStatusTone(status: string): 'green' | 'amber' | 'red' | 'cyan' | 'gray' {
-  if (status === 'ok' || status === 'completed') return 'green'
+function historyStatusTone(status: string): 'jade' | 'orange' | 'red' | 'cyan' | 'gray' {
+  if (status === 'ok' || status === 'completed') return 'jade'
   if (status === 'failed') return 'red'
-  if (status === 'pending' || status === 'blocked') return 'amber'
+  if (status === 'pending' || status === 'blocked') return 'orange'
   if (status === 'running') return 'cyan'
   return 'gray'
 }
@@ -129,7 +129,7 @@ function AuditTable() {
               type="button"
               size="2"
               variant="soft"
-              color={isActive ? 'blue' : 'gray'}
+              color={isActive ? 'cyan' : 'gray'}
               onClick={() => { setSource(s); setPage(0) }}
             >
               <span style={{ textTransform: 'capitalize' }}>{s}</span>
@@ -183,12 +183,12 @@ function AuditTable() {
                 <Text as="div" size="1" color="gray">{absTime(e.created_at)}</Text>
                 {e.run_id && (
                   <Link to={`/activity/${e.run_id}`}>
-                    <Text size="1" color="blue">activity {shortRef(e.run_id)}</Text>
+                    <Text size="1" color="cyan">activity {shortRef(e.run_id)}</Text>
                   </Link>
                 )}
                 {e.chat_id && (
                   <Link to={`/chats/${e.chat_id}`}>
-                    <Text size="1" color="blue">chat {shortRef(e.chat_id)}</Text>
+                    <Text size="1" color="cyan">chat {shortRef(e.chat_id)}</Text>
                   </Link>
                 )}
               </Box>

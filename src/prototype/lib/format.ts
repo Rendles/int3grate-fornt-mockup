@@ -1,3 +1,5 @@
+import { workspaces as fxWorkspaces } from './fixtures'
+
 export function money(v: number, opts: { compact?: boolean; cents?: boolean } = {}): string {
   if (opts.compact && v >= 1000) {
     if (v >= 1_000_000) return `$${(v / 1_000_000).toFixed(1)}M`
@@ -121,15 +123,13 @@ export function humanKey(k: string): string {
   return k.replace(/_/g, ' ').replace(/^./, c => c.toUpperCase())
 }
 
-const DOMAIN_LABELS: Record<string, string> = {
-  dom_hq: 'HQ',
-  dom_sales: 'Sales',
-  dom_support: 'Support',
-}
-
-export function domainLabel(id: string | null | undefined): string {
+// Resolve a workspace id (= backend `domain_id` per docs/handoff-prep.md
+// § 0.1) to its display name. Mock-only: reads fixtures synchronously.
+// When wiring to a real backend, replace with workspace name embedded in
+// list responses (or a cached client-side lookup of `GET /workspaces`).
+export function workspaceLabel(id: string | null | undefined): string {
   if (!id) return '—'
-  return DOMAIN_LABELS[id] ?? id.replace(/^dom_/, '').replace(/_/g, ' ')
+  return fxWorkspaces.find(w => w.id === id)?.name ?? '—'
 }
 
 const TENANT_LABELS: Record<string, string> = {

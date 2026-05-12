@@ -6,10 +6,10 @@ type AvatarColor = NonNullable<ComponentProps<typeof RadixAvatar>['color']>
 type AvatarSize = NonNullable<ComponentProps<typeof RadixAvatar>['size']>
 
 const TONE_COLOR: Record<Tone, AvatarColor> = {
-  accent: 'blue',
+  accent: 'cyan',
   info: 'cyan',
-  warn: 'amber',
-  success: 'green',
+  warn: 'orange',
+  success: 'jade',
   danger: 'red',
 }
 
@@ -36,7 +36,7 @@ export function Avatar({
   tone?: string
   size?: number
 }) {
-  const color = TONE_COLOR[tone as Tone] ?? 'blue'
+  const color = TONE_COLOR[tone as Tone] ?? 'cyan'
   return (
     <RadixAvatar
       fallback={initials}

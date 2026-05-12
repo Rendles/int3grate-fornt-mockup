@@ -1,6 +1,6 @@
 import { Box, Button, Flex, IconButton, Text } from '@radix-ui/themes'
 
-import { Avatar, Caption, Status } from './common'
+import { Avatar, Caption, Status, WorkspaceContextPill } from './common'
 import { IconArrowRight, IconCheck, IconX } from './icons'
 import { RejectInlineForm } from './reject-inline-form'
 import type { ApprovalRequest } from '../lib/types'
@@ -17,6 +17,14 @@ import { ago } from '../lib/format'
 export interface ApprovalCardProps {
   approval: ApprovalRequest
   agentName: string
+  /** Resolved agent_id (via run_id → run.agent_id) so the card can render
+      a WorkspaceContextPill when the parent screen's page filter is showing
+      more than one workspace. Null when the chain can't be resolved
+      (orphan run, etc.) — the pill is silently skipped. */
+  agentId: string | null
+  /** Drives whether the WorkspaceContextPill renders. Parent passes
+      true when its page-level workspace filter is broader than 1. */
+  showWorkspacePill: boolean
   actionVerb: string
   isRejectExpanded: boolean
   rejectReason: string
@@ -36,6 +44,8 @@ export function ApprovalCard(props: ApprovalCardProps) {
   const {
     approval,
     agentName,
+    agentId,
+    showWorkspacePill,
     actionVerb,
     isRejectExpanded,
     rejectReason,
@@ -66,7 +76,10 @@ export function ApprovalCard(props: ApprovalCardProps) {
       <Flex align="center" gap="3" minWidth="0">
         <Avatar initials={agentName.slice(0, 2).toUpperCase()} size={36} />
         <Box minWidth="0" flexGrow="1">
-          <Text as="div" size="3" weight="medium" className="truncate">{agentName}</Text>
+          <Flex align="center" gap="2" wrap="wrap">
+            <Text as="div" size="3" weight="medium" className="truncate">{agentName}</Text>
+            <WorkspaceContextPill agentId={agentId} show={showWorkspacePill} />
+          </Flex>
           <Text as="div" size="1" color="gray" mt="1" className="truncate">
             {approval.requested_by_name
               ? `Triggered by ${approval.requested_by_name} · ${ago(approval.created_at)}`
@@ -103,7 +116,7 @@ export function ApprovalCard(props: ApprovalCardProps) {
                 <IconButton
                   size="2"
                   variant="soft"
-                  color="green"
+                  color="jade"
                   onClick={onApprove}
                   title="Quick approve"
                   aria-label={`Quick approve — ${agentName} ${actionVerb}`}

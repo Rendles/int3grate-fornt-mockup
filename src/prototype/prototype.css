@@ -7,7 +7,7 @@
 
 .prototype-root {
   /* Product-specific non-color tokens. Colors come from Radix Themes
-     (gray / accent / amber / red / green / cyan scales). Light/dark switch
+     (gray / accent / orange / red / jade / cyan scales). Light/dark switch
      via <Theme appearance>. */
   --radius: 6px;
 
@@ -17,14 +17,9 @@
   --scrollbar-thumb-hover: var(--gray-a11);
   --scrollbar-track: transparent;
 
-  /* Elevate "panel" surfaces (cards, sidebar, sticky topbar, chat messages
-     scroller) one step above the page background. Radix Themes' default
-     `--color-panel-solid` (with `panelBackground="solid"` + `grayColor="slate"`)
-     resolves to `--gray-1` in the light theme — i.e. the same as
-     `--color-page-background`, which makes all card surfaces invisible. We
-     override to `--gray-2` so light theme gets a faint grey tint while dark
-     theme stays visually identical to the previous behaviour. */
-  --color-panel-solid: var(--gray-2);
+  /* Panel + page-background surface tokens live in brand-colors.css now —
+     dark uses Graphite #0E1117, light keeps --gray-2 (slate-2) so cards
+     don't blend into the Mist White page bg. See brand-colors.css. */
 
   /* Radix Themes font overrides — use Inter everywhere, including headings and code. */
   --default-font-family: 'Inter', -apple-system, BlinkMacSystemFont, system-ui, sans-serif;
@@ -38,7 +33,7 @@
   line-height: 1.5;
   letter-spacing: -0.005em;
   color: var(--gray-12);
-  background: var(--color-page-background);
+  background: var(--color-background);
   min-height: 100svh;
   -webkit-font-smoothing: antialiased;
   transition: background 180ms ease, color 180ms ease;
@@ -1486,8 +1481,8 @@
    Renders only when TrainingModeProvider.active is true. Sticks to the top
    of the viewport above the topbar; the .with-training-banner class on
    .prototype-root reserves layout space via a CSS variable so the .shell
-   grid below it doesn't overflow 100svh. Uses Radix amber tokens — works
-   in both light and dark themes without overrides. */
+   grid below it doesn't overflow 100svh. Uses the brand orange tokens
+   (Deploy Orange — see brand-colors.css) in both themes. */
 .prototype-root {
   --training-banner-height: 0px;
 }
@@ -1508,8 +1503,8 @@
   align-items: center;
   gap: 12px;
   padding: 0 16px;
-  background: var(--amber-3);
-  border-bottom: 1px solid var(--amber-7);
+  background: var(--orange-3);
+  border-bottom: 1px solid var(--orange-7);
   z-index: 100;
 }
 
@@ -1518,7 +1513,7 @@
   width: 8px;
   height: 8px;
   border-radius: 50%;
-  background: var(--amber-9);
+  background: var(--orange-9);
   flex-shrink: 0;
   animation: proto-pulse 1.6s ease-in-out infinite;
 }
@@ -1615,3 +1610,131 @@
   padding: 0;
 }
 .chat-detail--embed .chat-detail__composer { padding-bottom: 0; }
+
+/* ============================================================= TEAM MAP (sandbox)
+   Spatial visualisation of recent asks between agents. Fixed virtual canvas;
+   the screen wraps it in an overflow-x:auto container for small viewports. */
+.prototype-root .team-map {
+  position: relative;
+  margin-top: 24px;
+  background: var(--gray-a2);
+  border: 1px solid var(--gray-a4);
+  border-radius: 12px;
+  overflow: hidden;
+}
+.prototype-root .team-map__edges {
+  position: absolute;
+  inset: 0;
+  /* SVG itself doesn't intercept mouse — only the explicit hit-target lines
+     opt back in below. Visible strokes also stay non-interactive so they
+     don't steal hover from the wider hit area. */
+  pointer-events: none;
+}
+.prototype-root .team-map__edge {
+  fill: none;
+  stroke-linecap: round;
+  pointer-events: none;
+  transition: stroke-width 120ms ease, stroke-opacity 120ms ease;
+}
+.prototype-root .team-map__edge--answered  { stroke: var(--gray-a8); }
+.prototype-root .team-map__edge--pending   { stroke: var(--orange-9); stroke-dasharray: 6 5; }
+.prototype-root .team-map__edge--timed_out { stroke: var(--red-9); }
+.prototype-root .team-map__edge--declined  { stroke: var(--red-a7); stroke-dasharray: 2 4; }
+.prototype-root .team-map__edge--hover     { stroke-width: 5px; }
+
+/* Arrowheads colour-match their edge so direction is clear at a glance. */
+.prototype-root .team-map__arrow             { stroke: none; }
+.prototype-root .team-map__arrow--answered   { fill: var(--gray-a8); }
+.prototype-root .team-map__arrow--pending    { fill: var(--orange-9); }
+.prototype-root .team-map__arrow--timed_out  { fill: var(--red-9); }
+.prototype-root .team-map__arrow--declined   { fill: var(--red-a7); }
+.prototype-root .team-map__edge-hit {
+  stroke: transparent;
+  fill: none;
+  pointer-events: stroke;
+  cursor: pointer;
+}
+
+.prototype-root .team-map__node {
+  position: absolute;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 10px 12px;
+  background: var(--color-panel-solid);
+  border: 1px solid var(--gray-a5);
+  border-radius: 10px;
+  box-shadow: 0 4px 12px -6px rgba(0, 0, 0, 0.4);
+  transform: translate(-50%, -50%);
+  cursor: pointer;
+  transition: border-color 120ms ease, box-shadow 120ms ease;
+}
+.prototype-root .team-map__node:hover {
+  border-color: var(--gray-a7);
+}
+.prototype-root .team-map__node:focus-visible {
+  outline: 2px solid var(--accent-9);
+  outline-offset: 2px;
+}
+.prototype-root .team-map__node--selected {
+  border-color: var(--accent-9);
+  box-shadow: 0 0 0 1px var(--accent-9), 0 8px 24px -8px rgba(0, 0, 0, 0.5);
+}
+.prototype-root .team-map__node-meta {
+  min-width: 0;
+  flex: 1;
+}
+
+/* Side panel docked to the right of the canvas. Stacks below on narrow
+   viewports thanks to the parent's flex-wrap. */
+.prototype-root .team-map-panel {
+  width: 320px;
+  flex-shrink: 0;
+  padding: 16px;
+  background: var(--color-panel-solid);
+  border: 1px solid var(--gray-a5);
+  border-radius: 12px;
+}
+.prototype-root .team-map-panel__section {
+  margin-top: 16px;
+  padding-top: 16px;
+  border-top: 1px solid var(--gray-a4);
+}
+.prototype-root .team-map-panel__item {
+  display: block;
+  width: 100%;
+  text-align: left;
+  padding: 10px;
+  background: var(--gray-a2);
+  border: 1px solid var(--gray-a4);
+  border-radius: 8px;
+  cursor: pointer;
+  font: inherit;
+  color: inherit;
+  transition: border-color 120ms ease, background 120ms ease;
+}
+.prototype-root .team-map-panel__item:hover {
+  border-color: var(--gray-a6);
+  background: var(--gray-a3);
+}
+.prototype-root .team-map-panel__item-summary {
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+
+/* Tooltip floats above the hovered edge midpoint. Non-interactive (cursor
+   exits when leaving the hit-target line) so it doesn't trap the cursor. */
+.prototype-root .team-map__tooltip {
+  position: absolute;
+  transform: translate(-50%, calc(-100% - 12px));
+  width: 280px;
+  padding: 12px 14px;
+  background: var(--color-panel-solid);
+  border: 1px solid var(--gray-a6);
+  border-radius: 10px;
+  box-shadow: 0 12px 28px -10px rgba(0, 0, 0, 0.5);
+  pointer-events: none;
+  z-index: 1;
+}

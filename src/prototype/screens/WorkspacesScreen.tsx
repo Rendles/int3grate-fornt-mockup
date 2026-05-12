@@ -26,7 +26,7 @@ import type { User, Workspace } from '../lib/types'
 type Stats = Record<string, { member_count: number; agent_count: number }>
 
 export default function WorkspacesScreen() {
-  const { user, myWorkspaces, currentWorkspaceId, switchWorkspace, refreshWorkspaces, workspacesLoading } = useAuth()
+  const { user, myWorkspaces, activeWorkspaceId, setActiveWorkspace, refreshWorkspaces, workspacesLoading } = useAuth()
 
   const [stats, setStats] = useState<Stats | null>(null)
   const [members, setMembers] = useState<User[] | null>(null)
@@ -43,22 +43,24 @@ export default function WorkspacesScreen() {
 
   // Members of the current workspace for the read-only roster card.
   useEffect(() => {
-    if (!currentWorkspaceId) {
+    if (!activeWorkspaceId) {
       /* eslint-disable-next-line react-hooks/set-state-in-effect */
       setMembers(null)
       return
     }
     let cancelled = false
-    api.listWorkspaceMembers(currentWorkspaceId).then(m => { if (!cancelled) setMembers(m) })
+    api.listWorkspaceMembers(activeWorkspaceId).then(m => { if (!cancelled) setMembers(m) })
     return () => { cancelled = true }
-  }, [currentWorkspaceId])
+  }, [activeWorkspaceId])
 
   if (!user) return null
 
   const handleCreate = async (values: WorkspaceFormValues) => {
     const ws = await api.createWorkspace(values, user.id)
     await refreshWorkspaces()
-    switchWorkspace(ws.id)
+    // Make the freshly-created workspace the active one so the user sees
+    // it as their current context. They can switch back via the sidebar.
+    setActiveWorkspace(ws.id)
   }
 
   const handleEdit = async (values: WorkspaceFormValues) => {
@@ -70,7 +72,7 @@ export default function WorkspacesScreen() {
   const handleDelete = async () => {
     if (!deleteTarget) return
     await api.deleteWorkspace(deleteTarget.id, user.id)
-    // refreshWorkspaces drops the now-invalid currentWorkspaceId via
+    // refreshWorkspaces drops the now-invalid activeWorkspaceId via
     // applyCurrentWorkspace and falls through to the first remaining
     // workspace (or null). Stats refetch as well — myWorkspaces effect dep.
     await refreshWorkspaces()
@@ -88,13 +90,20 @@ export default function WorkspacesScreen() {
         <PageHeader
           eyebrow="WORKSPACES"
           title={<>Your <em>workspaces.</em></>}
-          subtitle="Teams inside your company. Each holds its own agents, approvals, and spend. Switch context from the sidebar."
+          subtitle="Each workspace holds its own agents, approvals, and spend. Switch from the sidebar."
           actions={
             <Button onClick={() => setCreateOpen(true)}>
               <IconPlus />New workspace
             </Button>
           }
         />
+
+        <Box mb="3">
+          <Text as="p" size="2" color="gray" style={{ maxWidth: 640, lineHeight: 1.55 }}>
+            Use workspaces to group agents by department, client, location, or business line.
+            Examples: Sales, Customer Support, Acme Corp, EU Operations.
+          </Text>
+        </Box>
 
         <Flex mb="4">
           <MockBadge
@@ -116,14 +125,14 @@ export default function WorkspacesScreen() {
         {myWorkspaces.length > 0 && (
           <div className="ws-grid">
             {myWorkspaces.map(ws => {
-              const isActive = ws.id === currentWorkspaceId
+              const isActive = ws.id === activeWorkspaceId
               const s = stats?.[ws.id]
               return (
                 <div key={ws.id} className={`ws-card${isActive ? ' ws-card--active' : ''}`}>
                   <Flex direction="column" gap="1" minWidth="0">
                     <Flex align="center" gap="2" wrap="wrap">
                       <Text size="3" weight="medium" className="truncate">{ws.name}</Text>
-                      {isActive && <Badge color="blue" radius="full" size="1">Current</Badge>}
+                      {isActive && <Badge color="cyan" radius="full" size="1">Active</Badge>}
                     </Flex>
                     {ws.description && (
                       <Text size="2" color="gray">{ws.description}</Text>
@@ -141,7 +150,7 @@ export default function WorkspacesScreen() {
 
                   <Flex gap="2" mt="3" justify="end">
                     {!isActive && (
-                      <Button variant="soft" color="gray" size="1" onClick={() => switchWorkspace(ws.id)}>
+                      <Button variant="soft" color="gray" size="1" onClick={() => setActiveWorkspace(ws.id)}>
                         Switch
                       </Button>
                     )}
@@ -169,7 +178,7 @@ export default function WorkspacesScreen() {
           </div>
         )}
 
-        {currentWorkspaceId && members && members.length > 0 && (
+        {activeWorkspaceId && members && members.length > 0 && (
           <Box mt="6">
             <Flex align="center" gap="2" mb="3">
               <Text size="3" weight="medium">Members</Text>

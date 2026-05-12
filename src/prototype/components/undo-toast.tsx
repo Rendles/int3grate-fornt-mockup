@@ -76,8 +76,8 @@ function ToastItem({
   }, [toast.expiresAt, onDismiss])
 
   const isApprove = toast.decision === 'approved'
-  const accentColor = isApprove ? 'var(--green-11)' : 'var(--red-11)'
-  const accentBorder = isApprove ? 'var(--green-a6)' : 'var(--red-a6)'
+  const accentColor = isApprove ? 'var(--jade-11)' : 'var(--red-11)'
+  const accentBorder = isApprove ? 'var(--jade-a6)' : 'var(--red-a6)'
 
   return (
     <Flex

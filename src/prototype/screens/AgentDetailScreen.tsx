@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react'
-import { Badge, Box, Button, DataList, Flex, Grid, Text } from '@radix-ui/themes'
+import { Badge, Box, Button, DataList, DropdownMenu, Flex, Grid, Text } from '@radix-ui/themes'
 import { AppShell } from '../components/shell'
-import { Avatar, Caption, PageHeader, MetaRow, Status, Tabs } from '../components/common'
+import { Avatar, Caption, MockBadge, PageHeader, MetaRow, Status, Tabs } from '../components/common'
 import { Banner, EmptyState, LoadingList, NoAccessState } from '../components/states'
 import { IconArrowRight, IconPlus, IconRun } from '../components/icons'
 import { GrantsEditor } from '../components/grants-editor'
@@ -10,8 +10,8 @@ import { RetrainDialog } from '../components/retrain-dialog'
 import { Link, useRouter } from '../router'
 import { api } from '../lib/api'
 import { useAuth } from '../auth'
-import type { Agent, AgentVersion, Chat, RunListItem, ToolGrant } from '../lib/types'
-import { absTime, ago, domainLabel, money, num, stageLabel } from '../lib/format'
+import type { Agent, AgentVersion, Chat, RunListItem, ToolGrant, Workspace } from '../lib/types'
+import { absTime, ago, money, num, stageLabel, workspaceLabel } from '../lib/format'
 import { statusLabel } from '../components/common/status-label'
 
 type AgentTab = 'overview' | 'talk' | 'grants' | 'activity' | 'settings' | 'advanced'
@@ -54,7 +54,7 @@ export default function AgentDetailScreen({
 
   if (agent === null) {
     return (
-      <AppShell crumbs={[{ label: 'home', to: '/' }, { label: 'team', to: '/agents' }, { label: 'not found' }]}>
+      <AppShell crumbs={[{ label: 'home', to: '/' }, { label: 'agents', to: '/agents' }, { label: 'not found' }]}>
         <div className="page">
           <NoAccessState
             requiredRole="access to this agent"
@@ -67,7 +67,7 @@ export default function AgentDetailScreen({
 
   if (agent === undefined) {
     return (
-      <AppShell crumbs={[{ label: 'home', to: '/' }, { label: 'team', to: '/agents' }, { label: 'loading…' }]}>
+      <AppShell crumbs={[{ label: 'home', to: '/' }, { label: 'agents', to: '/agents' }, { label: 'loading…' }]}>
         <div className="page"><LoadingList rows={6} /></div>
       </AppShell>
     )
@@ -90,7 +90,7 @@ export default function AgentDetailScreen({
     <AppShell
       crumbs={[
         { label: 'home', to: '/' },
-        { label: 'team', to: '/agents' },
+        { label: 'agents', to: '/agents' },
         { label: agent.name },
       ]}
     >
@@ -190,7 +190,7 @@ function OverviewTab({
   const stats: { label: string; value: string }[] = [
     { label: 'Total spent', value: agent.total_spend_usd != null ? money(agent.total_spend_usd, { compact: true }) : '—' },
     { label: 'Activities', value: agent.runs_count != null ? num(agent.runs_count) : '—' },
-    { label: 'Team', value: domainLabel(agent.domain_id) },
+    { label: 'Workspace', value: workspaceLabel(agent.domain_id) },
   ]
 
   return (
@@ -464,12 +464,13 @@ function SettingsTab({
             <MetaRow label="name" value={agent.name} />
             <MetaRow label="description" value={agent.description ?? <Text color="gray">—</Text>} />
             <MetaRow label="status" value={<Status status={agent.status} />} />
-            <MetaRow label="team" value={domainLabel(agent.domain_id)} />
             <MetaRow label="created" value={absTime(agent.created_at)} />
             <MetaRow label="updated" value={`${absTime(agent.updated_at)} · ${ago(agent.updated_at)}`} />
           </DataList.Root>
         </div>
       </div>
+
+      <WorkspaceCard agent={agent} />
 
       {/* "Manage employment" card (Pause / Fire placeholder) hidden until
           backend ships PATCH /agents/{id} or POST /agents/{id}/pause + DELETE
@@ -477,6 +478,106 @@ function SettingsTab({
           when endpoints exist; remove the disabled-buttons pattern in favour
           of real wiring. */}
     </Flex>
+  )
+}
+
+// Workspace card — `agent.domain_id` IS the workspace FK in spec
+// (docs/handoff-prep.md § 0.1: backend `domain` ≡ frontend `workspace`),
+// so the field itself is real. The mock part is the move action: backend
+// has neither `PATCH /agents/{id}` to mutate it nor `Workspace` CRUD
+// endpoints to populate the picker (see docs/backend-gaps.md § 1.15).
+// MockBadge surfaces this honestly.
+function WorkspaceCard({ agent }: { agent: Agent }) {
+  const { myWorkspaces } = useAuth()
+  const [current, setCurrent] = useState<Workspace | null | undefined>(undefined)
+  const [busy, setBusy] = useState(false)
+  const [reloadKey, setReloadKey] = useState(0)
+
+  useEffect(() => {
+    let cancelled = false
+    api.getAgentWorkspace(agent.id)
+      .then(w => { if (!cancelled) setCurrent(w) })
+      .catch(() => { if (!cancelled) setCurrent(null) })
+    return () => { cancelled = true }
+  }, [agent.id, reloadKey])
+
+  const otherWorkspaces = myWorkspaces.filter(w => w.id !== current?.id)
+
+  const onMove = async (targetId: string) => {
+    if (busy || targetId === current?.id) return
+    setBusy(true)
+    try {
+      await api.setAgentWorkspace(agent.id, targetId)
+      setReloadKey(k => k + 1)
+    } finally {
+      setBusy(false)
+    }
+  }
+
+  return (
+    <div className="card">
+      <div className="card__head">
+        <Flex align="center" gap="2">
+          <Text as="span" size="2" weight="medium" className="card__title">Workspace</Text>
+          <MockBadge
+            kind="design"
+            hint="Agent.domain_id (the workspace FK) is in spec — see docs/handoff-prep.md § 0.1. The mock is in the move action: backend has no PATCH /agents/{id} to mutate it, and Workspace CRUD endpoints are missing too. Moves persist for the page session only. See docs/backend-gaps.md § 1.15."
+          />
+        </Flex>
+      </div>
+      <div className="card__body">
+        {current === undefined ? (
+          <Text size="2" color="gray">Loading…</Text>
+        ) : current === null ? (
+          <Banner tone="warn" title="Not assigned to a workspace">
+            {agent.name} isn't pinned to a workspace. Pick one to make them
+            visible to the right team.
+          </Banner>
+        ) : (
+          <Flex direction="column" gap="3">
+            <DataList.Root size="2">
+              <MetaRow
+                label="current"
+                value={<Text size="2" weight="medium">{current.name}</Text>}
+              />
+              {current.description && (
+                <MetaRow
+                  label="about"
+                  value={<Text size="2" color="gray">{current.description}</Text>}
+                />
+              )}
+            </DataList.Root>
+            <Flex justify="end">
+              {otherWorkspaces.length === 0 ? (
+                <Text size="1" color="gray">
+                  No other workspaces to move them to.
+                </Text>
+              ) : (
+                <DropdownMenu.Root>
+                  <DropdownMenu.Trigger>
+                    <Button variant="soft" color="gray" disabled={busy}>
+                      {busy ? 'Moving…' : 'Move to…'}
+                      <DropdownMenu.TriggerIcon />
+                    </Button>
+                  </DropdownMenu.Trigger>
+                  <DropdownMenu.Content size="1">
+                    <DropdownMenu.Label>Move to workspace</DropdownMenu.Label>
+                    {otherWorkspaces.map(w => (
+                      <DropdownMenu.Item
+                        key={w.id}
+                        onSelect={() => onMove(w.id)}
+                      >
+                        {w.name}
+                      </DropdownMenu.Item>
+                    ))}
+                  </DropdownMenu.Content>
+                </DropdownMenu.Root>
+              )}
+            </Flex>
+          </Flex>
+        )}
+      </div>
+    </div>
   )
 }
 
@@ -538,7 +639,7 @@ function ActiveVersionCard({
       <div className="card__head">
         <Text as="div" size="2" weight="medium" className="card__title">Current setup</Text>
         <Flex align="center" gap="2">
-          <Badge color="blue" variant="soft" radius="full" size="1">v{version.version}</Badge>
+          <Badge color="cyan" variant="soft" radius="full" size="1">v{version.version}</Badge>
           {canEdit && (
             <Button variant="ghost" size="1" onClick={onRetrain}>
               Retrain {firstName}

@@ -1,0 +1,540 @@
+/* Hero-loop scripted scene — self-contained styles.
+   Brand tokens inlined so this folder compiles outside the prototype.
+   Reference: docs/landing-colors-handoff.md (palette of record). */
+
+/* Scoped box-sizing reset — host page may not have a global border-box
+   reset. Without this the 500×600 stage silently grows to 540×640. */
+.hero-loop,
+.hero-loop *,
+.hero-loop *::before,
+.hero-loop *::after {
+  box-sizing: border-box;
+}
+
+.hero-loop {
+  /* Brand palette — inlined. If Radix vars are present on the host page
+     they win via the same names; we don't reuse them here to stay
+     portable. */
+  --hl-bg: #05070A;
+  --hl-panel: #0E1117;
+  --hl-text: #F7F8FA;
+  --hl-text-muted: #9499A3;
+  --hl-text-faint: #6E737D;
+  --hl-border: rgba(255, 255, 255, 0.08);
+  --hl-surface-lift: rgba(255, 255, 255, 0.025);
+  --hl-violet: #701DFD;
+  --hl-cyan: #01C9FA;
+  --hl-orange: #FD9C12;
+  --hl-jade: #2EBE6F;
+  --hl-jade-strong: #3DD68C;
+  --hl-red: #E5484D;
+
+  font-family: Inter, ui-sans-serif, system-ui, -apple-system, "Segoe UI", sans-serif;
+  font-size: 13px;
+  line-height: 1.45;
+  letter-spacing: -0.005em;
+  color: var(--hl-text);
+  display: inline-block;
+}
+
+.hero-loop__stage {
+  width: 500px;
+  height: 600px;
+  background: var(--hl-panel);
+  border-radius: 16px;
+  padding: 20px;
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+  overflow: hidden;
+  position: relative;
+  box-shadow:
+    0 1px 0 rgba(255, 255, 255, 0.04) inset,
+    0 30px 80px rgba(0, 0, 0, 0.5);
+}
+
+/* ─── Greeting strip ────────────────────────────────────────────────── */
+
+.hl-greeting {
+  display: flex;
+  align-items: baseline;
+  gap: 8px;
+  font-size: 14px;
+  letter-spacing: -0.01em;
+}
+
+.hl-greeting__primary {
+  font-weight: 500;
+  color: var(--hl-text);
+}
+
+.hl-greeting__divider {
+  color: var(--hl-text-faint);
+}
+
+.hl-greeting__secondary {
+  font-size: 12.5px;
+  color: var(--hl-text-muted);
+}
+
+/* ─── KPI strip ─────────────────────────────────────────────────────── */
+
+.hl-kpi {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 8px;
+  transition: opacity 320ms ease;
+}
+
+.hl-kpi--dim {
+  opacity: 0.55;
+}
+
+.hl-kpi__tile {
+  padding: 12px 14px 11px;
+  background: rgba(255, 255, 255, 0.04);
+  border-radius: 10px;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  min-width: 0;
+  position: relative;
+  overflow: hidden;
+  transition: background 380ms ease;
+}
+
+.hl-kpi__tile--warn {
+  background: linear-gradient(180deg, rgba(253, 156, 18, 0.10), rgba(255, 255, 255, 0.04));
+}
+
+.hl-kpi__tile--warn::before {
+  content: '';
+  position: absolute;
+  inset: 0 0 auto 0;
+  height: 2px;
+  background: var(--hl-orange);
+  opacity: 0.75;
+}
+
+/* Pulsing dot in the top-right corner of the warn tile — the same idiom
+   as the focal row's avatar pulse. */
+.hl-kpi__tile--pulse::after {
+  content: '';
+  position: absolute;
+  top: 12px;
+  right: 12px;
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background: var(--hl-orange);
+  animation: hl-pulse-dot 1.8s ease-out infinite;
+}
+
+/* 400ms flash when the Pending value just changed. */
+.hl-kpi__tile--flash {
+  animation: hl-flash 420ms ease;
+}
+
+@keyframes hl-flash {
+  0%   { background-color: rgba(253, 156, 18, 0.22); }
+  100% { background-color: var(--hl-surface-lift); }
+}
+
+.hl-kpi__label {
+  font-size: 9.5px;
+  font-weight: 600;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--hl-text-muted);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.hl-kpi__value {
+  font-size: 22px;
+  font-weight: 500;
+  letter-spacing: -0.025em;
+  line-height: 1;
+  font-variant-numeric: tabular-nums;
+  color: var(--hl-text);
+  transition: color 240ms ease;
+}
+
+.hl-kpi__tile--warn .hl-kpi__value {
+  color: var(--hl-orange);
+}
+
+.hl-kpi__caption {
+  font-size: 10px;
+  color: var(--hl-text-faint);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+/* ─── Queue container ───────────────────────────────────────────────── */
+
+.hl-queue {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  min-height: 0;
+  flex: 1;
+}
+
+.hl-queue__head {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 0 2px 2px;
+}
+
+.hl-queue__title {
+  font-size: 10px;
+  font-weight: 600;
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+  color: var(--hl-text-muted);
+}
+
+.hl-queue__count {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 18px;
+  height: 18px;
+  padding: 0 6px;
+  border-radius: 999px;
+  background: rgba(253, 156, 18, 0.20);
+  color: var(--hl-orange);
+  font-size: 10px;
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+}
+
+/* ─── Queue row ─────────────────────────────────────────────────────── */
+
+.hl-row {
+  background: rgba(255, 255, 255, 0.04);
+  border-radius: 10px;
+  padding: 12px 14px;
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+  overflow: hidden;
+  max-height: 220px;
+  transition:
+    background 320ms ease,
+    opacity 320ms ease,
+    max-height 480ms cubic-bezier(0.4, 0, 0.2, 1),
+    transform 240ms ease,
+    padding 380ms cubic-bezier(0.4, 0, 0.2, 1),
+    box-shadow 320ms ease;
+}
+
+.hl-row--focal {
+  background: linear-gradient(180deg, rgba(253, 156, 18, 0.10), rgba(255, 255, 255, 0.045));
+}
+
+.hl-row--expanded {
+  background: linear-gradient(180deg, rgba(253, 156, 18, 0.15), rgba(255, 255, 255, 0.06));
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.32);
+}
+
+.hl-row--success {
+  background: linear-gradient(180deg, rgba(46, 190, 111, 0.14), rgba(255, 255, 255, 0.045));
+}
+
+.hl-row--dim {
+  opacity: 0.4;
+}
+
+.hl-row--hidden {
+  opacity: 0;
+  max-height: 0;
+  padding-top: 0;
+  padding-bottom: 0;
+  pointer-events: none;
+}
+
+.hl-row--pressed {
+  transform: scale(0.99);
+}
+
+.hl-row__head {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  min-width: 0;
+}
+
+.hl-row__avatar {
+  width: 32px;
+  height: 32px;
+  flex-shrink: 0;
+  border-radius: 50%;
+  background: linear-gradient(135deg, var(--hl-violet), var(--hl-cyan));
+  color: var(--hl-text);
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.04em;
+  display: grid;
+  place-items: center;
+}
+
+/* Avatar pulse — focal-row affordance. Same idiom as the KPI tile dot.
+   Animation suppressed in static mode (mobile / reduced-motion). */
+.hl-row--focal .hl-row__avatar {
+  animation: hl-pulse-dot 1.8s ease-out infinite;
+}
+
+.hl-row__head-text {
+  min-width: 0;
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.hl-row__caption {
+  font-size: 10.5px;
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  min-width: 0;
+}
+
+.hl-row__name {
+  font-weight: 500;
+  color: var(--hl-text);
+}
+
+.hl-row__sep {
+  color: var(--hl-text-faint);
+}
+
+.hl-row__ago {
+  color: var(--hl-text-muted);
+}
+
+.hl-row__action {
+  font-size: 13.5px;
+  font-weight: 500;
+  letter-spacing: -0.008em;
+  color: var(--hl-text);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  min-width: 0;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  transition: color 240ms ease;
+}
+
+.hl-row--success .hl-row__action {
+  color: var(--hl-jade-strong);
+}
+
+.hl-row__success-icon {
+  display: inline-grid;
+  place-items: center;
+  width: 18px;
+  height: 18px;
+  border-radius: 50%;
+  background: rgba(46, 190, 111, 0.18);
+  color: var(--hl-jade-strong);
+  flex-shrink: 0;
+}
+
+/* ─── Indicator (right of head): pill or arrow ─────────────────────── */
+
+.hl-row__indicator {
+  flex-shrink: 0;
+  display: flex;
+  align-items: center;
+}
+
+/* All pills hidden by default; specific state-selectors below switch on. */
+.hl-row__pill {
+  display: none;
+  align-items: center;
+  height: 20px;
+  padding: 0 8px;
+  border-radius: 999px;
+  font-size: 9px;
+  font-weight: 600;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+}
+
+.hl-row__pill--pending {
+  color: var(--hl-orange);
+  background: rgba(253, 156, 18, 0.20);
+}
+
+.hl-row__pill--done {
+  color: var(--hl-jade-strong);
+  background: rgba(46, 190, 111, 0.22);
+}
+
+.hl-row__arrow {
+  display: inline-grid;
+  place-items: center;
+  color: var(--hl-text-muted);
+  opacity: 0.8;
+}
+
+/* State-driven indicator visibility */
+.hl-row--focal    .hl-row__pill--pending,
+.hl-row--expanded .hl-row__pill--pending {
+  display: inline-flex;
+}
+
+.hl-row--success .hl-row__pill--done {
+  display: inline-flex;
+}
+
+.hl-row--focal    .hl-row__arrow,
+.hl-row--expanded .hl-row__arrow,
+.hl-row--success  .hl-row__arrow {
+  display: none;
+}
+
+/* ─── Body + footer (expand-only) ──────────────────────────────────── */
+
+.hl-row__body,
+.hl-row__footer {
+  max-height: 0;
+  opacity: 0;
+  overflow: hidden;
+  margin-top: 0;
+  transition:
+    max-height 380ms cubic-bezier(0.4, 0, 0.2, 1),
+    opacity 240ms ease,
+    margin-top 380ms ease;
+}
+
+.hl-row--expanded .hl-row__body {
+  max-height: 30px;
+  opacity: 1;
+  margin-top: 8px;
+}
+
+.hl-row--expanded .hl-row__footer {
+  max-height: 44px;
+  opacity: 1;
+  margin-top: 10px;
+}
+
+.hl-row__context {
+  font-size: 11.5px;
+  color: var(--hl-text-muted);
+}
+
+.hl-row__footer {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 6px;
+}
+
+/* ─── Soft buttons ─────────────────────────────────────────────────── */
+
+.hl-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  height: 32px;
+  padding: 0 12px;
+  border-radius: 6px;
+  font-size: 12px;
+  font-weight: 500;
+  letter-spacing: -0.005em;
+  font-family: inherit;
+  cursor: pointer;
+  border: 0;
+  transition:
+    background 140ms ease,
+    transform 140ms ease,
+    filter 140ms ease;
+}
+
+.hl-btn--approve {
+  color: var(--hl-jade-strong);
+  background: rgba(46, 190, 111, 0.20);
+}
+
+.hl-btn--reject {
+  color: #FF8A8E;
+  background: rgba(229, 72, 77, 0.18);
+}
+
+.hl-btn--pressed {
+  transform: scale(0.965);
+  filter: brightness(1.18);
+}
+
+/* ─── Synthetic cursor ─────────────────────────────────────────────── */
+
+.hl-cursor {
+  position: absolute;
+  left: 0;
+  top: 0;
+  pointer-events: none;
+  z-index: 10;
+  transform: translate3d(var(--hl-cursor-x, 0px), var(--hl-cursor-y, 0px), 0);
+  filter: drop-shadow(0 2px 3px rgba(0, 0, 0, 0.55));
+  transition: transform 1.2s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+/* ─── Shared pulse keyframe ────────────────────────────────────────── */
+
+@keyframes hl-pulse-dot {
+  0% {
+    box-shadow: 0 0 0 0 rgba(253, 156, 18, 0.55);
+  }
+  70% {
+    box-shadow: 0 0 0 8px rgba(253, 156, 18, 0);
+  }
+  100% {
+    box-shadow: 0 0 0 0 rgba(253, 156, 18, 0);
+  }
+}
+
+/* ─── Static mode: small viewport OR reduced motion ────────────────── */
+
+@media (max-width: 640px), (prefers-reduced-motion: reduce) {
+  .hl-cursor {
+    display: none;
+  }
+
+  .hl-kpi,
+  .hl-kpi__tile,
+  .hl-row,
+  .hl-row__body,
+  .hl-row__footer,
+  .hl-btn,
+  .hl-row__action {
+    transition: opacity 220ms ease, background 220ms ease, border-color 220ms ease;
+  }
+
+  .hl-row,
+  .hl-row--pressed,
+  .hl-btn--pressed {
+    transform: none;
+  }
+
+  .hl-kpi__tile--pulse::after,
+  .hl-row--focal .hl-row__avatar {
+    animation: none;
+  }
+
+  .hl-kpi__tile--flash {
+    animation: none;
+  }
+}

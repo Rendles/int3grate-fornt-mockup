@@ -36,7 +36,7 @@ export default function ChatNewScreen() {
   if (presetAgentId) return null
 
   return (
-    <AppShell crumbs={[{ label: 'home', to: '/' }, { label: 'team', to: '/agents' }, { label: 'new chat' }]}>
+    <AppShell crumbs={[{ label: 'home', to: '/' }, { label: 'agents', to: '/agents' }, { label: 'new chat' }]}>
       <div className="page page--narrow">
         <PageHeader
           eyebrow="NEW CHAT"
@@ -88,7 +88,7 @@ export default function ChatNewScreen() {
                         <Flex align="center" gap="2">
                           <Status status={a.status} />
                           {!runnable && a.status === 'active' && (
-                            <Badge color="amber" variant="soft" radius="full" size="1">no setup</Badge>
+                            <Badge color="orange" variant="soft" radius="full" size="1">no setup</Badge>
                           )}
                         </Flex>
                         <IconArrowRight className="ic" />

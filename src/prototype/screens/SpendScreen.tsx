@@ -2,7 +2,7 @@ import { useEffect, useMemo, useState } from 'react'
 import { Box, Button, Flex, Grid, Heading, Text } from '@radix-ui/themes'
 
 import { AppShell } from '../components/shell'
-import { Caption, PageHeader } from '../components/common'
+import { Caption, PageHeader, WorkspaceFilter } from '../components/common'
 import { EmptyState, ErrorState, LoadingList, NoAccessState } from '../components/states'
 import { IconArrowRight, IconSpend } from '../components/icons'
 import { Link } from '../router'
@@ -10,6 +10,7 @@ import { useAuth } from '../auth'
 import { api } from '../lib/api'
 import type { SpendDashboard, SpendRange } from '../lib/types'
 import { money, num } from '../lib/format'
+import { shouldShowWorkspacePill, useScopeFilter } from '../lib/scope-filter'
 
 const RANGES: SpendRange[] = ['1d', '7d', '30d', '90d']
 
@@ -21,8 +22,10 @@ function rangeLabel(r: SpendRange): string {
 }
 
 export default function SpendScreen() {
-  const { user } = useAuth()
+  const { user, myWorkspaces } = useAuth()
+  const { filter: workspaceFilter } = useScopeFilter()
   const [data, setData] = useState<SpendDashboard | null>(null)
+  const [agentWorkspaceMap, setAgentWorkspaceMap] = useState<Record<string, string> | null>(null)
   const [range, setRange] = useState<SpendRange>('7d')
   const [error, setError] = useState<string | null>(null)
   const [reloadTick, setReloadTick] = useState(0)
@@ -32,11 +35,14 @@ export default function SpendScreen() {
   useEffect(() => {
     if (!canView) return
     let cancelled = false
-    api.getSpend(range, 'agent')
-      .then(d => { if (!cancelled) { setData(d); setError(null) } })
+    Promise.all([
+      api.getSpend(range, 'agent', workspaceFilter),
+      api.getAgentWorkspaceMap(),
+    ])
+      .then(([d, m]) => { if (!cancelled) { setData(d); setAgentWorkspaceMap(m); setError(null) } })
       .catch(e => { if (!cancelled) setError((e as Error).message ?? 'Failed to load') })
     return () => { cancelled = true }
-  }, [canView, range, reloadTick])
+  }, [canView, range, reloadTick, workspaceFilter])
 
   const crumbs = [{ label: 'home', to: '/' }, { label: 'costs' }]
 
@@ -74,7 +80,7 @@ export default function SpendScreen() {
     )
   }
 
-  const sortedItems = [...data.items].sort((a, b) => b.total_usd - a.total_usd)
+  const sortedItems = data ? [...data.items].sort((a, b) => b.total_usd - a.total_usd) : []
   const empty = sortedItems.length === 0
   const totalActivities = sortedItems.reduce((s, r) => s + r.run_count, 0)
   const totalTokens = sortedItems.reduce((s, r) => s + r.total_tokens_in + r.total_tokens_out, 0)
@@ -95,7 +101,10 @@ export default function SpendScreen() {
           subtitle={rangeLabel(range)}
         />
 
-        <RangeToggle range={range} onRange={setRange} />
+        <Flex direction="column" gap="2">
+          <WorkspaceFilter />
+          <RangeToggle range={range} onRange={setRange} />
+        </Flex>
 
         {empty ? (
           <Box mt="4">
@@ -125,6 +134,33 @@ export default function SpendScreen() {
               />
             </Grid>
 
+            {/* By-workspace breakdown — visible whenever the page is
+                actually showing more than one workspace. Same rule as
+                WorkspaceContextPill (filter==[] & memberships>1, OR
+                explicit subset of >1). Single-workspace = one bar = no
+                signal worth a separate card. */}
+            {shouldShowWorkspacePill(workspaceFilter, myWorkspaces.length) && agentWorkspaceMap && (() => {
+              const effective = workspaceFilter.length === 0
+                ? new Set(myWorkspaces.map(w => w.id))
+                : new Set(workspaceFilter)
+              const tally = new Map<string, number>()
+              for (const row of sortedItems) {
+                const wsId = agentWorkspaceMap[row.id]
+                if (!wsId) continue
+                if (!effective.has(wsId)) continue
+                tally.set(wsId, (tally.get(wsId) ?? 0) + row.total_usd)
+              }
+              const byWorkspace = Array.from(tally.entries())
+                .map(([wsId, t]) => ({
+                  wsId,
+                  name: myWorkspaces.find(w => w.id === wsId)?.name ?? wsId,
+                  total: t,
+                }))
+                .sort((a, b) => b.total - a.total)
+              if (byWorkspace.length === 0) return null
+              return <CostsByWorkspace items={byWorkspace} total={data.total_usd} />
+            })()}
+
             <CostsByAgent items={sortedItems} total={data.total_usd} />
           </Flex>
         )}
@@ -150,7 +186,7 @@ function RangeToggle({
           type="button"
           size="2"
           variant="soft"
-          color={r === range ? 'blue' : 'gray'}
+          color={r === range ? 'cyan' : 'gray'}
           onClick={() => onRange(r)}
         >
           {r}
@@ -241,3 +277,56 @@ function CostsByAgent({
     </div>
   )
 }
+
+// ────────────────────────────────────────────── Spend by workspace
+// Shown only when the page-level workspace filter has more than one
+// workspace selected. Aggregates per-agent rows into per-workspace
+// totals — that's the killer use case for cross-team cost comparison.
+
+function CostsByWorkspace({
+  items,
+  total,
+}: {
+  items: { wsId: string; name: string; total: number }[]
+  total: number
+}) {
+  const max = useMemo(() => Math.max(...items.map(r => r.total), 0.0001), [items])
+  return (
+    <div className="card">
+      <div className="card__head">
+        <Text as="div" size="2" weight="medium" className="card__title">Spend by workspace</Text>
+      </div>
+      <Flex direction="column">
+        {items.map((r, i) => {
+          const share = r.total / max
+          const pctOfTotal = total > 0 ? (r.total / total) * 100 : 0
+          return (
+            <Box
+              key={r.wsId}
+              style={{
+                padding: '12px 18px',
+                borderTop: i === 0 ? undefined : '1px solid var(--gray-a3)',
+              }}
+            >
+              <Flex align="center" gap="3" mb="2">
+                <Text as="span" size="2" weight="medium" className="truncate" style={{ flexGrow: 1, minWidth: 0 }}>
+                  {r.name}
+                </Text>
+                <Text as="span" size="2" style={{ fontVariantNumeric: 'tabular-nums' }}>
+                  {money(r.total, { cents: r.total < 100 })}
+                </Text>
+              </Flex>
+              <Box className="spend-row__bar-track" style={{ height: 6, marginBottom: 6 }}>
+                <Box className="spend-row__bar-fill" style={{ width: `${Math.max(2, share * 100)}%` }} />
+              </Box>
+              <Text as="span" size="1" color="gray">
+                {pctOfTotal.toFixed(1)}% of total
+              </Text>
+            </Box>
+          )
+        })}
+      </Flex>
+    </div>
+  )
+}
+

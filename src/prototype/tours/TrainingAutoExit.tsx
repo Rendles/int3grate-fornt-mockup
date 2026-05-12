@@ -9,7 +9,7 @@ import { useRouter } from '../router'
  * completes the last step) this:
  *
  *   1. Exits training mode if it was active for that tour. Without this,
- *      the amber banner would only end on a manual click of "Exit
+ *      the orange banner would only end on a manual click of "Exit
  *      training" — the providers don't otherwise share any signal.
  *   2. Navigates to /learn so the user lands back on the hub where they
  *      started the tour, can see the now-Completed card, and can pick the

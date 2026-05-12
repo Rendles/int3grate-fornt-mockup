@@ -83,7 +83,7 @@ function TourCard({ entry }: { entry: TourEntry }) {
           </Badge>
           <Text size="1" color="gray">{entry.durationLabel}</Text>
           {completed && (
-            <Badge color="green" variant="soft" radius="full" size="1">
+            <Badge color="jade" variant="soft" radius="full" size="1">
               <IconCheck className="ic ic--sm" /> Completed
             </Badge>
           )}

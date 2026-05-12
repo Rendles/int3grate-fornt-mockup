@@ -3,7 +3,7 @@ import { Badge, Box, Button, Code, Flex, Grid, Text } from '@radix-ui/themes'
 
 import { Caption, PageHeader, Avatar } from '../components/common'
 import { useAuth } from '../auth'
-import { roleLabel, absTime, domainLabel, tenantLabel } from '../lib/format'
+import { roleLabel, absTime, workspaceLabel, tenantLabel } from '../lib/format'
 
 export default function ProfileScreen() {
   const { user, logout } = useAuth()
@@ -33,7 +33,7 @@ export default function ProfileScreen() {
                 </Text>
                 <Text as="div" size="1" color="gray" mt="1">{user.email}</Text>
                 <Flex align="center" gap="2" mt="2">
-                  <Badge color="blue" variant="soft" radius="full" size="1">{roleLabel(user.role)}</Badge>
+                  <Badge color="cyan" variant="soft" radius="full" size="1">{roleLabel(user.role)}</Badge>
                   {user.approval_level != null && (
                     <Badge color="cyan" variant="soft" radius="full" size="1">approval · L{user.approval_level}</Badge>
                   )}
@@ -50,12 +50,12 @@ export default function ProfileScreen() {
           <div className="card__body">
             <Grid columns="2" gap="4">
               <Box>
-                <Caption as="div" mb="1">Workspace</Caption>
+                <Caption as="div" mb="1">Tenant</Caption>
                 <Text as="div" size="1">{tenantLabel(user.tenant_id)}</Text>
               </Box>
               <Box>
-                <Caption as="div" mb="1">Team</Caption>
-                <Text as="div" size="1">{domainLabel(user.domain_id)}</Text>
+                <Caption as="div" mb="1">Workspace</Caption>
+                <Text as="div" size="1">{workspaceLabel(user.domain_id)}</Text>
               </Box>
               <Box>
                 <Caption as="div" mb="1">Created</Caption>

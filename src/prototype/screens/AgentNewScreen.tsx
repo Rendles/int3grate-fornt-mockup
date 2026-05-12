@@ -1,5 +1,5 @@
-import { useEffect, useState } from 'react'
-import { Box, Button, Flex, Grid, Heading, Slider, Spinner, Text } from '@radix-ui/themes'
+import { useEffect, useRef, useState } from 'react'
+import { Box, Button, DropdownMenu, Flex, Grid, Heading, Slider, Spinner, Text } from '@radix-ui/themes'
 
 import { AppShell } from '../components/shell'
 import { Avatar, Caption, PageHeader } from '../components/common'
@@ -17,7 +17,7 @@ import { GrantsForm, type GrantDraft } from '../components/grants-editor'
 import { useRouter } from '../router'
 import { useAuth } from '../auth'
 import { api } from '../lib/api'
-import type { Agent } from '../lib/types'
+import type { Agent, Workspace } from '../lib/types'
 import {
   FEATURED_TEMPLATES,
   NON_FEATURED_TEMPLATES,
@@ -37,7 +37,11 @@ const DEFAULT_MODEL = 'claude-haiku-4-5'
 
 export default function AgentNewScreen() {
   const { navigate } = useRouter()
-  const { user } = useAuth()
+  const {
+    user,
+    activeWorkspaceId,
+    myWorkspaces,
+  } = useAuth()
 
   const isMember = user?.role === 'member'
 
@@ -57,10 +61,30 @@ export default function AgentNewScreen() {
   const [creativity, setCreativity] = useState<number>(0.5)
   const [maxTokens, setMaxTokens] = useState<number>(2048)
 
+  // Local target workspace for THIS hire only — independent from the
+  // global active workspace (see docs/plans/workspaces-redesign-spec.md
+  // § 5). Initialised from activeWorkspaceId on mount; the user can
+  // override per-hire via the [Change] dropdown in the wizard header
+  // without touching global state. We don't follow activeWorkspaceId
+  // after the user has picked, but we DO adopt it once if it was null
+  // at mount time (workspace list still loading).
+  const [targetWorkspaceId, setTargetWorkspaceId] = useState<string | null>(activeWorkspaceId)
+  const targetAdoptedRef = useRef<boolean>(activeWorkspaceId !== null)
+  useEffect(() => {
+    if (!targetAdoptedRef.current && activeWorkspaceId) {
+      targetAdoptedRef.current = true
+      setTargetWorkspaceId(activeWorkspaceId)
+    }
+  }, [activeWorkspaceId])
+
   // Hire flow state.
   const [busy, setBusy] = useState(false)
   const [hireError, setHireError] = useState<string | null>(null)
   const [hiredAgent, setHiredAgent] = useState<Agent | null>(null)
+  // Workspace the freshly hired agent landed in — captured during hire
+  // and used on the success page. Always equals the user's target
+  // selection at hire time (no auto-create surprises).
+  const [hiredWorkspace, setHiredWorkspace] = useState<Workspace | null>(null)
 
   // Optional `?template=<id>` deep-link — used by the welcome-chat
   // "Modify before hire" button. When present, skip the welcome phase and
@@ -93,7 +117,7 @@ export default function AgentNewScreen() {
 
   if (isMember) {
     return (
-      <AppShell crumbs={[{ label: 'home', to: '/' }, { label: 'team', to: '/agents' }, { label: 'hire' }]}>
+      <AppShell crumbs={[{ label: 'home', to: '/' }, { label: 'agents', to: '/agents' }, { label: 'hire' }]}>
         <div className="page page--narrow">
           <PageHeader eyebrow="HIRE AN AGENT" title={<>Admins only</>} />
           <NoAccessState
@@ -101,7 +125,7 @@ export default function AgentNewScreen() {
             body="Only admins can hire new agents."
           />
           <Flex justify="center" mt="3">
-            <Button asChild variant="ghost"><a href="#/agents">Back to team</a></Button>
+            <Button asChild variant="ghost"><a href="#/agents">Back to agents</a></Button>
           </Flex>
         </div>
       </AppShell>
@@ -134,15 +158,28 @@ export default function AgentNewScreen() {
   const goToReview = () => setPhase('review')
 
   const hire = async () => {
-    if (!template || !name.trim()) return
+    if (!template || !name.trim() || !user || !targetWorkspaceId) return
     setBusy(true)
     setHireError(null)
     try {
+      // Target workspace is the user's explicit local choice from the
+      // wizard header (defaults to active workspace, can be overridden
+      // via [Change]). No template-driven auto-create branch — the
+      // user always sees and controls where the new agent lands.
+      const targetWorkspace = await api.getWorkspace(targetWorkspaceId)
+      if (!targetWorkspace) {
+        throw new Error('Pick a workspace before hiring — open the workspace switcher in the sidebar.')
+      }
+
       const agent = await api.createAgent({
         name: name.trim(),
         description: template.shortPitch,
-        domain_id: user?.domain_id ?? null,
+        domain_id: user.domain_id ?? null,
       })
+      // Override createAgent's auto-pin (which uses the global active
+      // workspace) with our explicit local target. Always called so the
+      // post-hire promise is consistent.
+      await api.setAgentWorkspace(agent.id, targetWorkspace.id)
       const v = await api.createAgentVersion(agent.id, {
         instruction_spec: instructions.trim() || template.defaultInstructions,
         model_chain_config: {
@@ -166,6 +203,7 @@ export default function AgentNewScreen() {
       // (active_version populated, status flipped to 'active').
       const fresh = await api.getAgent(agent.id)
       setHiredAgent(fresh ?? agent)
+      setHiredWorkspace(targetWorkspace)
       setPhase('success')
     } catch (e) {
       setHireError((e as Error).message ?? 'Could not hire agent')
@@ -177,8 +215,15 @@ export default function AgentNewScreen() {
   // ─────────────────────────────────────── WELCOME phase
   if (phase === 'welcome') {
     return (
-      <AppShell crumbs={[{ label: 'home', to: '/' }, { label: 'team', to: '/agents' }, { label: 'hire' }]}>
+      <AppShell crumbs={[{ label: 'home', to: '/' }, { label: 'agents', to: '/agents' }, { label: 'hire' }]}>
         <div className="page page--narrow">
+          <Flex justify="end" mt="2">
+            <HiringIntoHeader
+              targetWorkspaceId={targetWorkspaceId}
+              onPick={setTargetWorkspaceId}
+              myWorkspaces={myWorkspaces}
+            />
+          </Flex>
           <Flex
             direction="column"
             align="center"
@@ -245,14 +290,21 @@ export default function AgentNewScreen() {
   // ─────────────────────────────────────── WIZARD STEPS
   if (template && (phase === 'name' || phase === 'apps' || phase === 'review')) {
     return (
-      <AppShell crumbs={[{ label: 'home', to: '/' }, { label: 'team', to: '/agents' }, { label: 'hire' }, { label: template.defaultName }]}>
+      <AppShell crumbs={[{ label: 'home', to: '/' }, { label: 'agents', to: '/agents' }, { label: 'hire' }, { label: template.defaultName }]}>
         <div className="page page--narrow">
           <Flex direction="column" gap="3" mb="5">
             <Flex align="center" justify="between" wrap="wrap" gap="3">
               <StepProgress phase={phase} />
-              <Button asChild variant="ghost" color="gray" size="1">
-                <a href="#/agents">Cancel</a>
-              </Button>
+              <Flex align="center" gap="3" wrap="wrap">
+                <HiringIntoHeader
+                  targetWorkspaceId={targetWorkspaceId}
+                  onPick={setTargetWorkspaceId}
+                  myWorkspaces={myWorkspaces}
+                />
+                <Button asChild variant="ghost" color="gray" size="1">
+                  <a href="#/agents">Cancel</a>
+                </Button>
+              </Flex>
             </Flex>
             <Heading size="8" weight="regular" className="page__title">
               {phase === 'name' && <>Name your <em>agent.</em></>}
@@ -308,6 +360,8 @@ export default function AgentNewScreen() {
               onHire={hire}
               busy={busy}
               hireError={hireError}
+              targetWorkspaceId={targetWorkspaceId}
+              myWorkspaces={myWorkspaces}
             />
           )}
         </div>
@@ -318,12 +372,12 @@ export default function AgentNewScreen() {
   // ─────────────────────────────────────── SUCCESS phase
   if (phase === 'success' && hiredAgent && template) {
     return (
-      <AppShell crumbs={[{ label: 'home', to: '/' }, { label: 'team', to: '/agents' }, { label: hiredAgent.name }]}>
+      <AppShell crumbs={[{ label: 'home', to: '/' }, { label: 'agents', to: '/agents' }, { label: hiredAgent.name }]}>
         <div className="page page--narrow">
           <Flex direction="column" align="center" gap="3" mt="6" style={{ textAlign: 'center' }}>
             <Box style={{
               width: 56, height: 56, borderRadius: 999,
-              background: 'var(--green-a3)', color: 'var(--green-11)',
+              background: 'var(--jade-a3)', color: 'var(--jade-11)',
               display: 'grid', placeItems: 'center',
             }}>
               <IconCheck size={26} />
@@ -337,14 +391,22 @@ export default function AgentNewScreen() {
             <Box p="5">
               <Caption mb="3" as="div">What happens next</Caption>
               <Flex direction="column" gap="3">
+                {hiredWorkspace && (
+                  <BulletItem>
+                    {hiredAgent.name} is now in your <strong>{hiredWorkspace.name}</strong> workspace.
+                    {hiredWorkspace.id !== activeWorkspaceId && (
+                      <> Switch to it from the sidebar at any time.</>
+                    )}
+                  </BulletItem>
+                )}
                 <BulletItem>
-                  {hiredAgent.name} is now part of your team with {pickedGrants.length} {pickedGrants.length === 1 ? 'permission' : 'permissions'} ready to use.
+                  {hiredAgent.name} has {pickedGrants.length} {pickedGrants.length === 1 ? 'permission' : 'permissions'} ready to use.
                 </BulletItem>
                 <BulletItem>
                   When it wants to do something that needs your approval, you'll see it on the Approvals page.
                 </BulletItem>
                 <BulletItem>
-                  You can talk to {hiredAgent.name} any time from the Team page.
+                  You can talk to {hiredAgent.name} any time from the Agents page.
                 </BulletItem>
               </Flex>
             </Box>
@@ -422,14 +484,14 @@ function StepProgress({ phase }: { phase: WizardPhase }) {
       {steps.map((s, i) => {
         const done = i < activeIndex
         const active = i === activeIndex
-        const color = active ? 'var(--accent-11)' : done ? 'var(--green-11)' : 'var(--gray-10)'
+        const color = active ? 'var(--accent-11)' : done ? 'var(--jade-11)' : 'var(--gray-10)'
         return (
           <Flex key={s} align="center" gap="2">
             <Box
               style={{
                 width: 22, height: 22, borderRadius: 999,
-                border: `1px solid ${active ? 'var(--accent-a7)' : done ? 'var(--green-a7)' : 'var(--gray-a5)'}`,
-                background: done ? 'var(--green-a3)' : active ? 'var(--accent-a3)' : 'transparent',
+                border: `1px solid ${active ? 'var(--accent-a7)' : done ? 'var(--jade-a7)' : 'var(--gray-a5)'}`,
+                background: done ? 'var(--jade-a3)' : active ? 'var(--accent-a3)' : 'transparent',
                 color,
                 display: 'grid', placeItems: 'center',
                 fontSize: 11, fontWeight: 600,
@@ -527,6 +589,8 @@ function ReviewStep({
   onHire,
   busy,
   hireError,
+  targetWorkspaceId,
+  myWorkspaces,
 }: {
   template: AssistantTemplate
   name: string
@@ -543,8 +607,16 @@ function ReviewStep({
   onHire: () => void
   busy: boolean
   hireError: string | null
+  targetWorkspaceId: string | null
+  myWorkspaces: Workspace[]
 }) {
   const b = grantsBreakdown(pickedGrants)
+  // Target workspace is the user's explicit pick from the wizard
+  // header. No template-driven auto-create — what the user sees here
+  // is exactly where the hire will land.
+  const targetWorkspace = targetWorkspaceId
+    ? myWorkspaces.find(w => w.id === targetWorkspaceId) ?? null
+    : null
   const creativityLabel =
     creativity <= 0.2 ? 'deterministic'
     : creativity <= 0.5 ? 'focused'
@@ -559,6 +631,14 @@ function ReviewStep({
             <Caption mb="3" as="div">Summary</Caption>
             <Flex direction="column" gap="2">
               <SummaryRow label="Name" value={<Text size="2" weight="medium">{name.trim()}</Text>} />
+              <SummaryRow
+                label="Workspace"
+                value={
+                  <Text size="2" weight="medium">
+                    {targetWorkspace?.name ?? '—'}
+                  </Text>
+                }
+              />
               <SummaryRow
                 label="Permissions"
                 value={
@@ -674,13 +754,19 @@ function ReviewStep({
             {hireError}
           </Banner>
         )}
+
+        {!targetWorkspace && (
+          <Banner tone="warn" title="Pick a workspace first">
+            Open the workspace switcher in the sidebar, or create one on the <a href="#/workspaces">workspaces page</a>.
+          </Banner>
+        )}
       </Flex>
 
       <Flex justify="between" mt="4" gap="2" wrap="wrap">
         <Button variant="ghost" color="gray" onClick={onBack} disabled={busy}>
           <IconArrowLeft className="ic ic--sm" /> Back
         </Button>
-        <Button size="3" onClick={onHire} disabled={busy}>
+        <Button size="3" onClick={onHire} disabled={busy || !targetWorkspace}>
           {busy ? (
             <>
               <Spinner size="1" />
@@ -700,6 +786,67 @@ function SummaryRow({ label, value }: { label: string; value: React.ReactNode })
     <Flex align="start" justify="between" gap="3" py="2" style={{ borderTop: '1px dashed var(--gray-a3)' }}>
       <Text size="1" color="gray" style={{ textTransform: 'uppercase', letterSpacing: '0.12em', minWidth: 130 }}>{label}</Text>
       <Box style={{ flex: '1 1 auto', minWidth: 0, textAlign: 'right' }}>{value}</Box>
+    </Flex>
+  )
+}
+
+// Small wizard-header strip that names the workspace this hire will
+// land in and lets the user override per-hire without touching global
+// state. Hidden when myWorkspaces.length <= 1 — nothing to change.
+function HiringIntoHeader({
+  targetWorkspaceId,
+  onPick,
+  myWorkspaces,
+}: {
+  targetWorkspaceId: string | null
+  onPick: (id: string) => void
+  myWorkspaces: Workspace[]
+}) {
+  const target = targetWorkspaceId
+    ? myWorkspaces.find(w => w.id === targetWorkspaceId) ?? null
+    : null
+  const canChange = myWorkspaces.length > 1
+
+  if (!canChange) {
+    if (myWorkspaces.length === 0) return null
+    return (
+      <Flex align="center" gap="2">
+        <Text size="1" color="gray">Hiring into:</Text>
+        <Text size="2" weight="medium">{target?.name ?? myWorkspaces[0].name}</Text>
+      </Flex>
+    )
+  }
+
+  return (
+    <Flex align="center" gap="2" wrap="wrap">
+      <Text size="1" color="gray">Hiring into:</Text>
+      <DropdownMenu.Root>
+        <DropdownMenu.Trigger>
+          <Button variant="ghost" size="1" color="gray">
+            <Text size="2" weight="medium">{target?.name ?? 'Pick a workspace'}</Text>
+            <DropdownMenu.TriggerIcon />
+          </Button>
+        </DropdownMenu.Trigger>
+        <DropdownMenu.Content variant="soft" sideOffset={4}>
+          <DropdownMenu.Label>Pick a workspace</DropdownMenu.Label>
+          {myWorkspaces.map(ws => {
+            const isPicked = ws.id === targetWorkspaceId
+            return (
+              <DropdownMenu.Item
+                key={ws.id}
+                onSelect={() => { if (!isPicked) onPick(ws.id) }}
+              >
+                <Flex align="center" gap="2" width="100%">
+                  <Text as="span" size="2" className="truncate" style={{ flexGrow: 1 }}>
+                    {ws.name}
+                  </Text>
+                  {isPicked && <IconCheck size={12} />}
+                </Flex>
+              </DropdownMenu.Item>
+            )
+          })}
+        </DropdownMenu.Content>
+      </DropdownMenu.Root>
     </Flex>
   )
 }

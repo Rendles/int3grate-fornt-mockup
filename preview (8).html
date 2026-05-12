@@ -1,0 +1,2205 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Agentic Organisation Dashboard Map</title>
+  <style>
+
+    :root {
+      color-scheme: dark;
+      --bg: #111113;
+      --bg-2: #141516;
+      --panel: #18191b;
+      --panel-2: #1f2024;
+      --panel-3: #22242a;
+      --panel-soft: #151618;
+      --row: #202123;
+      --row-hover: #24262a;
+      --stroke: rgba(255, 255, 255, 0.075);
+      --stroke-soft: rgba(255, 255, 255, 0.055);
+      --stroke-strong: rgba(76, 108, 245, 0.58);
+      --text: #f5f6f8;
+      --muted: #9499a3;
+      --muted-2: #70757f;
+      --accent: #4c6cf5;
+      --accent-2: #3857d8;
+      --green: #18b981;
+      --amber: #c9911d;
+      --red: #e65361;
+      --blue: #4c6cf5;
+      --purple: #7a6cf2;
+      --cyan: #17a7c7;
+      --shadow: 0 18px 48px rgba(0, 0, 0, 0.22);
+      --radius-xl: 17px;
+      --radius-lg: 13px;
+      --radius-md: 10px;
+      --font: Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+    }
+
+    * { box-sizing: border-box; }
+    html, body { min-height: 100%; }
+
+    body {
+      margin: 0;
+      font-family: var(--font);
+      color: var(--text);
+      background: var(--bg);
+      text-rendering: geometricPrecision;
+      -webkit-font-smoothing: antialiased;
+    }
+
+    body::before {
+      content: "";
+      position: fixed;
+      inset: 0 0 auto 0;
+      height: 1px;
+      background: rgba(255, 255, 255, 0.06);
+      pointer-events: none;
+      z-index: 50;
+    }
+
+    button, input, textarea { font: inherit; }
+    button { color: inherit; }
+
+    .app {
+      min-height: 100vh;
+      padding: 28px 24px 24px;
+      display: grid;
+      grid-template-rows: auto auto 1fr auto;
+      gap: 16px;
+    }
+
+    .hero, .metrics, .workspace, .data-drawer { width: min(100%, 1940px); margin: 0 auto; }
+
+    .hero {
+      display: flex;
+      justify-content: space-between;
+      align-items: flex-start;
+      gap: 24px;
+      padding-top: 3px;
+    }
+
+    .brand { display: flex; align-items: flex-start; gap: 14px; }
+
+    .logo { display: none; }
+
+    .eyebrow {
+      color: #c8cbd2;
+      font-size: 12px;
+      font-weight: 760;
+      letter-spacing: .23em;
+      text-transform: uppercase;
+      margin-bottom: 10px;
+    }
+
+    h1 {
+      margin: 0;
+      font-size: clamp(30px, 3.2vw, 42px);
+      line-height: 1.05;
+      letter-spacing: -0.058em;
+      font-weight: 560;
+    }
+
+    .accent-word { color: var(--accent); font-weight: 560; }
+
+    .subtitle {
+      margin-top: 8px;
+      color: var(--muted);
+      max-width: 980px;
+      font-size: 14px;
+      line-height: 1.45;
+      font-weight: 450;
+    }
+
+    .hero-context {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 8px;
+      margin-top: 16px;
+    }
+
+    .hero-actions, .toolbar-actions, .data-actions {
+      display: flex;
+      align-items: center;
+      justify-content: flex-end;
+      flex-wrap: wrap;
+      gap: 9px;
+      padding-top: 55px;
+    }
+
+    .toolbar-actions, .data-actions { padding-top: 0; }
+
+    .btn, .pill, .mini-btn {
+      border: 1px solid var(--stroke-soft);
+      background: var(--panel-2);
+      color: #dce1ec;
+      border-radius: 12px;
+      padding: 9px 13px;
+      font-size: 12px;
+      font-weight: 700;
+      letter-spacing: -0.005em;
+      white-space: nowrap;
+      box-shadow: none;
+    }
+
+    .pill {
+      color: #b9bec8;
+      background: transparent;
+      border-color: transparent;
+      padding: 0;
+    }
+
+    .pill + .pill::before {
+      content: "·";
+      color: #555a62;
+      margin-right: 8px;
+    }
+
+    .btn, .mini-btn {
+      cursor: pointer;
+      transition: transform .16s ease, border-color .16s ease, background .16s ease, color .16s ease;
+    }
+
+    .btn.primary, #printMap {
+      color: #fff;
+      border-color: rgba(96, 124, 255, 0.65);
+      background: linear-gradient(180deg, #5a74f6, #4664e9);
+      box-shadow: 0 10px 28px rgba(76, 108, 245, 0.2), inset 0 1px 0 rgba(255,255,255,.18);
+    }
+
+    .btn:hover, .btn.active, .mini-btn:hover, .mini-btn.active {
+      transform: translateY(-1px);
+      border-color: rgba(255, 255, 255, 0.12);
+      background: #23252a;
+      color: #fff;
+    }
+
+    .btn.primary:hover, #printMap:hover {
+      border-color: rgba(124, 149, 255, 0.76);
+      background: linear-gradient(180deg, #637bf7, #4b68ed);
+    }
+
+    .btn.danger:hover { border-color: rgba(230,83,97,.48); background: rgba(230,83,97,.08); }
+
+    .btn:focus-visible, .mini-btn:focus-visible, input:focus-visible, textarea:focus-visible, .node-card:focus-visible, .team-box:focus-visible, .department-card:focus-visible {
+      outline: 3px solid rgba(76, 108, 245, 0.34);
+      outline-offset: 3px;
+    }
+
+    .metrics {
+      display: grid;
+      grid-template-columns: repeat(4, minmax(150px, 1fr));
+      gap: 16px;
+      margin-top: 4px;
+    }
+
+    .metric {
+      min-height: 116px;
+      padding: 16px 16px 15px;
+      border-radius: 10px;
+      background: var(--panel);
+      border: 1px solid var(--stroke-soft);
+      box-shadow: none;
+      position: relative;
+      overflow: hidden;
+    }
+
+    .metric-head { display: flex; justify-content: space-between; align-items: flex-start; gap: 10px; }
+
+    .metric .label {
+      color: #8d929c;
+      font-size: 12px;
+      font-weight: 520;
+      letter-spacing: 0;
+      text-transform: none;
+    }
+
+    .metric-icon {
+      width: 32px;
+      height: 32px;
+      display: grid;
+      place-items: center;
+      border-radius: 10px;
+      color: var(--accent);
+      background: rgba(76, 108, 245, 0.10);
+      border: 1px solid rgba(76, 108, 245, 0.12);
+      font-size: 15px;
+      line-height: 1;
+    }
+
+    .metric .value {
+      margin-top: 8px;
+      font-size: 32px;
+      font-weight: 560;
+      letter-spacing: -0.052em;
+      line-height: 1;
+    }
+
+    .metric .help {
+      margin-top: 10px;
+      color: #8d929c;
+      font-size: 12px;
+      line-height: 1.25;
+      font-weight: 450;
+    }
+
+    .workspace {
+      min-height: 0;
+      display: grid;
+      grid-template-columns: 300px minmax(760px, 1fr) 370px;
+      gap: 16px;
+    }
+
+    .panel, .chart-shell, .data-drawer {
+      background: var(--panel);
+      border: 1px solid var(--stroke-soft);
+      border-radius: var(--radius-xl);
+      box-shadow: none;
+      min-height: 0;
+    }
+
+    .panel { padding: 16px; overflow: auto; }
+
+    .panel-title {
+      margin: 0 0 8px;
+      color: #eef0f4;
+      font-size: 13px;
+      letter-spacing: 0;
+      text-transform: none;
+      font-weight: 720;
+    }
+
+    .panel-copy {
+      margin: 0 0 15px;
+      color: var(--muted);
+      font-size: 12.5px;
+      line-height: 1.45;
+      font-weight: 450;
+    }
+
+    .field { margin-top: 18px; }
+    .field label {
+      display: block;
+      color: #8d929c;
+      font-size: 11px;
+      text-transform: none;
+      letter-spacing: 0;
+      font-weight: 620;
+      margin-bottom: 8px;
+    }
+
+    input[type="search"], textarea {
+      width: 100%;
+      border: 1px solid var(--stroke-soft);
+      border-radius: 12px;
+      background: #101113;
+      color: var(--text);
+      padding: 12px 13px;
+      outline: none;
+      box-shadow: inset 0 1px 0 rgba(255,255,255,.015);
+    }
+
+    input[type="search"]::placeholder, textarea::placeholder { color: #5f646d; }
+
+    .toggle-list, .department-list, .quick-list { display: grid; gap: 8px; }
+
+    .toggle-row {
+      display: grid;
+      grid-template-columns: 20px 1fr;
+      gap: 10px;
+      align-items: start;
+      padding: 11px;
+      border-radius: 12px;
+      border: 1px solid transparent;
+      background: var(--row);
+      cursor: pointer;
+      user-select: none;
+      transition: background .16s ease, border-color .16s ease;
+    }
+
+    .toggle-row:hover { background: var(--row-hover); border-color: rgba(255,255,255,.06); }
+    .toggle-row input { margin-top: 3px; accent-color: var(--accent); }
+    .toggle-row strong { display: block; font-size: 12px; color: #edf0f6; letter-spacing: 0; text-transform: none; margin: 0; font-weight: 680; }
+    .toggle-row span span { display: block; margin-top: 3px; color: var(--muted); font-size: 11px; line-height: 1.3; }
+
+    .department-filter {
+      border: 1px solid transparent;
+      background: var(--row);
+      border-radius: 12px;
+      padding: 10px 11px;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      gap: 10px;
+      cursor: pointer;
+      text-align: left;
+      transition: transform .16s ease, border-color .16s ease, background .16s ease;
+    }
+
+    .department-filter:hover, .department-filter.active {
+      transform: translateY(-1px);
+      border-color: rgba(76,108,245,.42);
+      background: rgba(76,108,245,.10);
+    }
+
+    .department-filter strong { font-size: 12px; color: #f1f3f7; font-weight: 680; }
+    .department-filter span { color: var(--muted); font-size: 11px; }
+
+    .quick-list { grid-template-columns: 1fr 1fr; }
+    .mini-btn { padding: 8px 9px; font-size: 11px; text-align: center; border-radius: 999px; color: #b9bec8; background: var(--row); }
+
+    .chart-shell { overflow: hidden; display: grid; grid-template-rows: auto 1fr auto; }
+
+    .chart-toolbar {
+      padding: 16px 18px;
+      display: flex;
+      justify-content: space-between;
+      gap: 12px;
+      align-items: center;
+      background: var(--panel);
+      border-bottom: 1px solid var(--stroke-soft);
+    }
+
+    .chart-title h2 { margin: 0; font-size: 15px; letter-spacing: 0; font-weight: 720; }
+    .chart-title p { margin: 4px 0 0; color: var(--muted); font-size: 12.5px; line-height: 1.35; }
+
+    .viewport {
+      position: relative;
+      overflow: auto;
+      min-height: 720px;
+      background-color: #151618;
+      background-image:
+        linear-gradient(rgba(255,255,255,0.026) 1px, transparent 1px),
+        linear-gradient(90deg, rgba(255,255,255,0.026) 1px, transparent 1px);
+      background-size: 36px 36px;
+      background-position: 8px 12px;
+    }
+
+    .canvas {
+      position: relative;
+      width: 1720px;
+      height: 1080px;
+      transform-origin: top left;
+      transition: transform .16s ease;
+    }
+
+    .edges { position: absolute; inset: 0; width: 100%; height: 100%; overflow: visible; pointer-events: none; z-index: 1; }
+    .edges path { fill: none; stroke-width: 2; opacity: .84; transition: opacity .16s ease, stroke-width .16s ease; }
+    .edges path.dim { opacity: .08; }
+    .edges path.selected { opacity: 1; stroke-width: 3.25; }
+    .edges path.reporting { stroke: rgba(76, 108, 245, 0.78); marker-end: url(#arrow-reporting); }
+    .edges path.membership { stroke: rgba(150, 154, 165, 0.38); marker-end: url(#arrow-membership); stroke-dasharray: 5 7; }
+    .edges path.workflow { stroke: rgba(122, 108, 242, 0.72); marker-end: url(#arrow-workflow); }
+    .edges path.approval { stroke: rgba(201, 145, 29, 0.86); marker-end: url(#arrow-approval); stroke-dasharray: 7 6; }
+    .edges path.data { stroke: rgba(24, 185, 129, 0.70); marker-end: url(#arrow-data); stroke-dasharray: 2 7; }
+
+    .edge-label {
+      fill: rgba(236, 239, 245, 0.78);
+      font-size: 10px;
+      font-weight: 650;
+      paint-order: stroke;
+      stroke: rgba(17, 17, 19, 0.86);
+      stroke-width: 4px;
+      pointer-events: none;
+    }
+    .edge-label.dim { opacity: .08; }
+
+    .team-layer, .node-layer { position: absolute; inset: 0; z-index: 2; pointer-events: none; }
+    .node-layer { z-index: 3; }
+
+    .department-card, .team-box, .node-card {
+      pointer-events: auto;
+      position: absolute;
+      border-radius: 14px;
+      border: 1px solid var(--stroke-soft);
+      box-shadow: 0 12px 28px rgba(0,0,0,.18), inset 0 1px 0 rgba(255,255,255,.035);
+      transition: transform .16s ease, border-color .16s ease, background .16s ease, opacity .16s ease, filter .16s ease;
+    }
+
+    .department-card, .node-card { cursor: pointer; text-align: left; color: var(--text); }
+
+    .department-card { padding: 13px 14px; background: #1b1c1f; }
+
+    .team-box {
+      background: rgba(255,255,255,.015);
+      border-style: solid;
+      border-color: rgba(255,255,255,.06);
+      pointer-events: auto;
+    }
+
+    .team-box button { width: 100%; border: 0; background: transparent; color: inherit; text-align: left; cursor: pointer; padding: 13px 14px 10px; }
+
+    .team-box .team-kicker { color: #777c86; font-size: 10px; letter-spacing: .09em; text-transform: uppercase; font-weight: 690; }
+    .team-box .team-title { margin-top: 5px; font-size: 14px; color: #f3f4f6; font-weight: 720; letter-spacing: -0.015em; }
+    .team-box .team-purpose { margin-top: 4px; color: var(--muted); font-size: 11px; line-height: 1.32; }
+
+    .node-card { min-height: 104px; padding: 12px 13px 11px; background: #1d1f22; overflow: hidden; }
+    .node-card.compact { min-height: 78px; padding: 10px 11px; }
+
+    .node-card::before, .department-card::before {
+      content: "";
+      position: absolute;
+      top: 0;
+      left: 12px;
+      right: 12px;
+      height: 3px;
+      border-radius: 0 0 99px 99px;
+      background: var(--blue);
+    }
+
+    .node-card.type-human { background: #1f2024; }
+    .node-card.type-human::before { background: var(--amber); }
+    .node-card.type-manager::before { background: var(--accent); }
+    .node-card.type-agent::before { background: var(--purple); }
+    .department-card::before { background: #2f3540; }
+
+    .node-card:hover, .node-card.selected, .department-card:hover, .department-card.selected, .team-box.selected {
+      transform: translateY(-2px);
+      border-color: rgba(76,108,245,.56);
+      background: #23252a;
+      box-shadow: 0 18px 42px rgba(0,0,0,.28), 0 0 0 1px rgba(76,108,245,.10), inset 0 1px 0 rgba(255,255,255,.055);
+    }
+
+    .team-box:hover { border-color: rgba(76,108,245,.30); background: rgba(76,108,245,.035); }
+    .team-box.horizontal-team { border-color: rgba(76,108,245,.26); background: rgba(76,108,245,.045); }
+    .team-box.horizontal-team .team-kicker { color: #98a6f5; }
+
+    .node-card.horizontal-agent-card { padding: 10px 10px 9px; }
+    .node-card.horizontal-agent-card .node-kicker { font-size: 8.8px; letter-spacing: .11em; }
+    .node-card.horizontal-agent-card .node-title { font-size: 13px; }
+    .node-card.horizontal-agent-card .node-role { font-size: 10.4px; }
+    .node-card.horizontal-agent-card .badge { max-width: 94px; }
+    .node-card.horizontal-agent-card .score small { display: none; }
+
+    .dimmed { opacity: .24; filter: saturate(.55); }
+
+    .node-kicker, .dept-kicker {
+      display: flex;
+      align-items: center;
+      gap: 7px;
+      color: #858b96;
+      font-size: 9.5px;
+      letter-spacing: .11em;
+      text-transform: uppercase;
+      font-weight: 690;
+      margin-bottom: 7px;
+      min-height: 18px;
+    }
+
+    .node-icon {
+      width: 20px;
+      height: 20px;
+      display: inline-grid;
+      place-items: center;
+      border-radius: 7px;
+      background: rgba(76,108,245,.11);
+      border: 1px solid rgba(76,108,245,.12);
+      color: #8fa0ff;
+      font-size: 12px;
+      flex: 0 0 auto;
+      line-height: 1;
+    }
+
+    .node-title, .dept-title { font-size: 14px; line-height: 1.18; font-weight: 740; letter-spacing: -.015em; color: #f3f4f6; }
+    .dept-title { font-size: 18px; }
+    .node-role, .dept-purpose { margin-top: 5px; color: var(--muted); font-size: 11px; line-height: 1.26; }
+
+    .node-meta { margin-top: 9px; display: flex; align-items: center; justify-content: space-between; gap: 8px; }
+
+    .badge {
+      display: inline-flex;
+      align-items: center;
+      max-width: 148px;
+      min-height: 22px;
+      padding: 4px 8px;
+      border-radius: 999px;
+      background: #282a2f;
+      color: #c6cbd4;
+      font-size: 9.5px;
+      font-weight: 680;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+
+    .score { color: #f4f5f7; font-size: 11px; font-weight: 760; white-space: nowrap; }
+    .score small { color: var(--muted); font-size: 10px; font-weight: 650; }
+    .node-card.compact .node-role { display: none; }
+    .node-card.compact .node-meta { margin-top: 7px; }
+
+    .legend {
+      border-top: 1px solid var(--stroke-soft);
+      padding: 12px 16px;
+      display: flex;
+      justify-content: space-between;
+      gap: 12px;
+      flex-wrap: wrap;
+      background: var(--panel);
+    }
+
+    .legend-items { display: flex; flex-wrap: wrap; gap: 14px; }
+    .legend-item { display: inline-flex; align-items: center; gap: 8px; color: #9aa0aa; font-size: 12px; font-weight: 560; }
+    .line-swatch { width: 28px; height: 0; border-top: 2px solid rgba(76,108,245,.78); }
+    .line-swatch.membership { border-top-style: dashed; border-color: rgba(150,154,165,.45); }
+    .line-swatch.workflow { border-color: rgba(122,108,242,.76); }
+    .line-swatch.approval { border-top-style: dashed; border-color: rgba(201,145,29,.86); }
+    .line-swatch.data { border-top-style: dotted; border-color: rgba(24,185,129,.78); }
+
+    .detail-panel { overflow: auto; max-height: calc(100vh - 192px); }
+
+    .detail-header { display: flex; justify-content: space-between; align-items: flex-start; gap: 14px; padding-bottom: 14px; border-bottom: 1px solid var(--stroke-soft); }
+    .detail-kicker { color: #858b96; font-size: 11px; text-transform: none; letter-spacing: 0; font-weight: 650; }
+    .detail-dot { display: inline-block; width: 9px; height: 9px; border-radius: 50%; background: var(--accent); box-shadow: 0 0 18px rgba(76,108,245,.65); margin-right: 7px; }
+    .detail-panel h2 { margin: 8px 0 0; font-size: 25px; font-weight: 600; letter-spacing: -.045em; line-height: 1.05; }
+    .detail-panel p { margin: 8px 0 0; color: var(--muted); font-size: 13px; line-height: 1.45; }
+
+    .chips { margin-top: 14px; display: flex; flex-wrap: wrap; gap: 8px; }
+    .chip { border: 1px solid var(--stroke-soft); background: #22242a; color: #c6cbd4; border-radius: 999px; padding: 7px 10px; font-size: 11px; font-weight: 620; }
+
+    .stat-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-top: 16px; }
+    .stat { min-height: 82px; border-radius: 12px; border: 1px solid var(--stroke-soft); background: #1f2024; padding: 13px; }
+    .stat .label { color: #858b96; font-size: 10px; text-transform: none; letter-spacing: 0; font-weight: 650; }
+    .stat .big { margin-top: 8px; font-size: 23px; font-weight: 560; letter-spacing: -.04em; }
+    .stat .small { margin-top: 3px; color: var(--muted); font-size: 11px; line-height: 1.25; }
+
+    .meta-list { margin-top: 17px; display: grid; gap: 9px; }
+    .meta-row { display: grid; grid-template-columns: 112px 1fr; gap: 10px; font-size: 12px; line-height: 1.35; }
+    .meta-row span:first-child { color: #858b96; text-transform: none; letter-spacing: 0; font-weight: 650; font-size: 10px; }
+    .meta-row span:last-child { color: #e1e5ec; }
+
+    .linked-section { margin-top: 18px; padding-top: 16px; border-top: 1px solid var(--stroke-soft); }
+    .linked-section h3 { margin: 0 0 10px; font-size: 15px; letter-spacing: -.015em; font-weight: 720; }
+
+    .link-card {
+      width: 100%;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      gap: 12px;
+      margin-top: 8px;
+      border-radius: 12px;
+      border: 1px solid transparent;
+      background: var(--row);
+      padding: 10px 11px;
+      text-align: left;
+      cursor: pointer;
+      transition: border-color .16s ease, background .16s ease, transform .16s ease;
+    }
+
+    .link-card:hover { transform: translateY(-1px); border-color: rgba(76,108,245,.38); background: rgba(76,108,245,.08); }
+    .link-card span:first-child { font-size: 12px; color: #eff1f5; font-weight: 650; }
+    .link-card span:last-child { font-size: 11px; color: var(--muted); white-space: nowrap; }
+
+    .empty { border-radius: 12px; border: 1px solid var(--stroke-soft); background: #1f2024; padding: 14px; color: var(--muted); font-size: 13px; line-height: 1.4; }
+
+    .data-drawer { padding: 0; overflow: hidden; }
+    .data-drawer summary { cursor: pointer; padding: 15px 18px; color: #eff1f5; font-size: 13px; letter-spacing: 0; text-transform: none; font-weight: 700; background: var(--panel); border-bottom: 1px solid var(--stroke-soft); }
+    .data-content { padding: 16px 18px 18px; display: grid; gap: 12px; }
+    textarea { min-height: 260px; resize: vertical; font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", monospace; font-size: 12px; line-height: 1.45; white-space: pre; overflow: auto; }
+
+    .status-message { color: var(--muted); font-size: 12px; min-height: 18px; }
+    .status-message.ok { color: var(--green); }
+    .status-message.error { color: var(--red); }
+
+    *::-webkit-scrollbar { width: 10px; height: 10px; }
+    *::-webkit-scrollbar-track { background: #111113; }
+    *::-webkit-scrollbar-thumb { background: #2b2d32; border-radius: 999px; border: 2px solid #111113; }
+    *::-webkit-scrollbar-thumb:hover { background: #3a3d45; }
+
+    @media (max-width: 1480px) {
+      .workspace { grid-template-columns: 280px minmax(700px, 1fr); }
+      .detail-panel { grid-column: 1 / -1; max-height: none; }
+      .metrics { grid-template-columns: repeat(4, minmax(130px, 1fr)); }
+    }
+
+    @media (max-width: 1020px) {
+      .app { padding: 18px 14px; }
+      .hero { flex-direction: column; }
+      .hero-actions { justify-content: flex-start; padding-top: 0; }
+      .workspace { grid-template-columns: 1fr; }
+      .metrics { grid-template-columns: repeat(2, minmax(130px, 1fr)); }
+      .chart-toolbar { align-items: flex-start; flex-direction: column; }
+      .toolbar-actions { justify-content: flex-start; }
+      .viewport { min-height: 620px; }
+    }
+
+    @media (max-width: 600px) {
+      .brand { align-items: flex-start; }
+      .metrics, .stat-grid, .quick-list { grid-template-columns: 1fr; }
+      .hero-actions, .toolbar-actions, .data-actions { justify-content: flex-start; }
+      h1 { font-size: 30px; }
+    }
+
+    @media print {
+      body { background: #fff; color: #111; }
+      .panel:not(.detail-panel), .data-drawer, .hero-actions, .toolbar-actions, .legend { display: none !important; }
+      .app { padding: 0; display: block; }
+      .hero, .metrics, .workspace { width: 100%; }
+      .workspace { display: block; }
+      .chart-shell { border: 0; box-shadow: none; background: #fff; }
+      .viewport { overflow: visible; min-height: auto; background: #fff; }
+    }
+
+  </style>
+</head>
+<body>
+  <main class="app" aria-label="Agentic corporate hierarchy map">
+    <header class="hero">
+      <div class="brand">
+        <div class="logo" aria-hidden="true">AO</div>
+        <div>
+          <div class="eyebrow" id="todayLabel">DIGITAL ORG MAP ⓘ</div>
+          <h1>Good evening, <span class="accent-word">CEO.</span></h1>
+          <div class="subtitle">Agent hierarchy, live approvals, reporting lines, and department handoffs across the digital organisation.</div>
+          <div class="hero-context">
+            <span class="pill" id="orgName">Agentic organisation</span>
+            <span class="pill" id="selectionHint">Select any node</span>
+          </div>
+        </div>
+      </div>
+      <div class="hero-actions">
+        <button class="btn" id="copySummary" type="button">Copy summary</button>
+        <button class="btn primary" id="printMap" type="button">Export map</button>
+      </div>
+    </header>
+
+    <section class="metrics" id="metrics" aria-label="Organisation metrics"></section>
+
+    <section class="workspace">
+      <aside class="panel" aria-label="Controls">
+        <h2 class="panel-title">Explore</h2>
+        <p class="panel-copy">Use filters and overlays to explain the corporate agent hierarchy quickly to a human stakeholder.</p>
+
+        <div class="field">
+          <label for="searchInput">Search</label>
+          <input id="searchInput" type="search" placeholder="Agent, team, department, capability, system…" />
+        </div>
+
+        <div class="field">
+          <label>Relationship overlays</label>
+          <div class="toggle-list">
+            <label class="toggle-row"><input id="showMembership" type="checkbox" checked /><span><strong>CEO → Department → Team</strong><span>Shows organisational containment.</span></span></label>
+            <label class="toggle-row"><input id="showReporting" type="checkbox" checked /><span><strong>Reporting lines</strong><span>Shows who each agent reports to.</span></span></label>
+            <label class="toggle-row"><input id="showWorkflow" type="checkbox" checked /><span><strong>Workflow handoffs</strong><span>Shows operational handoffs between agents.</span></span></label>
+            <label class="toggle-row"><input id="showData" type="checkbox" checked /><span><strong>Data feeds</strong><span>Shows agents feeding managers with information.</span></span></label>
+            <label class="toggle-row"><input id="showApproval" type="checkbox" checked /><span><strong>Human approvals</strong><span>Shows actions that wait for CEO approval.</span></span></label>
+          </div>
+        </div>
+
+        <div class="field">
+          <label>View options</label>
+          <div class="toggle-list">
+            <label class="toggle-row"><input id="focusMode" type="checkbox" /><span><strong>Focus selected network</strong><span>Dim everything outside the selected node network.</span></span></label>
+            <label class="toggle-row"><input id="compactMode" type="checkbox" /><span><strong>Compact cards</strong><span>Fits more of the chart at once.</span></span></label>
+          </div>
+        </div>
+
+        <div class="field">
+          <label>Departments</label>
+          <div class="department-list" id="departmentList"></div>
+        </div>
+
+        <div class="field">
+          <label>Quick filters</label>
+          <div class="quick-list" id="quickFilters"></div>
+        </div>
+      </aside>
+
+      <section class="chart-shell" aria-label="Organisation chart">
+        <div class="chart-toolbar">
+          <div class="chart-title">
+            <h2 id="chartTitle">Full digital hierarchy</h2>
+            <p id="chartSubtitle">The human CEO sits above four departments: Sales, Admin, Finance, and Marketing.</p>
+          </div>
+          <div class="toolbar-actions">
+            <button class="btn" id="zoomOut" type="button">− Zoom</button>
+            <button class="btn" id="fitView" type="button">Fit view</button>
+            <button class="btn" id="zoomIn" type="button">+ Zoom</button>
+            <button class="btn" id="resetView" type="button">Reset</button>
+          </div>
+        </div>
+
+        <div class="viewport" id="viewport">
+          <div class="canvas" id="canvas">
+            <svg class="edges" id="edges" aria-hidden="true">
+              <defs>
+                <marker id="arrow-reporting" viewBox="0 0 10 10" refX="8.2" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse">
+                  <path d="M 0 0 L 10 5 L 0 10 z" fill="rgba(76, 108, 245, 0.88)"></path>
+                </marker>
+                <marker id="arrow-membership" viewBox="0 0 10 10" refX="8.2" refY="5" markerWidth="5" markerHeight="5" orient="auto-start-reverse">
+                  <path d="M 0 0 L 10 5 L 0 10 z" fill="rgba(150, 154, 165, 0.48)"></path>
+                </marker>
+                <marker id="arrow-workflow" viewBox="0 0 10 10" refX="8.2" refY="5" markerWidth="5" markerHeight="5" orient="auto-start-reverse">
+                  <path d="M 0 0 L 10 5 L 0 10 z" fill="rgba(122, 108, 242, 0.82)"></path>
+                </marker>
+                <marker id="arrow-approval" viewBox="0 0 10 10" refX="8.2" refY="5" markerWidth="5" markerHeight="5" orient="auto-start-reverse">
+                  <path d="M 0 0 L 10 5 L 0 10 z" fill="rgba(201, 145, 29, 0.9)"></path>
+                </marker>
+                <marker id="arrow-data" viewBox="0 0 10 10" refX="8.2" refY="5" markerWidth="5" markerHeight="5" orient="auto-start-reverse">
+                  <path d="M 0 0 L 10 5 L 0 10 z" fill="rgba(24, 185, 129, 0.9)"></path>
+                </marker>
+              </defs>
+            </svg>
+            <div class="team-layer" id="teamLayer"></div>
+            <div class="node-layer" id="nodeLayer"></div>
+          </div>
+        </div>
+
+        <div class="legend" aria-label="Relationship legend">
+          <div class="legend-items">
+            <span class="legend-item"><span class="line-swatch membership"></span>Membership</span>
+            <span class="legend-item"><span class="line-swatch"></span>Reporting</span>
+            <span class="legend-item"><span class="line-swatch workflow"></span>Workflow</span>
+            <span class="legend-item"><span class="line-swatch data"></span>Data feed</span>
+            <span class="legend-item"><span class="line-swatch approval"></span>Human approval</span>
+          </div>
+          <span class="legend-item" id="zoomLabel">Zoom 100%</span>
+        </div>
+      </section>
+
+      <aside class="panel detail-panel" id="detailPanel" aria-label="Selected node detail"></aside>
+    </section>
+
+    <details class="data-drawer">
+      <summary>Data model editor — paste your own departments, teams, agents, and links</summary>
+      <div class="data-content">
+        <p class="panel-copy">Edit the JSON below, then load it to redraw the organisation. Required arrays: <strong>departments</strong>, <strong>teams</strong>, <strong>agents</strong>, and optional <strong>links</strong>. Each agent can include <strong>reportsTo</strong> to draw reporting lines. Teams can include <strong>layout: "horizontal"</strong> and <strong>columns</strong> to show agents side-by-side. The CEO is stored as <strong>organisation.ceo</strong>.</p>
+        <textarea id="jsonEditor" spellcheck="false" aria-label="Organisation JSON editor"></textarea>
+        <div class="data-actions">
+          <button class="btn" id="loadJson" type="button">Load JSON</button>
+          <button class="btn" id="copyJson" type="button">Copy JSON</button>
+          <button class="btn danger" id="restoreSample" type="button">Restore sample</button>
+        </div>
+        <div class="status-message" id="jsonStatus" role="status"></div>
+      </div>
+    </details>
+  </main>
+
+  <script>
+    (() => {
+      const sampleData = {
+        organisation: {
+          name: "Human-led Agentic Company",
+          description: "Corporate digital hierarchy where the CEO is the actual human user and four departments are operated by specialised AI agents.",
+          version: "2.1",
+          ceo: {
+            id: "human-ceo",
+            name: "CEO / Human User",
+            role: "Final decision maker",
+            archetype: "human",
+            status: "human",
+            autonomy: "Human authority",
+            coverage: 100,
+            risk: 12,
+            load: "Approvals, priorities, exceptions",
+            capabilities: ["sets priorities", "approves outbound communication", "approves invoices", "reviews recommendations"],
+            systems: ["Dashboard", "CRM", "Finance reports", "Inbox"],
+            summary: "The human CEO sits above the digital organisation and approves sensitive actions before they are sent externally."
+          }
+        },
+        departments: [
+          { id: "dept-sales", name: "Sales", owner: "CEO / Human User", purpose: "Sources leads, qualifies them, and prepares approved outreach for the human CEO." },
+          { id: "dept-admin", name: "Admin", owner: "CEO / Human User", purpose: "Handles invoices, meeting minutes, meeting notes, and administrative handoffs." },
+          { id: "dept-finance", name: "Finance", owner: "CEO / Human User", purpose: "Analyses company financials from cash flow, AR/AP, and accounting feeds." },
+          { id: "dept-marketing", name: "Marketing", owner: "CEO / Human User", purpose: "Plans budget use and runs digital ads, blogs, and social media content work." }
+        ],
+        teams: [
+          { id: "team-sales-management", departmentId: "dept-sales", name: "Sales Management Team", purpose: "KPI ownership, pipeline analysis, and sales recommendations.", order: 1 },
+          { id: "team-sales-lead-generation", departmentId: "dept-sales", name: "Lead Generation Team", purpose: "Separate Sales team under the Sales department: Lead Gen 1 handles RSS leads and Lead Gen 2 handles social media leads in parallel.", order: 2, layout: "horizontal", columns: 2 },
+          { id: "team-sales-pipeline", departmentId: "dept-sales", name: "Qualification & Outreach Team", purpose: "Lead quality scoring and human-approved outreach preparation.", order: 3 },
+          { id: "team-admin-ops", departmentId: "dept-admin", name: "Admin Operations Team", purpose: "Invoice processing, meeting records, and internal administrative capture." },
+          { id: "team-finance-analysis", departmentId: "dept-finance", name: "Finance Analysis Team", purpose: "Company financial analysis, cash visibility, AR/AP tracking, and internal accounting." },
+          { id: "team-marketing-growth", departmentId: "dept-marketing", name: "Marketing Growth Team", purpose: "Budget recommendations, paid ads, blog creation, and social media creation." }
+        ],
+        agents: [
+          {
+            id: "agent-sales-manager",
+            teamId: "team-sales-management",
+            name: "Sales Manager",
+            role: "Sets KPIs, analyses sales data, and makes suggestions",
+            order: 1,
+            reportsTo: "human-ceo",
+            archetype: "manager",
+            status: "active",
+            autonomy: "Human-supervised",
+            coverage: 76,
+            risk: 31,
+            load: "Weekly KPI review + pipeline suggestions",
+            capabilities: ["KPI design", "pipeline analysis", "lead source review", "sales recommendations"],
+            systems: ["CRM", "Sales dashboard"],
+            summary: "Owns the sales agent hierarchy, sets KPIs, analyses pipeline data, and recommends improvements to the CEO."
+          },
+          {
+            id: "agent-lead-gen-rss",
+            teamId: "team-sales-lead-generation",
+            name: "Lead Gen 1 — RSS",
+            role: "Daily RSS leads → CRM",
+            order: 1,
+            reportsTo: "agent-sales-manager",
+            archetype: "agent",
+            status: "active",
+            autonomy: "Autonomous data capture",
+            coverage: 86,
+            risk: 24,
+            load: "Daily RSS scan",
+            capabilities: ["RSS monitoring", "lead extraction", "CRM population"],
+            systems: ["RSS feeds", "CRM"],
+            summary: "Scans RSS sources every day, extracts potential leads, and adds structured lead records into the CRM."
+          },
+          {
+            id: "agent-lead-gen-social",
+            teamId: "team-sales-lead-generation",
+            name: "Lead Gen 2 — Social Media",
+            role: "Social media leads → CRM",
+            order: 2,
+            reportsTo: "agent-sales-manager",
+            archetype: "agent",
+            status: "active",
+            autonomy: "Autonomous data capture",
+            coverage: 82,
+            risk: 29,
+            load: "Daily social media scan",
+            capabilities: ["social listening", "prospect detection", "CRM enrichment"],
+            systems: ["Social platforms", "CRM"],
+            summary: "Monitors social media sources, identifies possible prospects, and prepares CRM entries from social signals."
+          },
+          {
+            id: "agent-lead-qualifier",
+            teamId: "team-sales-pipeline",
+            name: "Lead Qualifier",
+            role: "Qualifies leads based on quality",
+            order: 1,
+            reportsTo: "agent-sales-manager",
+            archetype: "agent",
+            status: "active",
+            autonomy: "Autonomous with review rules",
+            coverage: 81,
+            risk: 35,
+            load: "Qualified lead queue",
+            capabilities: ["lead scoring", "quality checks", "qualification rules", "routing"],
+            systems: ["CRM", "Sales playbook"],
+            summary: "Receives leads from the RSS and social media lead generators, scores quality, and passes qualified leads to outreach."
+          },
+          {
+            id: "agent-outreach-specialist",
+            teamId: "team-sales-pipeline",
+            name: "Outreach Specialist",
+            role: "Writes emails/messages and waits for human sending approval",
+            order: 2,
+            reportsTo: "agent-sales-manager",
+            archetype: "agent",
+            status: "active",
+            autonomy: "Human-approved sending",
+            coverage: 68,
+            risk: 48,
+            load: "Drafted outreach queue",
+            capabilities: ["email drafting", "message drafting", "personalisation", "approval packaging"],
+            systems: ["CRM", "Email", "Messaging apps"],
+            summary: "Writes outbound emails and messages for qualified leads but does not send them until the CEO approves."
+          },
+
+          {
+            id: "agent-admin-manager",
+            teamId: "team-admin-ops",
+            name: "Admin Manager",
+            role: "Coordinates invoice, minutes, and notes workflows",
+            reportsTo: "human-ceo",
+            archetype: "manager",
+            status: "active",
+            autonomy: "Human-supervised",
+            coverage: 72,
+            risk: 28,
+            load: "Back-office queue management",
+            capabilities: ["admin routing", "task monitoring", "document handoffs", "approval tracking"],
+            systems: ["Admin dashboard", "Calendar", "Document store"],
+            summary: "Coordinates administrative agents and keeps invoice, minutes, and meeting notes workflows visible to the CEO."
+          },
+          {
+            id: "agent-invoice",
+            teamId: "team-admin-ops",
+            name: "Invoice Agent",
+            role: "Processes invoices and creates sale invoices with approval hold",
+            reportsTo: "agent-admin-manager",
+            archetype: "agent",
+            status: "active",
+            autonomy: "Human-approved sending",
+            coverage: 74,
+            risk: 52,
+            load: "Invoice processing + sale invoice creation",
+            capabilities: ["invoice creation", "invoice processing", "sale trigger handling", "approval packaging"],
+            systems: ["Accounting system", "CRM", "Email"],
+            summary: "Processes invoices. When a sale is completed, it creates an invoice but does not send it until the CEO approves."
+          },
+          {
+            id: "agent-meeting-minutes",
+            teamId: "team-admin-ops",
+            name: "Meeting Minutes Agent",
+            role: "Takes formal minutes",
+            reportsTo: "agent-admin-manager",
+            archetype: "agent",
+            status: "active",
+            autonomy: "Assisted capture",
+            coverage: 79,
+            risk: 22,
+            load: "Formal meeting records",
+            capabilities: ["minutes capture", "decision capture", "action item extraction"],
+            systems: ["Calendar", "Document store"],
+            summary: "Captures formal meeting minutes, decisions, and action items for structured company records."
+          },
+          {
+            id: "agent-meeting-notes",
+            teamId: "team-admin-ops",
+            name: "Meeting Notes Agent",
+            role: "Takes meeting notes",
+            reportsTo: "agent-admin-manager",
+            archetype: "agent",
+            status: "active",
+            autonomy: "Assisted capture",
+            coverage: 82,
+            risk: 21,
+            load: "Meeting notes + summaries",
+            capabilities: ["note capture", "summary drafting", "follow-up extraction"],
+            systems: ["Calendar", "Notes app", "Document store"],
+            summary: "Captures meeting notes and creates readable summaries for internal follow-up."
+          },
+
+          {
+            id: "agent-finance-manager",
+            teamId: "team-finance-analysis",
+            name: "Finance Manager",
+            role: "Analyses company financials as required by the company",
+            reportsTo: "human-ceo",
+            archetype: "manager",
+            status: "active",
+            autonomy: "Human-supervised",
+            coverage: 77,
+            risk: 38,
+            load: "Financial reviews on demand",
+            capabilities: ["financial analysis", "variance review", "cash visibility", "management reporting"],
+            systems: ["Accounting system", "Finance dashboard", "Bank feeds"],
+            summary: "Analyses company financials when required and obtains feeds from cash flow, AR/AP, and accounting agents."
+          },
+          {
+            id: "agent-cash-flow",
+            teamId: "team-finance-analysis",
+            name: "Cash Flow Specialist",
+            role: "Feeds cash position and cash movement insight to Finance Manager",
+            reportsTo: "agent-finance-manager",
+            archetype: "agent",
+            status: "active",
+            autonomy: "Autonomous monitoring",
+            coverage: 85,
+            risk: 33,
+            load: "Cash movement checks",
+            capabilities: ["cash monitoring", "cash forecast support", "liquidity signals"],
+            systems: ["Bank feeds", "Accounting system"],
+            summary: "Tracks cash movement and feeds cash-flow insight to the Finance Manager."
+          },
+          {
+            id: "agent-ar-ap",
+            teamId: "team-finance-analysis",
+            name: "AR/AP Tracker",
+            role: "Feeds receivables and payables status to Finance Manager",
+            reportsTo: "agent-finance-manager",
+            archetype: "agent",
+            status: "active",
+            autonomy: "Autonomous monitoring",
+            coverage: 84,
+            risk: 36,
+            load: "AR/AP status tracking",
+            capabilities: ["accounts receivable tracking", "accounts payable tracking", "aging summaries"],
+            systems: ["Accounting system", "Invoice records"],
+            summary: "Tracks accounts receivable and accounts payable, then feeds status and aging summaries to the Finance Manager."
+          },
+          {
+            id: "agent-internal-accountant",
+            teamId: "team-finance-analysis",
+            name: "Internal Accountant",
+            role: "Feeds internal accounting records to Finance Manager",
+            reportsTo: "agent-finance-manager",
+            archetype: "agent",
+            status: "active",
+            autonomy: "Assisted accounting",
+            coverage: 78,
+            risk: 42,
+            load: "Internal accounting record review",
+            capabilities: ["ledger support", "reconciliation support", "accounting summaries"],
+            systems: ["Accounting system", "General ledger"],
+            summary: "Maintains internal accounting context and feeds reconciled summaries to the Finance Manager."
+          },
+
+          {
+            id: "agent-marketing-manager",
+            teamId: "team-marketing-growth",
+            name: "Marketing Manager",
+            role: "Sets budgets and analyses best use of funds based on KPIs",
+            reportsTo: "human-ceo",
+            archetype: "manager",
+            status: "active",
+            autonomy: "Human-supervised",
+            coverage: 75,
+            risk: 36,
+            load: "Budget and KPI reviews",
+            capabilities: ["budget planning", "KPI analysis", "fund allocation", "campaign recommendations"],
+            systems: ["Marketing dashboard", "Ad platforms", "Analytics"],
+            summary: "Sets marketing budgets and recommends the best use of funds by analysing KPI performance across marketing activities."
+          },
+          {
+            id: "agent-digital-ad-manager",
+            teamId: "team-marketing-growth",
+            name: "Digital Ad Manager",
+            role: "Runs and monitors digital ads",
+            reportsTo: "agent-marketing-manager",
+            archetype: "agent",
+            status: "active",
+            autonomy: "Human-supervised campaign changes",
+            coverage: 80,
+            risk: 41,
+            load: "Ad campaign monitoring",
+            capabilities: ["ad setup", "campaign monitoring", "KPI reporting", "budget pacing"],
+            systems: ["Ad platforms", "Analytics"],
+            summary: "Manages digital advertising execution and sends performance data to the Marketing Manager."
+          },
+          {
+            id: "agent-blog-writer",
+            teamId: "team-marketing-growth",
+            name: "Blog Writer Agent",
+            role: "Creates blog content",
+            reportsTo: "agent-marketing-manager",
+            archetype: "agent",
+            status: "active",
+            autonomy: "Drafting with review",
+            coverage: 83,
+            risk: 27,
+            load: "Blog drafts and content plans",
+            capabilities: ["blog drafting", "topic ideation", "SEO outline", "content briefs"],
+            systems: ["CMS", "SEO tools", "Knowledge base"],
+            summary: "Creates blog drafts and content plans for review and publishing."
+          },
+          {
+            id: "agent-social-media-creator",
+            teamId: "team-marketing-growth",
+            name: "Social Media Creator Agent",
+            role: "Creates social media content",
+            reportsTo: "agent-marketing-manager",
+            archetype: "agent",
+            status: "active",
+            autonomy: "Drafting with review",
+            coverage: 84,
+            risk: 30,
+            load: "Social content drafts",
+            capabilities: ["post drafting", "content calendar", "creative variants", "performance summaries"],
+            systems: ["Social platforms", "Content calendar", "Analytics"],
+            summary: "Creates social media content and performance summaries for the Marketing Manager."
+          }
+        ],
+        links: [
+          { source: "agent-lead-gen-rss", target: "agent-lead-qualifier", type: "workflow", label: "RSS leads" },
+          { source: "agent-lead-gen-social", target: "agent-lead-qualifier", type: "workflow", label: "social leads" },
+          { source: "agent-lead-qualifier", target: "agent-outreach-specialist", type: "workflow", label: "qualified leads" },
+          { source: "agent-outreach-specialist", target: "agent-invoice", type: "workflow", label: "closed sale trigger" },
+          { source: "agent-outreach-specialist", target: "human-ceo", type: "approval", label: "send approval" },
+          { source: "agent-invoice", target: "human-ceo", type: "approval", label: "invoice approval" },
+          { source: "agent-invoice", target: "agent-ar-ap", type: "data", label: "invoice status" },
+          { source: "agent-cash-flow", target: "agent-finance-manager", type: "data", label: "cash feed" },
+          { source: "agent-ar-ap", target: "agent-finance-manager", type: "data", label: "AR/AP feed" },
+          { source: "agent-internal-accountant", target: "agent-finance-manager", type: "data", label: "accounting feed" },
+          { source: "agent-digital-ad-manager", target: "agent-marketing-manager", type: "data", label: "ad KPI feed" },
+          { source: "agent-blog-writer", target: "agent-marketing-manager", type: "data", label: "content KPI feed" },
+          { source: "agent-social-media-creator", target: "agent-marketing-manager", type: "data", label: "social KPI feed" },
+          { source: "agent-sales-manager", target: "human-ceo", type: "data", label: "sales recommendations" },
+          { source: "agent-finance-manager", target: "human-ceo", type: "data", label: "financial analysis" },
+          { source: "agent-marketing-manager", target: "human-ceo", type: "data", label: "budget recommendations" },
+          { source: "agent-admin-manager", target: "human-ceo", type: "data", label: "admin status" }
+        ]
+      };
+
+      const state = {
+        data: structuredCloneSafe(sampleData),
+        selectedId: "human-ceo",
+        selectedType: "human",
+        departmentFilter: "all",
+        search: "",
+        focus: false,
+        compact: false,
+        scale: 1,
+        overlays: {
+          membership: true,
+          reporting: true,
+          workflow: true,
+          data: true,
+          approval: true
+        }
+      };
+
+      const els = {
+        orgName: document.getElementById("orgName"),
+        selectionHint: document.getElementById("selectionHint"),
+        metrics: document.getElementById("metrics"),
+        departmentList: document.getElementById("departmentList"),
+        quickFilters: document.getElementById("quickFilters"),
+        chartTitle: document.getElementById("chartTitle"),
+        chartSubtitle: document.getElementById("chartSubtitle"),
+        viewport: document.getElementById("viewport"),
+        canvas: document.getElementById("canvas"),
+        edges: document.getElementById("edges"),
+        teamLayer: document.getElementById("teamLayer"),
+        nodeLayer: document.getElementById("nodeLayer"),
+        detailPanel: document.getElementById("detailPanel"),
+        searchInput: document.getElementById("searchInput"),
+        showMembership: document.getElementById("showMembership"),
+        showReporting: document.getElementById("showReporting"),
+        showWorkflow: document.getElementById("showWorkflow"),
+        showData: document.getElementById("showData"),
+        showApproval: document.getElementById("showApproval"),
+        focusMode: document.getElementById("focusMode"),
+        compactMode: document.getElementById("compactMode"),
+        zoomLabel: document.getElementById("zoomLabel"),
+        jsonEditor: document.getElementById("jsonEditor"),
+        jsonStatus: document.getElementById("jsonStatus")
+      };
+
+      const quickFilters = ["approval", "CRM", "invoice", "KPI", "manager", "finance", "outreach", "social"];
+      let lastLayout = null;
+      let lastIndexes = null;
+
+      function structuredCloneSafe(value) {
+        if (typeof structuredClone === "function") return structuredClone(value);
+        return JSON.parse(JSON.stringify(value));
+      }
+
+      function escapeHtml(value) {
+        return String(value ?? "")
+          .replaceAll("&", "&amp;")
+          .replaceAll("<", "&lt;")
+          .replaceAll(">", "&gt;")
+          .replaceAll('"', "&quot;")
+          .replaceAll("'", "&#039;");
+      }
+
+      function titleCase(value) {
+        return String(value || "")
+          .replaceAll("-", " ")
+          .replace(/\b\w/g, letter => letter.toUpperCase());
+      }
+
+      function plural(count, singular, pluralForm = `${singular}s`) {
+        return `${count} ${count === 1 ? singular : pluralForm}`;
+      }
+
+      function arrayText(values) {
+        return Array.isArray(values) && values.length ? values.join(", ") : "—";
+      }
+
+      function buildIndexes(data = state.data) {
+        const ceo = data?.organisation?.ceo || {
+          id: "human-ceo",
+          name: "CEO / Human User",
+          role: "Final decision maker",
+          archetype: "human",
+          status: "human",
+          autonomy: "Human authority",
+          coverage: 100,
+          risk: 12,
+          load: "Approvals and priorities",
+          capabilities: ["approval", "strategy"],
+          systems: [],
+          summary: "The human user acts as CEO and final decision maker."
+        };
+        const departments = Array.isArray(data.departments) ? data.departments : [];
+        const teams = Array.isArray(data.teams) ? data.teams : [];
+        const agents = Array.isArray(data.agents) ? data.agents : [];
+        const links = Array.isArray(data.links) ? data.links : [];
+
+        const deptById = new Map(departments.map(item => [item.id, item]));
+        const teamById = new Map(teams.map(item => [item.id, item]));
+        const agentById = new Map(agents.map(item => [item.id, item]));
+        const allById = new Map([[ceo.id, { ...ceo, nodeType: "human" }]]);
+        departments.forEach(item => allById.set(item.id, { ...item, nodeType: "department" }));
+        teams.forEach(item => allById.set(item.id, { ...item, nodeType: "team" }));
+        agents.forEach(item => allById.set(item.id, { ...item, nodeType: "agent" }));
+
+        const teamsByDepartment = new Map();
+        const agentsByTeam = new Map();
+        const directReports = new Map();
+
+        departments.forEach(dept => teamsByDepartment.set(dept.id, []));
+        teams.forEach(team => {
+          if (!teamsByDepartment.has(team.departmentId)) teamsByDepartment.set(team.departmentId, []);
+          teamsByDepartment.get(team.departmentId).push(team);
+          agentsByTeam.set(team.id, []);
+        });
+        agents.forEach(agent => {
+          if (!agentsByTeam.has(agent.teamId)) agentsByTeam.set(agent.teamId, []);
+          agentsByTeam.get(agent.teamId).push(agent);
+          if (agent.reportsTo) {
+            if (!directReports.has(agent.reportsTo)) directReports.set(agent.reportsTo, []);
+            directReports.get(agent.reportsTo).push(agent);
+          }
+        });
+
+        teamsByDepartment.forEach(list => list.sort((a, b) => {
+          const aOrder = Number.isFinite(Number(a.order)) ? Number(a.order) : 999;
+          const bOrder = Number.isFinite(Number(b.order)) ? Number(b.order) : 999;
+          if (aOrder !== bOrder) return aOrder - bOrder;
+          return String(a.name).localeCompare(String(b.name));
+        }));
+        agentsByTeam.forEach(list => list.sort((a, b) => {
+          const aOrder = Number.isFinite(Number(a.order)) ? Number(a.order) : 999;
+          const bOrder = Number.isFinite(Number(b.order)) ? Number(b.order) : 999;
+          if (aOrder !== bOrder) return aOrder - bOrder;
+          const aManager = a.archetype === "manager" ? 0 : 1;
+          const bManager = b.archetype === "manager" ? 0 : 1;
+          if (aManager !== bManager) return aManager - bManager;
+          return String(a.name).localeCompare(String(b.name));
+        }));
+
+        return { ceo, departments, teams, agents, links, deptById, teamById, agentById, allById, teamsByDepartment, agentsByTeam, directReports };
+      }
+
+      function getTeamForAgent(agent, indexes) {
+        return indexes.teamById.get(agent.teamId) || null;
+      }
+
+      function getDepartmentForAgent(agent, indexes) {
+        const team = getTeamForAgent(agent, indexes);
+        return team ? indexes.deptById.get(team.departmentId) : null;
+      }
+
+      function getDepartmentForTeam(team, indexes) {
+        return indexes.deptById.get(team.departmentId) || null;
+      }
+
+      function nodeSearchText(type, id, indexes) {
+        if (type === "human") {
+          const ceo = indexes.ceo;
+          return [ceo.name, ceo.role, ceo.summary, ceo.autonomy, ...(ceo.capabilities || []), ...(ceo.systems || []), "ceo human user approval"].join(" ").toLowerCase();
+        }
+        if (type === "department") {
+          const dept = indexes.deptById.get(id);
+          return [dept?.name, dept?.owner, dept?.purpose, "department"].join(" ").toLowerCase();
+        }
+        if (type === "team") {
+          const team = indexes.teamById.get(id);
+          const dept = team ? getDepartmentForTeam(team, indexes) : null;
+          return [team?.name, team?.purpose, dept?.name, "team"].join(" ").toLowerCase();
+        }
+        const agent = indexes.agentById.get(id);
+        const team = agent ? getTeamForAgent(agent, indexes) : null;
+        const dept = agent ? getDepartmentForAgent(agent, indexes) : null;
+        return [
+          agent?.name, agent?.role, agent?.summary, agent?.archetype, agent?.status,
+          agent?.autonomy, agent?.load, team?.name, dept?.name,
+          ...(agent?.capabilities || []), ...(agent?.systems || [])
+        ].join(" ").toLowerCase();
+      }
+
+      function departmentIsActive(deptId) {
+        return state.departmentFilter === "all" || state.departmentFilter === deptId;
+      }
+
+      function nodeIsVisible(type, id, indexes) {
+        if (type === "human") return true;
+        if (type === "department") return departmentIsActive(id);
+        if (type === "team") {
+          const team = indexes.teamById.get(id);
+          return team ? departmentIsActive(team.departmentId) : false;
+        }
+        if (type === "agent") {
+          const agent = indexes.agentById.get(id);
+          const team = agent ? indexes.teamById.get(agent.teamId) : null;
+          return team ? departmentIsActive(team.departmentId) : false;
+        }
+        return false;
+      }
+
+      function computeMetrics(indexes) {
+        const reportingCount = indexes.agents.filter(agent => agent.reportsTo && indexes.allById.has(agent.reportsTo)).length;
+        const approvalCount = indexes.links.filter(link => link.type === "approval").length;
+        const workflowCount = indexes.links.filter(link => link.type === "workflow").length;
+        const dataCount = indexes.links.filter(link => link.type === "data").length;
+        const managerCount = indexes.agents.filter(agent => agent.archetype === "manager").length;
+        return [
+          { label: "Active agents", value: indexes.agents.length, help: `${managerCount} manager agents`, icon: "♙" },
+          { label: "Reporting lines", value: reportingCount, help: "CEO and manager hierarchy", icon: "↳" },
+          { label: "Pending approvals", value: approvalCount, help: "needs a human decision", icon: "✓" },
+          { label: "Departments", value: indexes.departments.length, help: `${indexes.teams.length} teams · ${workflowCount + dataCount} flows`, icon: "◎" }
+        ];
+      }
+
+      function computeLayout(indexes) {
+        const constants = {
+          marginX: 42,
+          marginY: 32,
+          columnW: 420,
+          columnGap: 28,
+          ceoW: 340,
+          ceoH: 112,
+          deptY: 176,
+          deptH: 116,
+          teamTop: 326,
+          teamHeaderH: 86,
+          teamPad: 14,
+          horizontalPad: 16,
+          horizontalGap: 14,
+          agentW: 336,
+          agentH: state.compact ? 82 : 112,
+          agentGap: state.compact ? 11 : 16,
+          teamGap: 28
+        };
+
+        const activeDepartments = indexes.departments.filter(dept => departmentIsActive(dept.id));
+        const visibleDeptCount = Math.max(1, activeDepartments.length);
+        const canvasW = Math.max(980, constants.marginX * 2 + visibleDeptCount * constants.columnW + Math.max(0, visibleDeptCount - 1) * constants.columnGap);
+        const rects = new Map();
+        const teamRects = [];
+        let maxH = 0;
+
+        rects.set(indexes.ceo.id, {
+          id: indexes.ceo.id,
+          type: "human",
+          x: (canvasW - constants.ceoW) / 2,
+          y: constants.marginY,
+          w: constants.ceoW,
+          h: constants.ceoH
+        });
+
+        activeDepartments.forEach((dept, deptIndex) => {
+          const x = constants.marginX + deptIndex * (constants.columnW + constants.columnGap);
+          const deptRect = { id: dept.id, type: "department", x, y: constants.deptY, w: constants.columnW, h: constants.deptH };
+          rects.set(dept.id, deptRect);
+
+          let currentY = constants.teamTop;
+          const teams = indexes.teamsByDepartment.get(dept.id) || [];
+          teams.forEach(team => {
+            const agents = indexes.agentsByTeam.get(team.id) || [];
+            const horizontal = team.layout === "horizontal" && agents.length > 1;
+            const columns = horizontal ? Math.max(1, Math.min(Number(team.columns) || agents.length, agents.length)) : 1;
+            const rows = horizontal ? Math.ceil(agents.length / columns) : Math.max(1, agents.length);
+            const agentW = horizontal
+              ? Math.floor((constants.columnW - constants.horizontalPad * 2 - Math.max(0, columns - 1) * constants.horizontalGap) / columns)
+              : constants.agentW;
+            const teamH = constants.teamHeaderH + constants.teamPad + rows * constants.agentH + Math.max(0, rows - 1) * constants.agentGap + constants.teamPad;
+            const teamRect = { id: team.id, type: "team", x, y: currentY, w: constants.columnW, h: teamH };
+            rects.set(team.id, teamRect);
+            teamRects.push(teamRect);
+
+            agents.forEach((agent, agentIndex) => {
+              const col = horizontal ? agentIndex % columns : 0;
+              const row = horizontal ? Math.floor(agentIndex / columns) : agentIndex;
+              rects.set(agent.id, {
+                id: agent.id,
+                type: "agent",
+                x: horizontal
+                  ? x + constants.horizontalPad + col * (agentW + constants.horizontalGap)
+                  : x + (constants.columnW - constants.agentW) / 2,
+                y: currentY + constants.teamHeaderH + constants.teamPad + row * (constants.agentH + constants.agentGap),
+                w: agentW,
+                h: constants.agentH,
+                horizontal
+              });
+            });
+
+            currentY += teamH + constants.teamGap;
+          });
+          maxH = Math.max(maxH, currentY + 42);
+        });
+
+        const canvasH = Math.max(760, maxH);
+        return { rects, teamRects, canvasW, canvasH, constants, activeDepartments };
+      }
+
+      function nodeConnectedSet(selectedId, indexes) {
+        const connected = new Set([selectedId]);
+        const add = id => { if (id) connected.add(id); };
+        indexes.agents.forEach(agent => {
+          if (agent.id === selectedId) add(agent.reportsTo);
+          if (agent.reportsTo === selectedId) add(agent.id);
+        });
+        indexes.links.forEach(link => {
+          if (link.source === selectedId) add(link.target);
+          if (link.target === selectedId) add(link.source);
+        });
+        indexes.teams.forEach(team => {
+          if (team.id === selectedId) {
+            add(team.departmentId);
+            (indexes.agentsByTeam.get(team.id) || []).forEach(agent => add(agent.id));
+          }
+        });
+        indexes.departments.forEach(dept => {
+          if (dept.id === selectedId) {
+            add(indexes.ceo.id);
+            (indexes.teamsByDepartment.get(dept.id) || []).forEach(team => {
+              add(team.id);
+              (indexes.agentsByTeam.get(team.id) || []).forEach(agent => add(agent.id));
+            });
+          }
+        });
+        indexes.agents.forEach(agent => {
+          if (agent.id === selectedId) {
+            const team = getTeamForAgent(agent, indexes);
+            const dept = getDepartmentForAgent(agent, indexes);
+            add(team?.id);
+            add(dept?.id);
+          }
+        });
+        if (selectedId === indexes.ceo.id) {
+          indexes.departments.forEach(dept => add(dept.id));
+          indexes.agents.filter(agent => agent.reportsTo === indexes.ceo.id).forEach(agent => add(agent.id));
+        }
+        return connected;
+      }
+
+      function shouldDim(type, id, indexes) {
+        const q = state.search.trim().toLowerCase();
+        if (q && !nodeSearchText(type, id, indexes).includes(q)) return true;
+        if (state.focus && state.selectedId) {
+          const connected = nodeConnectedSet(state.selectedId, indexes);
+          if (!connected.has(id)) return true;
+        }
+        return false;
+      }
+
+      function renderMetrics(indexes) {
+        els.metrics.innerHTML = computeMetrics(indexes).map(metric => `
+          <article class="metric">
+            <div class="metric-head">
+              <div class="label">${escapeHtml(metric.label)}</div>
+              <div class="metric-icon" aria-hidden="true">${escapeHtml(metric.icon || "•")}</div>
+            </div>
+            <div class="value">${escapeHtml(metric.value)}</div>
+            <div class="help">${escapeHtml(metric.help)}</div>
+          </article>
+        `).join("");
+      }
+
+      function renderDepartmentFilters(indexes) {
+        const allActive = state.departmentFilter === "all";
+        const allButton = `<button class="department-filter ${allActive ? "active" : ""}" type="button" data-dept-filter="all"><strong>All departments</strong><span>${indexes.departments.length}</span></button>`;
+        const deptButtons = indexes.departments.map(dept => {
+          const teams = indexes.teamsByDepartment.get(dept.id) || [];
+          const agents = teams.reduce((count, team) => count + (indexes.agentsByTeam.get(team.id) || []).length, 0);
+          return `<button class="department-filter ${state.departmentFilter === dept.id ? "active" : ""}" type="button" data-dept-filter="${escapeHtml(dept.id)}"><strong>${escapeHtml(dept.name)}</strong><span>${agents} agents</span></button>`;
+        }).join("");
+        els.departmentList.innerHTML = allButton + deptButtons;
+      }
+
+      function renderQuickFilters() {
+        els.quickFilters.innerHTML = quickFilters.map(filter => `<button class="mini-btn" type="button" data-quick-filter="${escapeHtml(filter)}">${escapeHtml(filter)}</button>`).join("");
+      }
+
+      function renderChart(indexes, layout) {
+        els.orgName.textContent = state.data?.organisation?.name || "Agentic organisation";
+        els.chartTitle.textContent = state.departmentFilter === "all" ? "Full digital hierarchy" : `${indexes.deptById.get(state.departmentFilter)?.name || "Department"} hierarchy`;
+        els.chartSubtitle.textContent = state.departmentFilter === "all"
+          ? "The human CEO sits above four departments: Sales, Admin, Finance, and Marketing."
+          : "Filtered view keeps the CEO visible and focuses one department's team and agents.";
+
+        els.canvas.style.width = `${layout.canvasW}px`;
+        els.canvas.style.height = `${layout.canvasH}px`;
+        els.canvas.style.transform = `scale(${state.scale})`;
+        els.zoomLabel.textContent = `Zoom ${Math.round(state.scale * 100)}%`;
+        els.edges.setAttribute("width", layout.canvasW);
+        els.edges.setAttribute("height", layout.canvasH);
+        els.edges.setAttribute("viewBox", `0 0 ${layout.canvasW} ${layout.canvasH}`);
+
+        renderTeams(indexes, layout);
+        renderNodes(indexes, layout);
+        renderEdges(indexes, layout);
+        renderDetail(indexes);
+      }
+
+      function renderTeams(indexes, layout) {
+        els.teamLayer.innerHTML = "";
+        layout.activeDepartments.forEach(dept => {
+          const teams = indexes.teamsByDepartment.get(dept.id) || [];
+          teams.forEach(team => {
+            const rect = layout.rects.get(team.id);
+            if (!rect) return;
+            const box = document.createElement("div");
+            box.className = `team-box ${team.layout === "horizontal" ? "horizontal-team" : ""}`;
+            box.dataset.id = team.id;
+            box.dataset.type = "team";
+            box.style.left = `${rect.x}px`;
+            box.style.top = `${rect.y}px`;
+            box.style.width = `${rect.w}px`;
+            box.style.height = `${rect.h}px`;
+            if (state.selectedId === team.id) box.classList.add("selected");
+            if (shouldDim("team", team.id, indexes)) box.classList.add("dimmed");
+            box.innerHTML = `
+              <button type="button" aria-label="Team: ${escapeHtml(team.name)}">
+                <div class="team-kicker">Team · ${escapeHtml(dept.name)} Department${team.layout === "horizontal" ? " · Separate Lead Gen Team" : ""}</div>
+                <div class="team-title">${escapeHtml(team.name)}</div>
+                <div class="team-purpose">${escapeHtml(team.purpose)}</div>
+              </button>
+            `;
+            els.teamLayer.appendChild(box);
+          });
+        });
+      }
+
+      function renderNodes(indexes, layout) {
+        els.nodeLayer.innerHTML = "";
+
+        const ceoRect = layout.rects.get(indexes.ceo.id);
+        const ceo = indexes.ceo;
+        if (ceoRect) {
+          const button = document.createElement("button");
+          button.className = `node-card type-human ${state.selectedId === ceo.id ? "selected" : ""}`;
+          button.dataset.id = ceo.id;
+          button.dataset.type = "human";
+          button.type = "button";
+          button.style.left = `${ceoRect.x}px`;
+          button.style.top = `${ceoRect.y}px`;
+          button.style.width = `${ceoRect.w}px`;
+          button.style.height = `${ceoRect.h}px`;
+          if (shouldDim("human", ceo.id, indexes)) button.classList.add("dimmed");
+          button.innerHTML = nodeCardHtml({
+            title: ceo.name,
+            role: ceo.role,
+            kicker: "Human CEO",
+            icon: "◎",
+            badge: "Final approval",
+            coverage: ceo.coverage
+          });
+          els.nodeLayer.appendChild(button);
+        }
+
+        layout.activeDepartments.forEach(dept => {
+          const rect = layout.rects.get(dept.id);
+          if (!rect) return;
+          const deptButton = document.createElement("button");
+          deptButton.className = `department-card ${state.selectedId === dept.id ? "selected" : ""}`;
+          deptButton.dataset.id = dept.id;
+          deptButton.dataset.type = "department";
+          deptButton.type = "button";
+          deptButton.style.left = `${rect.x}px`;
+          deptButton.style.top = `${rect.y}px`;
+          deptButton.style.width = `${rect.w}px`;
+          deptButton.style.height = `${rect.h}px`;
+          if (shouldDim("department", dept.id, indexes)) deptButton.classList.add("dimmed");
+          deptButton.innerHTML = `
+            <div class="dept-kicker"><span class="node-icon" aria-hidden="true">▦</span>Department</div>
+            <div class="dept-title">${escapeHtml(dept.name)}</div>
+            <div class="dept-purpose">${escapeHtml(dept.purpose)}</div>
+          `;
+          els.nodeLayer.appendChild(deptButton);
+        });
+
+        indexes.agents.forEach(agent => {
+          if (!nodeIsVisible("agent", agent.id, indexes)) return;
+          const rect = layout.rects.get(agent.id);
+          if (!rect) return;
+          const isManager = agent.archetype === "manager";
+          const card = document.createElement("button");
+          card.className = `node-card ${isManager ? "type-manager" : "type-agent"} ${state.selectedId === agent.id ? "selected" : ""}`;
+          if (state.compact) card.classList.add("compact");
+          if (rect.horizontal) card.classList.add("horizontal-agent-card");
+          card.dataset.id = agent.id;
+          card.dataset.type = "agent";
+          card.type = "button";
+          card.style.left = `${rect.x}px`;
+          card.style.top = `${rect.y}px`;
+          card.style.width = `${rect.w}px`;
+          card.style.height = `${rect.h}px`;
+          if (shouldDim("agent", agent.id, indexes)) card.classList.add("dimmed");
+          card.innerHTML = nodeCardHtml({
+            title: agent.name,
+            role: agent.role,
+            kicker: isManager ? "Manager agent" : "Agent",
+            icon: isManager ? "◇" : "•",
+            badge: agent.autonomy,
+            coverage: agent.coverage
+          });
+          els.nodeLayer.appendChild(card);
+        });
+      }
+
+      function nodeCardHtml({ title, role, kicker, icon, badge, coverage }) {
+        return `
+          <div class="node-kicker"><span class="node-icon" aria-hidden="true">${escapeHtml(icon)}</span>${escapeHtml(kicker)}</div>
+          <div class="node-title">${escapeHtml(title)}</div>
+          <div class="node-role">${escapeHtml(role)}</div>
+          <div class="node-meta">
+            <span class="badge">${escapeHtml(badge)}</span>
+            <span class="score">${escapeHtml(coverage)}% <small>coverage</small></span>
+          </div>
+        `;
+      }
+
+      function buildVisibleEdges(indexes) {
+        const edges = [];
+
+        if (state.overlays.membership) {
+          indexes.departments.forEach(dept => {
+            if (nodeIsVisible("department", dept.id, indexes)) {
+              edges.push({ source: indexes.ceo.id, target: dept.id, type: "membership", label: "owns" });
+            }
+          });
+          indexes.teams.forEach(team => {
+            if (nodeIsVisible("team", team.id, indexes)) {
+              edges.push({ source: team.departmentId, target: team.id, type: "membership", label: "contains" });
+            }
+          });
+        }
+
+        if (state.overlays.reporting) {
+          indexes.agents.forEach(agent => {
+            if (agent.reportsTo && indexes.allById.has(agent.reportsTo) && nodeIsVisible("agent", agent.id, indexes)) {
+              const sourceVisible = agent.reportsTo === indexes.ceo.id || nodeIsVisible("agent", agent.reportsTo, indexes);
+              if (sourceVisible) edges.push({ source: agent.reportsTo, target: agent.id, type: "reporting", label: "reports" });
+            }
+          });
+        }
+
+        indexes.links.forEach(link => {
+          if (!state.overlays[link.type]) return;
+          const sourceType = link.source === indexes.ceo.id ? "human" : indexes.agentById.has(link.source) ? "agent" : indexes.deptById.has(link.source) ? "department" : indexes.teamById.has(link.source) ? "team" : null;
+          const targetType = link.target === indexes.ceo.id ? "human" : indexes.agentById.has(link.target) ? "agent" : indexes.deptById.has(link.target) ? "department" : indexes.teamById.has(link.target) ? "team" : null;
+          if (!sourceType || !targetType) return;
+          if (!nodeIsVisible(sourceType, link.source, indexes) || !nodeIsVisible(targetType, link.target, indexes)) return;
+          edges.push(link);
+        });
+
+        return edges;
+      }
+
+      function renderEdges(indexes, layout) {
+        const defs = els.edges.querySelector("defs")?.outerHTML || "";
+        els.edges.innerHTML = defs;
+        const connected = state.selectedId ? nodeConnectedSet(state.selectedId, indexes) : new Set();
+        const visibleEdges = buildVisibleEdges(indexes);
+
+        visibleEdges.forEach((edge, edgeIndex) => {
+          const source = layout.rects.get(edge.source);
+          const target = layout.rects.get(edge.target);
+          if (!source || !target) return;
+
+          const sourcePoint = anchorPoint(source, target);
+          const targetPoint = anchorPoint(target, source, true);
+          const path = document.createElementNS("http://www.w3.org/2000/svg", "path");
+          path.setAttribute("d", bezierPath(sourcePoint, targetPoint));
+          path.classList.add(edge.type || "reporting");
+          if (connected.has(edge.source) && connected.has(edge.target)) path.classList.add("selected");
+          if (edgeShouldDim(edge, indexes, connected)) path.classList.add("dim");
+          els.edges.appendChild(path);
+
+          if (edge.label && edgeIndex % 2 === 0) {
+            const label = document.createElementNS("http://www.w3.org/2000/svg", "text");
+            label.setAttribute("x", String((sourcePoint.x + targetPoint.x) / 2));
+            label.setAttribute("y", String((sourcePoint.y + targetPoint.y) / 2 - 5));
+            label.setAttribute("text-anchor", "middle");
+            label.classList.add("edge-label");
+            if (path.classList.contains("dim")) label.classList.add("dim");
+            label.textContent = edge.label;
+            els.edges.appendChild(label);
+          }
+        });
+      }
+
+      function edgeShouldDim(edge, indexes, connected) {
+        const sourceType = edge.source === indexes.ceo.id ? "human" : indexes.agentById.has(edge.source) ? "agent" : indexes.deptById.has(edge.source) ? "department" : "team";
+        const targetType = edge.target === indexes.ceo.id ? "human" : indexes.agentById.has(edge.target) ? "agent" : indexes.deptById.has(edge.target) ? "department" : "team";
+        if (shouldDim(sourceType, edge.source, indexes) || shouldDim(targetType, edge.target, indexes)) return true;
+        if (state.focus && state.selectedId && (!connected.has(edge.source) || !connected.has(edge.target))) return true;
+        return false;
+      }
+
+      function anchorPoint(from, to, target = false) {
+        const fromCenter = { x: from.x + from.w / 2, y: from.y + from.h / 2 };
+        const toCenter = { x: to.x + to.w / 2, y: to.y + to.h / 2 };
+        const dx = toCenter.x - fromCenter.x;
+        const dy = toCenter.y - fromCenter.y;
+        if (Math.abs(dy) >= Math.abs(dx)) {
+          return {
+            x: fromCenter.x,
+            y: dy > 0 ? from.y + from.h : from.y
+          };
+        }
+        return {
+          x: dx > 0 ? from.x + from.w : from.x,
+          y: fromCenter.y
+        };
+      }
+
+      function bezierPath(a, b) {
+        const dx = b.x - a.x;
+        const dy = b.y - a.y;
+        if (Math.abs(dy) >= Math.abs(dx)) {
+          const c1 = { x: a.x, y: a.y + dy * 0.45 };
+          const c2 = { x: b.x, y: b.y - dy * 0.45 };
+          return `M ${a.x} ${a.y} C ${c1.x} ${c1.y}, ${c2.x} ${c2.y}, ${b.x} ${b.y}`;
+        }
+        const curve = Math.max(42, Math.abs(dx) / 2);
+        return `M ${a.x} ${a.y} C ${a.x + Math.sign(dx || 1) * curve} ${a.y}, ${b.x - Math.sign(dx || 1) * curve} ${b.y}, ${b.x} ${b.y}`;
+      }
+
+      function selectedNode(indexes) {
+        if (state.selectedId === indexes.ceo.id) return { type: "human", item: indexes.ceo };
+        if (indexes.deptById.has(state.selectedId)) return { type: "department", item: indexes.deptById.get(state.selectedId) };
+        if (indexes.teamById.has(state.selectedId)) return { type: "team", item: indexes.teamById.get(state.selectedId) };
+        if (indexes.agentById.has(state.selectedId)) return { type: "agent", item: indexes.agentById.get(state.selectedId) };
+        return { type: "human", item: indexes.ceo };
+      }
+
+      function renderDetail(indexes) {
+        const selected = selectedNode(indexes);
+        const type = selected.type;
+        const item = selected.item;
+        const title = type === "department" ? item.name : type === "team" ? item.name : item.name;
+        const kicker = type === "human" ? "Human CEO" : titleCase(type);
+        const summary = detailSummary(type, item, indexes);
+        const chips = detailChips(type, item, indexes);
+        const stats = detailStats(type, item, indexes);
+        const meta = detailMeta(type, item, indexes);
+        const linked = linkedContext(item.id, indexes);
+        const recommendations = recommendationsFor(type, item);
+
+        els.selectionHint.textContent = `${kicker}: ${title}`;
+        els.detailPanel.innerHTML = `
+          <div class="detail-header">
+            <div>
+              <div class="detail-kicker"><span class="detail-dot"></span>${escapeHtml(kicker)}</div>
+              <h2>${escapeHtml(title)}</h2>
+              <p>${escapeHtml(summary)}</p>
+              <div class="chips">${chips.map(chip => `<span class="chip">${escapeHtml(chip)}</span>`).join("")}</div>
+            </div>
+          </div>
+
+          <div class="stat-grid">
+            ${stats.map(stat => `
+              <div class="stat"><div class="label">${escapeHtml(stat.label)}</div><div class="big">${escapeHtml(stat.value)}</div><div class="small">${escapeHtml(stat.help)}</div></div>
+            `).join("")}
+          </div>
+
+          <div class="meta-list">
+            ${meta.map(row => `<div class="meta-row"><span>${escapeHtml(row.label)}</span><span>${escapeHtml(row.value)}</span></div>`).join("")}
+          </div>
+
+          <div class="linked-section">
+            <h3>Linked context</h3>
+            ${linked.length ? linked.map(link => `
+              <button class="link-card" type="button" data-linked-id="${escapeHtml(link.id)}" data-linked-type="${escapeHtml(link.type)}">
+                <span>${escapeHtml(link.title)}</span>
+                <span>${escapeHtml(link.label)}</span>
+              </button>
+            `).join("") : `<div class="empty">No direct links found.</div>`}
+          </div>
+
+          <div class="linked-section">
+            <h3>Recommended next actions</h3>
+            ${recommendations.map(action => `<div class="link-card"><span>${escapeHtml(action)}</span><span>Next</span></div>`).join("")}
+          </div>
+        `;
+      }
+
+      function detailSummary(type, item, indexes) {
+        if (type === "human") return item.summary;
+        if (type === "department") return item.purpose;
+        if (type === "team") return item.purpose;
+        return item.summary;
+      }
+
+      function detailChips(type, item, indexes) {
+        if (type === "human") return ["Human user", "Final approvals", "CEO", "Control point"];
+        if (type === "department") {
+          const teams = indexes.teamsByDepartment.get(item.id) || [];
+          const agents = teams.reduce((count, team) => count + (indexes.agentsByTeam.get(team.id) || []).length, 0);
+          return ["Department", `${plural(teams.length, "team")}`, `${plural(agents, "agent")}`, item.owner || "CEO owned"];
+        }
+        if (type === "team") {
+          const dept = getDepartmentForTeam(item, indexes);
+          const agents = indexes.agentsByTeam.get(item.id) || [];
+          return ["Team", dept?.name || "Department", `${plural(agents.length, "agent")}`];
+        }
+        const team = getTeamForAgent(item, indexes);
+        const dept = getDepartmentForAgent(item, indexes);
+        return [item.archetype === "manager" ? "Manager agent" : "Agent", dept?.name || "Department", team?.name || "Team", item.status || "active"];
+      }
+
+      function detailStats(type, item, indexes) {
+        if (type === "department") {
+          const teams = indexes.teamsByDepartment.get(item.id) || [];
+          const agents = teams.flatMap(team => indexes.agentsByTeam.get(team.id) || []);
+          const managers = agents.filter(agent => agent.archetype === "manager").length;
+          const approvals = indexes.links.filter(link => link.type === "approval" && agents.some(agent => agent.id === link.source || agent.id === link.target)).length;
+          const avgCoverage = agents.length ? Math.round(agents.reduce((sum, agent) => sum + Number(agent.coverage || 0), 0) / agents.length) : 0;
+          const avgRisk = agents.length ? Math.round(agents.reduce((sum, agent) => sum + Number(agent.risk || 0), 0) / agents.length) : 0;
+          return [
+            { label: "Teams", value: teams.length, help: "Digital teams inside department" },
+            { label: "Agents", value: agents.length, help: `${managers} manager agents` },
+            { label: "Coverage", value: `${avgCoverage}%`, help: "Average agent coverage" },
+            { label: "Risk", value: `${avgRisk}/100`, help: "Average operational risk" },
+            { label: "Approvals", value: approvals, help: "Human approval paths" },
+            { label: "Owner", value: "CEO", help: "Human accountability" }
+          ];
+        }
+        if (type === "team") {
+          const agents = indexes.agentsByTeam.get(item.id) || [];
+          const managers = agents.filter(agent => agent.archetype === "manager").length;
+          return [
+            { label: "Agents", value: agents.length, help: "Agents in this team" },
+            { label: "Managers", value: managers, help: "Manager layer" },
+            { label: "Workers", value: Math.max(0, agents.length - managers), help: "Specialist agents" },
+            { label: "Reporting", value: agents.filter(agent => agent.reportsTo).length, help: "Reporting lines" },
+            { label: "Coverage", value: agents.length ? `${Math.round(agents.reduce((s, a) => s + Number(a.coverage || 0), 0) / agents.length)}%` : "—", help: "Average coverage" },
+            { label: "Department", value: getDepartmentForTeam(item, indexes)?.name || "—", help: "Parent department" }
+          ];
+        }
+        return [
+          { label: "Coverage", value: `${item.coverage ?? "—"}%`, help: type === "human" ? "Control authority" : "Automation depth" },
+          { label: "Risk", value: `${item.risk ?? "—"}/100`, help: "Operational risk" },
+          { label: "Autonomy", value: item.autonomy || "—", help: "Operating mode" },
+          { label: "Load", value: item.load || "—", help: "Typical workload" },
+          { label: "Reports", value: reportLabel(item.reportsTo, indexes), help: "Reporting destination" },
+          { label: "Directs", value: (indexes.directReports.get(item.id) || []).length, help: "Direct reports" }
+        ];
+      }
+
+      function detailMeta(type, item, indexes) {
+        if (type === "human") {
+          return [
+            { label: "Role", value: item.role },
+            { label: "Authority", value: item.autonomy },
+            { label: "Systems", value: arrayText(item.systems) },
+            { label: "Capabilities", value: arrayText(item.capabilities) },
+            { label: "Purpose", value: "Approves external sends, invoices, priorities, and exceptions" }
+          ];
+        }
+        if (type === "department") {
+          return [
+            { label: "Owner", value: item.owner || "CEO / Human User" },
+            { label: "Type", value: "Department" },
+            { label: "Purpose", value: item.purpose }
+          ];
+        }
+        if (type === "team") {
+          const dept = getDepartmentForTeam(item, indexes);
+          return [
+            { label: "Department", value: dept?.name || "—" },
+            { label: "Type", value: "Team" },
+            { label: "Purpose", value: item.purpose }
+          ];
+        }
+        const team = getTeamForAgent(item, indexes);
+        const dept = getDepartmentForAgent(item, indexes);
+        return [
+          { label: "Department", value: dept?.name || "—" },
+          { label: "Team", value: team?.name || "—" },
+          { label: "Reports to", value: reportLabel(item.reportsTo, indexes) },
+          { label: "Role", value: item.role },
+          { label: "Status", value: titleCase(item.status) },
+          { label: "Autonomy", value: item.autonomy },
+          { label: "Systems", value: arrayText(item.systems) },
+          { label: "Capabilities", value: arrayText(item.capabilities) }
+        ];
+      }
+
+      function reportLabel(id, indexes) {
+        if (!id) return "—";
+        if (id === indexes.ceo.id) return indexes.ceo.name;
+        const agent = indexes.agentById.get(id);
+        return agent ? agent.name : id;
+      }
+
+      function linkedContext(id, indexes) {
+        const links = [];
+        const add = (linkedId, label) => {
+          if (!linkedId) return;
+          if (linkedId === indexes.ceo.id) {
+            links.push({ id: linkedId, type: "human", title: indexes.ceo.name, label });
+          } else if (indexes.deptById.has(linkedId)) {
+            links.push({ id: linkedId, type: "department", title: indexes.deptById.get(linkedId).name, label });
+          } else if (indexes.teamById.has(linkedId)) {
+            links.push({ id: linkedId, type: "team", title: indexes.teamById.get(linkedId).name, label });
+          } else if (indexes.agentById.has(linkedId)) {
+            links.push({ id: linkedId, type: "agent", title: indexes.agentById.get(linkedId).name, label });
+          }
+        };
+
+        if (id === indexes.ceo.id) {
+          indexes.departments.forEach(dept => add(dept.id, "department"));
+          indexes.agents.filter(agent => agent.reportsTo === id).forEach(agent => add(agent.id, "reports to CEO"));
+        }
+
+        const dept = indexes.deptById.get(id);
+        if (dept) {
+          add(indexes.ceo.id, "owner");
+          (indexes.teamsByDepartment.get(dept.id) || []).forEach(team => add(team.id, "team"));
+        }
+
+        const team = indexes.teamById.get(id);
+        if (team) {
+          add(team.departmentId, "department");
+          (indexes.agentsByTeam.get(team.id) || []).forEach(agent => add(agent.id, "agent"));
+        }
+
+        const agent = indexes.agentById.get(id);
+        if (agent) {
+          const team = getTeamForAgent(agent, indexes);
+          const dept = getDepartmentForAgent(agent, indexes);
+          add(team?.id, "team");
+          add(dept?.id, "department");
+          add(agent.reportsTo, "reports to");
+          (indexes.directReports.get(agent.id) || []).forEach(report => add(report.id, "direct report"));
+        }
+
+        indexes.links.forEach(link => {
+          if (link.source === id) add(link.target, `${link.type}: ${link.label || "out"}`);
+          if (link.target === id) add(link.source, `${link.type}: ${link.label || "in"}`);
+        });
+
+        const unique = [];
+        const seen = new Set();
+        links.forEach(link => {
+          const key = `${link.id}:${link.label}`;
+          if (!seen.has(key) && link.id !== id) {
+            seen.add(key);
+            unique.push(link);
+          }
+        });
+        return unique.slice(0, 12);
+      }
+
+      function recommendationsFor(type, item) {
+        if (type === "human") return [
+          "Keep outbound outreach and invoice sending behind explicit CEO approval.",
+          "Review the manager-agent recommendations weekly by department.",
+          "Use focus mode to explain one decision path at a time."
+        ];
+        if (type === "department") return [
+          "Confirm the department manager owns KPI reporting and exception routing.",
+          "Check that workflow arrows match the real operating sequence.",
+          "Review human approval points before allowing external actions."
+        ];
+        if (type === "team") return [
+          "Validate that every specialist agent has a clear manager agent.",
+          "Check cross-department handoffs for closed sales, invoices, and financial reporting.",
+          "Use the JSON editor to add more teams as the organisation grows."
+        ];
+        if (item.id === "agent-outreach-specialist") return [
+          "Keep sending disabled until the CEO approves the drafted email or message.",
+          "Attach lead qualification evidence to each draft before requesting approval.",
+          "Track approval outcomes to improve future outreach drafts."
+        ];
+        if (item.id === "agent-invoice") return [
+          "Hold every newly created sale invoice until CEO approval is recorded.",
+          "Send invoice status to the AR/AP Tracker after approval or rejection.",
+          "Keep a visible audit trail for invoice creation and send decisions."
+        ];
+        if (item.archetype === "manager") return [
+          "Summarise specialist-agent signals into one CEO-ready recommendation.",
+          "Define KPIs, thresholds, and exceptions for this department.",
+          "Flag low-confidence or high-impact actions for human review."
+        ];
+        return [
+          "Make inputs, outputs, and handoff rules explicit.",
+          "Report exceptions to the manager agent rather than acting silently.",
+          "Keep system access and data sources documented in the detail panel."
+        ];
+      }
+
+      function updateJsonEditor() {
+        els.jsonEditor.value = JSON.stringify(state.data, null, 2);
+      }
+
+      function validateData(data) {
+        const errors = [];
+        if (!data || typeof data !== "object") errors.push("JSON must be an object.");
+        if (!data.organisation || !data.organisation.ceo) errors.push("Missing organisation.ceo.");
+        ["departments", "teams", "agents"].forEach(key => {
+          if (!Array.isArray(data?.[key])) errors.push(`Missing ${key} array.`);
+        });
+        if (errors.length) return errors;
+
+        const ids = new Set([data.organisation.ceo.id]);
+        data.departments.forEach(item => {
+          if (!item.id || !item.name) errors.push("Every department needs id and name.");
+          if (ids.has(item.id)) errors.push(`Duplicate id: ${item.id}`);
+          ids.add(item.id);
+        });
+        const deptIds = new Set(data.departments.map(item => item.id));
+        data.teams.forEach(item => {
+          if (!item.id || !item.name || !item.departmentId) errors.push("Every team needs id, name, and departmentId.");
+          if (ids.has(item.id)) errors.push(`Duplicate id: ${item.id}`);
+          ids.add(item.id);
+          if (!deptIds.has(item.departmentId)) errors.push(`Team ${item.id} references missing department ${item.departmentId}.`);
+        });
+        const teamIds = new Set(data.teams.map(item => item.id));
+        data.agents.forEach(item => {
+          if (!item.id || !item.name || !item.teamId) errors.push("Every agent needs id, name, and teamId.");
+          if (ids.has(item.id)) errors.push(`Duplicate id: ${item.id}`);
+          ids.add(item.id);
+          if (!teamIds.has(item.teamId)) errors.push(`Agent ${item.id} references missing team ${item.teamId}.`);
+        });
+        const validIds = new Set([data.organisation.ceo.id, ...data.departments.map(x => x.id), ...data.teams.map(x => x.id), ...data.agents.map(x => x.id)]);
+        data.agents.forEach(item => {
+          if (item.reportsTo && !validIds.has(item.reportsTo)) errors.push(`Agent ${item.id} reports to missing node ${item.reportsTo}.`);
+        });
+        (data.links || []).forEach(link => {
+          if (!validIds.has(link.source)) errors.push(`Link source missing: ${link.source}.`);
+          if (!validIds.has(link.target)) errors.push(`Link target missing: ${link.target}.`);
+          if (!link.type) errors.push("Every link needs a type.");
+        });
+        return errors;
+      }
+
+      function refresh() {
+        const indexes = buildIndexes();
+        const layout = computeLayout(indexes);
+        lastIndexes = indexes;
+        lastLayout = layout;
+        renderMetrics(indexes);
+        renderDepartmentFilters(indexes);
+        renderQuickFilters();
+        renderChart(indexes, layout);
+      }
+
+      function setSelected(id, type) {
+        state.selectedId = id;
+        state.selectedType = type;
+        refresh();
+      }
+
+      document.addEventListener("click", event => {
+        const node = event.target.closest("[data-id][data-type]");
+        if (node) {
+          setSelected(node.dataset.id, node.dataset.type);
+          return;
+        }
+        const linked = event.target.closest("[data-linked-id]");
+        if (linked) {
+          state.focus = true;
+          els.focusMode.checked = true;
+          setSelected(linked.dataset.linkedId, linked.dataset.linkedType || "agent");
+          return;
+        }
+        const deptFilter = event.target.closest("[data-dept-filter]");
+        if (deptFilter) {
+          state.departmentFilter = deptFilter.dataset.deptFilter;
+          refresh();
+          return;
+        }
+        const quick = event.target.closest("[data-quick-filter]");
+        if (quick) {
+          state.search = quick.dataset.quickFilter;
+          els.searchInput.value = state.search;
+          refresh();
+        }
+      });
+
+      els.searchInput.addEventListener("input", event => {
+        state.search = event.target.value;
+        refresh();
+      });
+
+      els.showMembership.addEventListener("change", event => { state.overlays.membership = event.target.checked; refresh(); });
+      els.showReporting.addEventListener("change", event => { state.overlays.reporting = event.target.checked; refresh(); });
+      els.showWorkflow.addEventListener("change", event => { state.overlays.workflow = event.target.checked; refresh(); });
+      els.showData.addEventListener("change", event => { state.overlays.data = event.target.checked; refresh(); });
+      els.showApproval.addEventListener("change", event => { state.overlays.approval = event.target.checked; refresh(); });
+      els.focusMode.addEventListener("change", event => { state.focus = event.target.checked; refresh(); });
+      els.compactMode.addEventListener("change", event => { state.compact = event.target.checked; refresh(); });
+
+      document.getElementById("zoomIn").addEventListener("click", () => {
+        state.scale = Math.min(1.45, Math.round((state.scale + 0.1) * 10) / 10);
+        refresh();
+      });
+      document.getElementById("zoomOut").addEventListener("click", () => {
+        state.scale = Math.max(0.55, Math.round((state.scale - 0.1) * 10) / 10);
+        refresh();
+      });
+      document.getElementById("fitView").addEventListener("click", () => {
+        const indexes = lastIndexes || buildIndexes();
+        const layout = lastLayout || computeLayout(indexes);
+        const availableW = Math.max(320, els.viewport.clientWidth - 26);
+        const availableH = Math.max(320, els.viewport.clientHeight - 26);
+        state.scale = Math.max(0.55, Math.min(1.15, Math.floor(Math.min(availableW / layout.canvasW, availableH / layout.canvasH) * 100) / 100));
+        refresh();
+      });
+      document.getElementById("resetView").addEventListener("click", () => {
+        state.scale = 1;
+        state.search = "";
+        state.focus = false;
+        state.departmentFilter = "all";
+        els.searchInput.value = "";
+        els.focusMode.checked = false;
+        refresh();
+      });
+
+      document.getElementById("copySummary").addEventListener("click", async () => {
+        const indexes = lastIndexes || buildIndexes();
+        const selected = selectedNode(indexes);
+        const title = selected.type === "human" ? selected.item.name : selected.type === "agent" ? selected.item.name : selected.item.name;
+        const summary = `${title} — ${detailSummary(selected.type, selected.item, indexes)}`;
+        try {
+          await navigator.clipboard.writeText(summary);
+          els.selectionHint.textContent = "Summary copied";
+        } catch (error) {
+          els.selectionHint.textContent = summary;
+        }
+      });
+
+      document.getElementById("printMap").addEventListener("click", () => window.print());
+
+      document.getElementById("loadJson").addEventListener("click", () => {
+        try {
+          const parsed = JSON.parse(els.jsonEditor.value);
+          const errors = validateData(parsed);
+          if (errors.length) {
+            els.jsonStatus.textContent = errors.join(" ");
+            els.jsonStatus.className = "status-message error";
+            return;
+          }
+          state.data = parsed;
+          state.departmentFilter = "all";
+          state.selectedId = parsed.organisation.ceo.id;
+          state.selectedType = "human";
+          els.jsonStatus.textContent = "Loaded updated hierarchy.";
+          els.jsonStatus.className = "status-message ok";
+          refresh();
+        } catch (error) {
+          els.jsonStatus.textContent = `Invalid JSON: ${error.message}`;
+          els.jsonStatus.className = "status-message error";
+        }
+      });
+
+      document.getElementById("copyJson").addEventListener("click", async () => {
+        try {
+          await navigator.clipboard.writeText(els.jsonEditor.value);
+          els.jsonStatus.textContent = "JSON copied.";
+          els.jsonStatus.className = "status-message ok";
+        } catch (error) {
+          els.jsonStatus.textContent = "Copy failed. Select the text and copy manually.";
+          els.jsonStatus.className = "status-message error";
+        }
+      });
+
+      document.getElementById("restoreSample").addEventListener("click", () => {
+        state.data = structuredCloneSafe(sampleData);
+        state.selectedId = state.data.organisation.ceo.id;
+        state.selectedType = "human";
+        state.departmentFilter = "all";
+        state.search = "";
+        els.searchInput.value = "";
+        updateJsonEditor();
+        els.jsonStatus.textContent = "Sample hierarchy restored.";
+        els.jsonStatus.className = "status-message ok";
+        refresh();
+      });
+
+      window.addEventListener("resize", () => renderEdges(lastIndexes || buildIndexes(), lastLayout || computeLayout(lastIndexes || buildIndexes())));
+
+      const todayLabel = document.getElementById("todayLabel");
+      if (todayLabel) {
+        const formattedDate = new Intl.DateTimeFormat("en-US", { weekday: "long", month: "long", day: "numeric" }).format(new Date());
+        todayLabel.textContent = `${formattedDate.toUpperCase()} ⓘ`;
+      }
+
+      updateJsonEditor();
+      refresh();
+    })();
+  </script>
+</body>
+</html>

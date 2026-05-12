@@ -110,24 +110,72 @@
 
 ### 1.15 — Workspaces (multi-membership UI context) ⚠️ high
 
-- **Что это:** концепт «workspace = команда внутри компании» — UI-контейнер, который скопит agents / approvals / activity / costs, и переключается через свитчер в сайдбаре. Пользователь может состоять в нескольких workspace'ах одновременно.
-- **Где в UI (целиком mock):**
-  - `WorkspaceSwitcher` в header сайдбара (между `.sb__brand` и `.sb__nav`) — radio-list, `+ Create workspace`, `Manage workspaces`, MockBadge.
-  - `/workspaces` (`WorkspacesScreen`) — card grid + Create/Edit (через `WorkspaceFormDialog`) + Delete с type-the-name confirm (через `WorkspaceDeleteDialog`) + Members card (read-only).
-  - Filter cascade в `api.list*` — каждый list-метод (`listAgents`, `listApprovals`, `listRuns`, `listAudit`, `listChats`, `getSpend`) фильтрует по `getCurrentWorkspaceId()` через side-table `agentWorkspace: Record<agent_id, workspace_id>` в fixtures.
-- **Что говорит spec:** ничего. В `docs/gateway.yaml` нет `Workspace` schema, нет `/workspaces` namespace, нет membership endpoints. Поле `Agent.workspace_id` тоже отсутствует — мы держим association в side-table в fixtures, чтобы не speculate'ить shape `Agent`.
+> **2026-05-08 architectural decision (impl complete):** backend `domain` ≡ frontend `workspace`. См. `docs/handoff-prep.md § 0.1`. **`Agent.domain_id` (уже есть в spec) — это и есть workspace FK; роль `domain_admin` = workspace admin.** Side-table `agentWorkspace` удалена; hardcoded `DOMAIN_LABELS` удалены; stat-tile «Team» переименован в «Workspace» везде. План: `docs/agent-plans/2026-05-08-1900-domain-workspace-merge.md` (выполнен 2026-05-08).
+
+- **Что это:** концепт «workspace = команда внутри компании» — UI-контейнер для agents / approvals / activity / costs. Пользователь может состоять в нескольких workspace'ах одновременно. На бэке эта же сущность называется `domain`.
+- **State-модель:** UI держит **два независимых слайса**:
+  - **`activeWorkspaceId: string | null`** — «рабочий контекст». Single-active. Driver для hire-form (default target), Team Map sandbox, `WorkspaceRemount` keying. Persist'ится в `localStorage["proto.session.v1"].activeWorkspaceId`.
+  - **`scopeFilter: string[]`** — глобальный sticky filter для всех list-экранов. `[]` = «all workspaces» (union по memberships, дефолт). `[wsA, wsB, ...]` = explicit subset. Persist'ится в `localStorage["proto.scope.v1"]` как `{ userId, filter }` (userId tag отсекает протекание между демо-логинами на одном устройстве).
+  - **Связи нет:** смена active в switcher не трогает filter, и наоборот. Это разделение «контекст действия» vs «контекст просмотра» зафиксировано в `docs/plans/workspaces-redesign-spec.md § 2`.
+- **Где в UI (mock — но не везде глубокий мок):**
+  - `WorkspaceSwitcher` в header сайдбара — caption «Working in», текущий workspace, dropdown с radio-list + helper «New agents will be hired into the selected workspace.» + `+ Create workspace` + `Manage workspaces` + MockBadge. При >=10 memberships в dropdown появляется search input.
+  - Глобальный chip-row на `/agents`, `/activity`, `/approvals`, `/costs` — лейбл «Showing:», первый чип «All workspaces» (filter==[]), далее чипы на каждый workspace. Sticky-last (нельзя снять последний чип, не активировав «All workspaces»). Скрыт при N≤1.
+  - `/workspaces` (`WorkspacesScreen`) — helper-text + card grid + Create/Edit/Delete + Members card (read-only).
+  - Hire-form (`/agents/new`) — header «Hiring into: X [Change]» с локальным per-hire override; глобальный active не трогается. Welcome-step + каждый wizard-step.
+  - AgentDetail Overview tile «Workspace», RunDetail MetaRow «workspace», AgentDetail Settings → `WorkspaceCard` с move-action — все читают `agent.domain_id` и резолвят имя через `workspaceLabel(id)` (lookup в `fxWorkspaces`).
+  - Filter cascade в `api.list*` — каждый list-метод (`listAgents`, `listApprovals`, `listRuns`, `listAudit`, `listChats`, `getSpend`, `listHandoffs`) принимает `workspace_ids?: string[]`. Пустой/undefined → fallback на union по memberships (`getAllUserWorkspaceIds()`). **Resolve agent → workspace через `agent.domain_id` напрямую** — никакого side-table.
+  - Auto-create на login: если `GET /workspaces` вернул empty list для свежего юзера, клиент инициирует `POST /workspaces` с `{ name: 'Main' }` (idempotent, см. `auth.tsx`). Демо-юзеры с memberships не задеты.
+- **Что говорит spec:**
+  - **Есть:** `Agent.domain_id: uuid|null`, `User.domain_id: uuid|null`, роль `domain_admin`. Это и есть наш workspace FK + workspace admin role.
+  - **Нет:** `Workspace` (или `Domain`) schema, `/workspaces` (или `/domains`) namespace, membership endpoints, `PATCH /agents/{id}` (для move-action).
 - **Что нужно от backend (минимально):**
-  - `Workspace` schema (`id`, `name`, `description?`, `created_at`).
+  - `Workspace`/`Domain` schema (`id`, `name`, `description?`, `created_at`). Backend выбирает имя — UI нормализует.
   - `Membership` schema (`workspace_id`, `user_id`, `joined_at`, optionally `role`).
-  - `GET /workspaces` — workspaces visible to the bearer (via memberships).
+  - `GET /workspaces` (или `/domains`) — workspaces visible to the bearer (via memberships).
   - `GET /workspaces/{id}` / `POST /workspaces` / `PATCH /workspaces/{id}` / `DELETE /workspaces/{id}`.
   - `GET /workspaces/{id}/members` (read-only достаточно для v1).
-  - `Agent.workspace_id: string` — для серверной фильтрации в `listAgents`. Без этого frontend не сможет уйти от side-table.
-  - Скоп-механика (либо `X-Workspace-Id` header, либо `?workspace_id=` query param на listAgents/listApprovals/etc) — чтобы list-методы возвращали уже отфильтрованную страницу, без клиентской пост-фильтрации.
-- **Что нужно дополнительно (для invite/remove):** `POST /workspaces/{id}/members`, `DELETE /workspaces/{id}/members/{user_id}`, плюс реальный `GET /users` для resolver'а (он же отсутствует — см. §1.3).
-- **MockBadge:** да — на `/workspaces` (header), в dropdown свитчера, на Members card. `kind="design"` — endpoint'ов нет.
-- **Files:** `src/prototype/lib/workspace-context.ts`, `src/prototype/lib/api.ts` (методы `listWorkspaces` / `getWorkspace` / `createWorkspace` / `updateWorkspace` / `deleteWorkspace` / `listWorkspaceMembers` / `listWorkspaceStats`), `src/prototype/lib/types.ts` (`Workspace` / `WorkspaceMembership` / `WorkspaceList` / `CreateWorkspaceRequest` / `UpdateWorkspaceRequest`), `src/prototype/lib/fixtures.ts` (`workspaces` / `workspaceMemberships` / `agentWorkspace`), `src/prototype/auth.tsx` (`currentWorkspaceId` в `StoredSession`, `useAuth().{myWorkspaces, switchWorkspace, refreshWorkspaces, ...}`), `src/prototype/components/{workspace-switcher,workspace-form-dialog,workspace-delete-dialog,workspace-remount}.tsx`, `src/prototype/screens/WorkspacesScreen.tsx`.
-- **План:** `docs/agent-plans/2026-05-06-2200-workspaces-mock.md`.
+  - `PATCH /agents/{id}` с `{ domain_id }` — для move-action (см. AgentDetail Settings → WorkspaceCard).
+  - **Filter param на list endpoints:** `?workspace_ids[]=ws_a&workspace_ids[]=ws_b` (multi-param) ИЛИ `?workspace_ids=a,b` (CSV) — на бэке маппится на `domain_id IN (...)` фильтр. Применяется к `/agents`, `/dashboard/runs`, `/audit`, `/approvals`, `/chat`, `/dashboard/spend`. **Когда параметр НЕ передан** — сервер ВОЗВРАЩАЕТ union по всем workspace'ам пользователя (это контракт нашего «filter==[]» = «all»; на этот же контракт опирается sidebar approval badge — счётчик считает ALL pending без передачи workspace_ids).
+  - Aggregations (`/dashboard/spend`): либо честный server-side multi-param, либо `group_by=workspace` чтобы UI не считал per-workspace aggregation client-side. Сейчас у `/dashboard/spend` нет `workspace_id` query вообще.
+- **Auto-create на регистрации:**
+  - Вариант A (проще): `POST /auth/register` (см. § 1.1) сам создаёт первый workspace с именем `Main` и добавляет юзера как member. Клиент только зовёт `GET /me` после login и получает уже не-пустой membership list.
+  - Вариант B (текущий мок): клиент после login проверяет `GET /workspaces` и при `length === 0` сам зовёт `POST /workspaces`. Backend делать ничего не нужно.
+  - Решение за бэкенд-командой; UI в обоих случаях работает идентично — после login `myWorkspaces.length >= 1` гарантировано.
+- **Search в switcher:** при >>10 workspaces список memberships может стать большим. Реальный `GET /workspaces` должен поддерживать pagination и optional `?name=` filter. Сейчас клиент просто читает весь список и фильтрует in-memory — не блокер для MVP, но упомянуть.
+- **Sync filter между устройствами:** на данный момент `scopeFilter` живёт ТОЛЬКО в клиенте (localStorage). Backend о нём знать не нужно. Если в будущем понадобится sync — отдельный endpoint типа `GET/PUT /me/preferences`. Сейчас явно out of scope.
+- **Что нужно дополнительно (для invite/remove):** `POST /workspaces/{id}/members`, `DELETE /workspaces/{id}/members/{user_id}`, плюс реальный `GET /users` для resolver'а (см. § 1.2).
+- **Что не меняется:**
+  - `Agent` / `User` типы в `types.ts` остаются 1:1 со спекой. `domain_id` поле уже есть — UI читает его как workspace FK.
+  - Внутренние имена (`Agent.domain_id`, role enum `domain_admin`, `ToolGrant.scope_type='domain'`) — backend-контрактные, не трогаем.
+- **MockBadge:** да — на `/workspaces` (header), в dropdown свитчера, на Members card, на AgentDetail Settings WorkspaceCard. `kind="design"` — Workspace CRUD endpoints отсутствуют (само поле `Agent.domain_id` есть).
+- **Files:** `src/prototype/lib/workspace-context.ts`, `src/prototype/lib/scope-filter.tsx`, `src/prototype/lib/api.ts` (методы `listWorkspaces` / `getWorkspace` / `createWorkspace` / `updateWorkspace` / `deleteWorkspace` / `listWorkspaceMembers` / `listWorkspaceStats` / `getAgentWorkspace` / `setAgentWorkspace` / `getAgentWorkspaceMap`), `src/prototype/lib/types.ts` (`Workspace` / `WorkspaceMembership` / `WorkspaceList` / `CreateWorkspaceRequest` / `UpdateWorkspaceRequest`), `src/prototype/lib/format.ts` (`workspaceLabel`), `src/prototype/lib/fixtures.ts` (`workspaces` / `workspaceMemberships`; `Agent.domain_id` теперь хранит ws_* ids), `src/prototype/auth.tsx` (`activeWorkspaceId` в `StoredSession`, `useAuth().{myWorkspaces, setActiveWorkspace, refreshWorkspaces, ...}`, auto-create on login), `src/prototype/components/{workspace-switcher,workspace-form-dialog,workspace-delete-dialog,workspace-remount}.tsx`, `src/prototype/components/common/{workspace-filter,workspace-context-pill}.tsx`, `src/prototype/screens/WorkspacesScreen.tsx`.
+- **Планы:** `docs/agent-plans/2026-05-06-2200-workspaces-mock.md` (initial), `docs/agent-plans/2026-05-08-0030-page-filters-vs-global-scope.md` (intermediate), `docs/agent-plans/2026-05-08-1645-workspaces-redesign.md` (active/filter split), `docs/agent-plans/2026-05-08-1900-domain-workspace-merge.md` (domain ≡ workspace merge — current).
+
+### 1.16 — Agent-to-agent communication ⚠️ design preview
+
+- **Что это:** концепт «один агент в процессе своей работы спрашивает другого» — handoff внутри run'а. Surfacing'ом служит `/sandbox/team-map`: пространственная визуализация недавних handoff'ов в окне 24h / 7d / 30d. Vocab: `handoff` (internal) / `ask between agents` (user-facing).
+- **Где в UI (sandbox preview, целиком mock):**
+  - `/sandbox/team-map` (`TeamMapScreen`) — sidebar entry под divider'ом рядом с `team-bridge`, preview-badge.
+  - SVG-canvas с карточками агентов и линиями между парами; hover → tooltip («Sarah asked Tom …»); click → `/activity/:runId`.
+  - Aggregate per pair: один edge на пару, толщина = функция от количества handoff'ов, стиль = доминирующий статус (`pending > timed_out > declined > answered`).
+- **Что говорит spec:** ничего. В `docs/gateway.yaml` нет `Handoff` schema, нет `agent_call` step kind в `RunStep.step_type`, нет `/handoffs` endpoint'а. Поведение в backend не существует — это **«behavior pending design»**, не «endpoint pending wiring». Mock здесь глубже, чем у `/workspaces`.
+- **Что нужно от backend (когда design дойдёт до spec'а):**
+  - Эмитить `RunStep` с `step_type: 'agent_call'` и payload вроде `{ from_agent_id, to_agent_id, summary, status }` (точная shape — design decision).
+  - Опционально: денормализованный endpoint `GET /handoffs?since=...&workspace_id=...` для эффективной выборки за окно (без N+1 derive из runs).
+  - `Handoff.status` как минимум `pending|answered|timed_out|declined` — pending→timed_out timeout policy на стороне orchestrator'а (UI ждёт готовый статус).
+  - Workspace-scoped фильтрация — handoff'ы наследуют scope через agent (cross-workspace asks UI не показывает).
+- **Что меняется при wiring'e:** в `lib/api.ts` `listHandoffs` либо переходит на новый endpoint, либо derive'ит из `listRuns` собирая `agent_call` steps. UI consumer не меняется. `Handoff.workspace_id` денорм-поле (mock-only convenience) уйдёт — будет резолвиться через agent.
+- **MockBadge:** да — `kind="design"` в header'е `/sandbox/team-map`, hint указывает на этот § 1.16.
+- **Files:**
+  - `src/prototype/lib/types.ts` — `Handoff` / `HandoffStatus` / `HandoffList`, `agent_call` в `RunStepType`.
+  - `src/prototype/lib/fixtures.ts` — `handoffs[]` (10 seed'ов в ws_ops), `agentPositions` side-table.
+  - `src/prototype/lib/api.ts` — `listHandoffs({ since? })`.
+  - `src/prototype/screens/sandbox/TeamMapScreen.tsx` — surface.
+  - `src/prototype/components/team-map-canvas.tsx` — SVG canvas + hover tooltip + click navigation.
+  - `src/prototype/components/shell.tsx` — sidebar entry.
+  - `src/prototype/prototype.css` — стили `.team-map*`.
+- **Removability:** удаляется как одна единица — sandbox surface, без production-зависимостей. См. self-описание в комментарии шапки `TeamMapScreen.tsx`.
+- **План:** design doc `docs/plans/2026-05-07-1830-team-map-preview.md`, impl plan `docs/agent-plans/2026-05-07-1900-team-map-impl.md`.
 
 ---
 
@@ -332,6 +380,7 @@
 | 1.11 | `requested_action` structured | ⚠️ low (есть workaround) | — invisible (transformation handled in helpers) |
 | 4.1 | Pause/Fire endpoints | ⚠️ должно быть до GA | ✓ MockBadge on Settings tab → Manage employment |
 | 2.2 | Activity sentence summary | ⚠️ улучшение UX | ✓ MockBadge on Activity page |
+| 1.16 | Agent-to-agent communication | ⚠️ design preview (sandbox-only) | ✓ MockBadge on /sandbox/team-map |
 
 ---
 
@@ -347,7 +396,17 @@
 
 ---
 
-**Last updated:** 2026-05-01 (later) — `docs/gateway.yaml` synced verbatim with live stage spec (`https://stage.api.int3grate.ai/docs/openapi.yaml`, OpenAPI 3.2.0, version 0.1.0). Reconciliation revealed: § 1.3 (`GET /approvals/{id}`) actually exists in live → resolved + workaround removed. Tasks subtree completely absent in live spec (was `x-mvp-deferred` in legacy draft) → new § 6 documents this. Naming gap `/tools` ↔ `/tool-catalog` → new § 5.
+**Last updated:** 2026-05-08 (latest) — § 1.15 (Workspaces) rewritten for the **domain ≡ workspace merge** (architectural decision, see `docs/handoff-prep.md § 0.1`). Backend `domain` and frontend `workspace` are now treated as one entity: `Agent.domain_id` (already in spec) IS the workspace FK, role `domain_admin` IS workspace admin. Side-table `agentWorkspace` removed; `DOMAIN_LABELS` hardcode removed; new `workspaceLabel(id)` helper resolves names via `fxWorkspaces`. UI labels updated: AgentDetail Overview tile «Team»→«Workspace», Settings MetaRow dropped (dup of WorkspaceCard), RunDetail MetaRow «team»→«workspace», ProfileScreen Scope card resolved label conflict (tenant Caption «Workspace»→«Tenant», domain Caption «Team»→«Workspace»). Backend contract minimally affected — still need `Workspace` (or `Domain`) schema + CRUD endpoints + `PATCH /agents/{id}` for move-action, but `Agent.workspace_id` is no longer requested (the field exists as `domain_id`).
+
+Earlier 2026-05-08 — § 1.15 (Workspaces) rewritten for the active/filter split redesign. UI now keeps `activeWorkspaceId` (where I work — drives hire) and `scopeFilter: string[]` (what I see — global sticky chip-row, default `[]` = all memberships) as TWO INDEPENDENT slices. Switcher relabeled "Working in"; chip-row labeled "Showing:" with first chip "All workspaces". Sidebar nav "Team" → "Agents". Auto-create "Main" workspace on first login when memberships are empty. Backend contract for list endpoints unchanged — still `?workspace_ids[]=...`, omit = union over user memberships.
+
+Earlier 2026-05-08 — § 1.15 (Workspaces) updated. UI pivoted to single-active switcher + per-page workspace filters; list endpoints accept `workspace_ids[]`, defaulting to "all user memberships" when omitted (used by the unscoped sidebar approval badge).
+
+Earlier 2026-05-07 (later) — § 1.15 extended with multi-scope filter requirements. UI now supports selecting several workspaces at once; list endpoints + aggregations need `workspace_id[]` / `workspace_ids` semantics.
+
+Earlier 2026-05-07 — added § 1.16 (Agent-to-agent communication) for the `/sandbox/team-map` preview. Sandbox-only, design preview, deeper mock than usual (behavior pending design, not just wiring).
+
+Earlier 2026-05-01 (later) — `docs/gateway.yaml` synced verbatim with live stage spec (`https://stage.api.int3grate.ai/docs/openapi.yaml`, OpenAPI 3.2.0, version 0.1.0). Reconciliation revealed: § 1.3 (`GET /approvals/{id}`) actually exists in live → resolved + workaround removed. Tasks subtree completely absent in live spec (was `x-mvp-deferred` in legacy draft) → new § 6 documents this. Naming gap `/tools` ↔ `/tool-catalog` → new § 5.
 
 Earlier 2026-05-01: removed § 1.7 (Integration registry / OAuth) and § 4.4 (Connect new app modal) as architecturally out-of-scope; rewrote § 2.3 (App connection status) as the canonical model.
 

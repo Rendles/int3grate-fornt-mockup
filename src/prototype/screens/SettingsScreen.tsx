@@ -85,7 +85,7 @@ function WorkspaceTab({ user }: { user: User }) {
           <DataList.Root size="2">
             <MetaRow label="name" value={tenantLabel(user.tenant_id)} />
             <MetaRow label="owner" value={user.name} />
-            <MetaRow label="plan" value={<Badge color="blue" variant="soft" radius="full" size="1">Pro</Badge>} />
+            <MetaRow label="plan" value={<Badge color="cyan" variant="soft" radius="full" size="1">Pro</Badge>} />
             <MetaRow label="created" value="—" />
           </DataList.Root>
         </div>
@@ -169,7 +169,7 @@ function TeamTab() {
                 {roleLabel(u.role)}
               </Badge>
               {u.approval_level != null && (
-                <Badge color="amber" variant="soft" radius="full" size="1">
+                <Badge color="orange" variant="soft" radius="full" size="1">
                   L{u.approval_level} approver
                 </Badge>
               )}
@@ -206,10 +206,10 @@ const STEP_TYPE_LABEL: Record<string, string> = {
 type HistorySource = 'all' | 'runs' | 'chats'
 const HISTORY_SOURCES: HistorySource[] = ['all', 'runs', 'chats']
 
-function historyStatusTone(status: string): 'green' | 'amber' | 'red' | 'cyan' | 'gray' {
-  if (status === 'ok' || status === 'completed') return 'green'
+function historyStatusTone(status: string): 'jade' | 'orange' | 'red' | 'cyan' | 'gray' {
+  if (status === 'ok' || status === 'completed') return 'jade'
   if (status === 'failed') return 'red'
-  if (status === 'pending' || status === 'blocked') return 'amber'
+  if (status === 'pending' || status === 'blocked') return 'orange'
   if (status === 'running') return 'cyan'
   return 'gray'
 }
@@ -277,7 +277,7 @@ function HistoryLogTab() {
               type="button"
               size="2"
               variant="soft"
-              color={isActive ? 'blue' : 'gray'}
+              color={isActive ? 'cyan' : 'gray'}
               onClick={() => { setSource(s); setPage(0) }}
             >
               <span style={{ textTransform: 'capitalize' }}>{s}</span>
@@ -331,12 +331,12 @@ function HistoryLogTab() {
                 <Text as="div" size="1" color="gray">{absTime(e.created_at)}</Text>
                 {e.run_id && (
                   <Link to={`/activity/${e.run_id}`}>
-                    <Text size="1" color="blue">activity {shortRef(e.run_id)}</Text>
+                    <Text size="1" color="cyan">activity {shortRef(e.run_id)}</Text>
                   </Link>
                 )}
                 {e.chat_id && (
                   <Link to={`/chats/${e.chat_id}`}>
-                    <Text size="1" color="blue">chat {shortRef(e.chat_id)}</Text>
+                    <Text size="1" color="cyan">chat {shortRef(e.chat_id)}</Text>
                   </Link>
                 )}
               </Box>
@@ -505,7 +505,7 @@ function DiagnosticModeTab() {
             <Switch size="3" checked={on} onCheckedChange={toggle} />
           </Flex>
           {on && (
-            <Box mt="3" p="3" style={{ background: 'var(--blue-a3)', borderRadius: 8 }}>
+            <Box mt="3" p="3" style={{ background: 'var(--cyan-a3)', borderRadius: 8 }}>
               <Text as="div" size="1" color="gray" style={{ lineHeight: 1.55 }}>
                 Diagnostic mode is recorded in your browser. The conditional rendering of hints is planned for a follow-up build — for now this is a placeholder switch.
               </Text>

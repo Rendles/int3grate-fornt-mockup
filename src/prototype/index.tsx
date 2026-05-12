@@ -1,5 +1,6 @@
 import '@radix-ui/themes/styles.css'
 import './prototype.css'
+import './brand-colors.css'
 import { useEffect } from 'react'
 import { Text, Theme as RadixTheme, ThemePanel } from '@radix-ui/themes'
 import { AuthProvider, useAuth } from './auth'
@@ -46,9 +47,14 @@ import WorkspacesScreen from './screens/WorkspacesScreen'
 // Sandbox: design exploration only. Reachable via direct URL + a sidebar
 // entry with a muted "preview" badge. See docs/agent-plans/.
 import TeamBridgeScreen from './screens/sandbox/TeamBridgeScreen'
+import TeamMapScreen from './screens/sandbox/TeamMapScreen'
+import HeroLoopScreen from './screens/sandbox/HeroLoopScreen'
+import HeroChatLoopScreen from './screens/sandbox/HeroChatLoopScreen'
+import HeroJourneyLoopScreen from './screens/sandbox/HeroJourneyLoopScreen'
 // WelcomeChatScreen removed — standalone preview no longer needed
 import { DevModeProvider, DevModeRemount } from './dev/dev-mode-provider'
 import { WorkspaceRemount } from './components/workspace-remount'
+import { ScopeFilterProvider } from './lib/scope-filter'
 
 // Old paths redirect to new ones (legacy hash routes).
 // Kept so existing tour navigateTo, bookmarks, and direct links don't 404.
@@ -153,6 +159,10 @@ function Router() {
     // Sandbox routes — design previews, surfaced in the sidebar with a
     // muted "preview" badge. See docs/agent-plans/.
     { pattern: '/sandbox/team-bridge', render: () => <TeamBridgeScreen /> },
+    { pattern: '/sandbox/team-map', render: () => <TeamMapScreen /> },
+    { pattern: '/sandbox/hero-loop', render: () => <HeroLoopScreen /> },
+    { pattern: '/sandbox/hero-chat-loop', render: () => <HeroChatLoopScreen /> },
+    { pattern: '/sandbox/hero-journey-loop', render: () => <HeroJourneyLoopScreen /> },
     // /sandbox/welcome-chat removed — standalone preview no longer needed
   ]
 
@@ -170,7 +180,7 @@ function ThemedRoot() {
     <RadixTheme
       asChild
       appearance={theme}
-      accentColor='indigo'
+      accentColor='violet'
       grayColor="slate"
       panelBackground="solid"
       radius="small"
@@ -179,23 +189,25 @@ function ThemedRoot() {
     >
       <div className="prototype-root">
         <AuthProvider>
-          <RouterProvider>
-            <DevModeProvider>
-              <TrainingModeProvider>
-                <TrainingBanner />
-                <TourProvider>
-                  <DevModeRemount>
-                    <WorkspaceRemount>
-                      <Router />
-                    </WorkspaceRemount>
-                  </DevModeRemount>
-                  <TourOverlay />
-                  <WelcomeToast />
-                  <TrainingAutoExit />
-                </TourProvider>
-              </TrainingModeProvider>
-            </DevModeProvider>
-          </RouterProvider>
+          <ScopeFilterProvider>
+            <RouterProvider>
+              <DevModeProvider>
+                <TrainingModeProvider>
+                  <TrainingBanner />
+                  <TourProvider>
+                    <DevModeRemount>
+                      <WorkspaceRemount>
+                        <Router />
+                      </WorkspaceRemount>
+                    </DevModeRemount>
+                    <TourOverlay />
+                    <WelcomeToast />
+                    <TrainingAutoExit />
+                  </TourProvider>
+                </TrainingModeProvider>
+              </DevModeProvider>
+            </RouterProvider>
+          </ScopeFilterProvider>
         </AuthProvider>
         {import.meta.env.DEV && <ThemePanel defaultOpen={false} />}
       </div>

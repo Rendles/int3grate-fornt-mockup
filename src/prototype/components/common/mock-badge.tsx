@@ -23,8 +23,8 @@ const COPY: Record<MockKind, { label: string; fg: string; border: string; defaul
   },
   deferred: {
     label: 'deferred',
-    fg: 'var(--amber-11)',
-    border: 'var(--amber-a7)',
+    fg: 'var(--orange-11)',
+    border: 'var(--orange-a7)',
     defaultHint:
       "Endpoint exists in the gateway spec but is marked x-mvp-deferred — backend hasn't implemented it yet. UI is wired against the mock.",
   },

@@ -6,19 +6,19 @@ type BannerTone = 'info' | 'warn' | 'danger' | 'success' | 'ghost'
 type CalloutColor = NonNullable<ComponentProps<typeof Callout.Root>['color']>
 
 const BANNER_COLOR: Record<BannerTone, CalloutColor> = {
-  info: 'blue',
-  warn: 'amber',
+  info: 'cyan',
+  warn: 'orange',
   danger: 'red',
-  success: 'green',
+  success: 'jade',
   ghost: 'gray',
 }
 
 type StateTone = 'neutral' | 'danger' | 'warn'
 
 function StateIcon({ tone, children }: { tone: StateTone; children: ReactNode }) {
-  const color = tone === 'danger' ? 'var(--red-11)' : tone === 'warn' ? 'var(--amber-11)' : 'var(--gray-11)'
-  const border = tone === 'danger' ? 'var(--red-6)' : tone === 'warn' ? 'var(--amber-6)' : 'var(--gray-6)'
-  const bg = tone === 'danger' ? 'var(--red-a3)' : tone === 'warn' ? 'var(--amber-a3)' : 'var(--gray-a3)'
+  const color = tone === 'danger' ? 'var(--red-11)' : tone === 'warn' ? 'var(--orange-11)' : 'var(--gray-11)'
+  const border = tone === 'danger' ? 'var(--red-6)' : tone === 'warn' ? 'var(--orange-6)' : 'var(--gray-6)'
+  const bg = tone === 'danger' ? 'var(--red-a3)' : tone === 'warn' ? 'var(--orange-a3)' : 'var(--gray-a3)'
   return (
     <Box
       style={{

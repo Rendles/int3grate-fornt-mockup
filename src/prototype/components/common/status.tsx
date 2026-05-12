@@ -6,10 +6,10 @@ import type { StatusTone, StatusValue } from './status-data'
 type BadgeColor = NonNullable<ComponentProps<typeof Badge>['color']>
 
 const TONE_COLOR: Record<StatusTone, BadgeColor> = {
-  accent: 'blue',
-  warn: 'amber',
+  accent: 'cyan',
+  warn: 'orange',
   danger: 'red',
-  success: 'green',
+  success: 'jade',
   info: 'cyan',
   ghost: 'gray',
 }
