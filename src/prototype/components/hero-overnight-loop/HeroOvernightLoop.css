@@ -1,0 +1,379 @@
+/* Hero-overnight-loop scripted scene — self-contained styles.
+   Brand tokens inlined so this folder compiles outside the prototype.
+   Reference: docs/landing-colors-handoff.md (palette of record).
+   Variable namespace: --ho-* (hero overnight). */
+
+.hero-overnight,
+.hero-overnight *,
+.hero-overnight *::before,
+.hero-overnight *::after {
+  box-sizing: border-box;
+}
+
+.hero-overnight {
+  --ho-bg: #05070A;
+  --ho-panel: #0E1117;
+  --ho-text: #F7F8FA;
+  --ho-text-muted: #9499A3;
+  --ho-text-faint: #6E737D;
+  --ho-border: rgba(255, 255, 255, 0.08);
+  --ho-surface-lift: rgba(255, 255, 255, 0.04);
+  --ho-violet: #701DFD;
+  --ho-cyan: #01C9FA;
+  --ho-orange: #FD9C12;
+  --ho-jade: #2EBE6F;
+  --ho-jade-strong: #3DD68C;
+
+  font-family: Inter, ui-sans-serif, system-ui, -apple-system, "Segoe UI", sans-serif;
+  font-size: 13px;
+  line-height: 1.45;
+  letter-spacing: -0.005em;
+  color: var(--ho-text);
+  display: inline-block;
+}
+
+.hero-overnight__stage {
+  width: 500px;
+  height: 600px;
+  background: var(--ho-panel);
+  border-radius: 16px;
+  padding: 20px;
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+  position: relative;
+  overflow: hidden;
+  transition: background 1400ms ease;
+  box-shadow:
+    0 1px 0 rgba(255, 255, 255, 0.04) inset,
+    0 30px 80px rgba(0, 0, 0, 0.5);
+}
+
+/* Daypart tinting: night = pure panel; dawn = subtle warm corner;
+   morning = stronger orange glow + slightly lifted base. */
+.hero-overnight__stage--sunset {
+  background:
+    radial-gradient(circle at 90% 8%, rgba(253, 156, 18, 0.06), transparent 55%),
+    var(--ho-panel);
+}
+
+.hero-overnight__stage--dawn {
+  background:
+    radial-gradient(circle at 90% 8%, rgba(253, 156, 18, 0.11), transparent 55%),
+    var(--ho-panel);
+}
+
+.hero-overnight__stage--morning {
+  background:
+    radial-gradient(circle at 90% 8%, rgba(253, 156, 18, 0.16), transparent 60%),
+    var(--ho-panel);
+}
+
+/* ─── Header strip ─────────────────────────────────────────────────── */
+
+.ho-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0 2px;
+}
+
+.ho-header__left {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.ho-header__eyebrow {
+  font-size: 10px;
+  font-weight: 600;
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+  color: var(--ho-text-muted);
+}
+
+.ho-header__caption {
+  font-size: 14px;
+  font-weight: 500;
+  letter-spacing: -0.01em;
+  color: var(--ho-text);
+}
+
+.ho-clock {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  height: 32px;
+  padding: 0 14px;
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.06);
+  color: var(--ho-text-muted);
+  transition: background 800ms ease, color 800ms ease;
+}
+
+.ho-clock--dawn,
+.ho-clock--morning {
+  background: rgba(253, 156, 18, 0.20);
+  color: var(--ho-orange);
+}
+
+.ho-clock__icon {
+  display: inline-grid;
+  place-items: center;
+}
+
+.ho-clock__time {
+  font-size: 12.5px;
+  font-weight: 600;
+  letter-spacing: -0.01em;
+  font-variant-numeric: tabular-nums;
+  animation: ho-clock-fade 240ms ease;
+}
+
+@keyframes ho-clock-fade {
+  0%   { opacity: 0.35; transform: translateY(-2px); }
+  100% { opacity: 1;    transform: translateY(0); }
+}
+
+/* ─── Ribbon ───────────────────────────────────────────────────────── */
+
+.ho-ribbon {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  min-height: 0;
+  overflow: hidden;
+}
+
+/* ─── Activity row ─────────────────────────────────────────────────── */
+
+.ho-row {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 10px 14px;
+  background: var(--ho-surface-lift);
+  border-radius: 10px;
+  min-height: 0;
+  flex-shrink: 0;
+  overflow: hidden;
+  transition:
+    max-height 480ms cubic-bezier(0.4, 0, 0.2, 1),
+    opacity 320ms ease,
+    padding 480ms cubic-bezier(0.4, 0, 0.2, 1),
+    margin 480ms cubic-bezier(0.4, 0, 0.2, 1),
+    transform 480ms cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.ho-row--visible {
+  max-height: 80px;
+  opacity: 1;
+  transform: translateY(0);
+}
+
+.ho-row--hidden {
+  max-height: 0;
+  opacity: 0;
+  padding-top: 0;
+  padding-bottom: 0;
+  transform: translateY(8px);
+  pointer-events: none;
+}
+
+.ho-row--gone {
+  max-height: 0;
+  opacity: 0;
+  padding-top: 0;
+  padding-bottom: 0;
+  transform: translateY(-12px);
+  pointer-events: none;
+}
+
+.ho-row--needs {
+  background: linear-gradient(180deg, rgba(253, 156, 18, 0.10), var(--ho-surface-lift));
+  box-shadow: inset 2px 0 0 0 var(--ho-orange);
+}
+
+.ho-row__avatar {
+  width: 28px;
+  height: 28px;
+  flex-shrink: 0;
+  border-radius: 50%;
+  background: linear-gradient(135deg, var(--ho-violet), var(--ho-cyan));
+  color: var(--ho-text);
+  font-size: 10.5px;
+  font-weight: 600;
+  letter-spacing: 0.04em;
+  display: grid;
+  place-items: center;
+}
+
+.ho-row__body {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+}
+
+.ho-row__name {
+  font-size: 11px;
+  color: var(--ho-text-muted);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.ho-row__action {
+  font-size: 12.5px;
+  font-weight: 500;
+  letter-spacing: -0.005em;
+  color: var(--ho-text);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.ho-row__right {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-shrink: 0;
+}
+
+.ho-row__pill {
+  display: inline-flex;
+  align-items: center;
+  height: 18px;
+  padding: 0 7px;
+  border-radius: 999px;
+  font-size: 8.5px;
+  font-weight: 600;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--ho-orange);
+  background: rgba(253, 156, 18, 0.20);
+}
+
+.ho-row__time {
+  font-size: 10.5px;
+  color: var(--ho-text-faint);
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
+
+/* ─── Summary slot + card ──────────────────────────────────────────── */
+
+/* Pre-reserved bottom slot. Sized so the layout never shifts when the
+   summary card appears — the slot is always 86px, just empty until needed. */
+.ho-summary-slot {
+  height: 86px;
+  flex-shrink: 0;
+  position: relative;
+}
+
+.ho-summary {
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(180deg, rgba(253, 156, 18, 0.12), rgba(255, 255, 255, 0.04));
+  border: 1px solid rgba(253, 156, 18, 0.20);
+  border-radius: 12px;
+  padding: 12px 16px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  transition:
+    opacity 380ms ease,
+    transform 480ms cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.ho-summary--hidden {
+  opacity: 0;
+  transform: translateY(24px);
+  pointer-events: none;
+}
+
+.ho-summary--visible {
+  opacity: 1;
+  transform: translateY(0);
+}
+
+.ho-summary__head {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+}
+
+.ho-summary__eyebrow {
+  font-size: 9.5px;
+  font-weight: 600;
+  letter-spacing: 0.18em;
+  text-transform: uppercase;
+  color: var(--ho-orange);
+}
+
+.ho-summary__time {
+  font-size: 11px;
+  color: var(--ho-text-faint);
+  font-variant-numeric: tabular-nums;
+}
+
+.ho-summary__metrics {
+  display: grid;
+  grid-template-columns: 1fr 1fr 1fr;
+  gap: 12px;
+  flex: 1;
+  min-height: 0;
+}
+
+.ho-summary__metric {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
+}
+
+.ho-summary__value {
+  font-size: 22px;
+  font-weight: 500;
+  letter-spacing: -0.025em;
+  line-height: 1;
+  font-variant-numeric: tabular-nums;
+}
+
+.ho-summary__metric--done   .ho-summary__value { color: var(--ho-jade-strong); }
+.ho-summary__metric--pending .ho-summary__value { color: var(--ho-orange); }
+.ho-summary__metric--spend  .ho-summary__value { color: var(--ho-text); }
+
+.ho-summary__label {
+  font-size: 9.5px;
+  font-weight: 600;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--ho-text-muted);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+/* ─── Static mode: small viewport OR reduced motion ────────────────── */
+
+@media (max-width: 640px), (prefers-reduced-motion: reduce) {
+  .ho-clock__time,
+  .ho-row,
+  .ho-summary {
+    animation: none;
+    transition: opacity 220ms ease, background 220ms ease;
+  }
+
+  .ho-row--hidden,
+  .ho-row--gone,
+  .ho-summary--hidden {
+    transform: none;
+  }
+
+  .hero-overnight__stage {
+    transition: none;
+  }
+}

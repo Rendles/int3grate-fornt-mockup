@@ -1,0 +1,385 @@
+/* Hero-roster-loop scripted scene — self-contained styles.
+   Brand tokens inlined so this folder compiles outside the prototype.
+   Reference: docs/landing-colors-handoff.md (palette of record).
+   Sibling of components/hero-loop/HeroLoop.css — same idioms, different
+   namespace (--hr-*) so they can coexist on the same page. */
+
+/* Scoped box-sizing reset — host page may not have a global border-box
+   reset. Without this the 500×600 stage silently grows. */
+.hero-roster,
+.hero-roster *,
+.hero-roster *::before,
+.hero-roster *::after {
+  box-sizing: border-box;
+}
+
+.hero-roster {
+  --hr-bg: #05070A;
+  --hr-panel: #0E1117;
+  --hr-text: #F7F8FA;
+  --hr-text-muted: #9499A3;
+  --hr-text-faint: #6E737D;
+  --hr-border: rgba(255, 255, 255, 0.08);
+  --hr-surface-lift: rgba(255, 255, 255, 0.04);
+  --hr-violet: #701DFD;
+  --hr-cyan: #01C9FA;
+  --hr-orange: #FD9C12;
+  --hr-jade: #2EBE6F;
+  --hr-jade-strong: #3DD68C;
+
+  font-family: Inter, ui-sans-serif, system-ui, -apple-system, "Segoe UI", sans-serif;
+  font-size: 13px;
+  line-height: 1.45;
+  letter-spacing: -0.005em;
+  color: var(--hr-text);
+  display: inline-block;
+}
+
+.hero-roster__stage {
+  width: 500px;
+  height: 600px;
+  background: var(--hr-panel);
+  border-radius: 16px;
+  padding: 20px;
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  position: relative;
+  overflow: hidden;
+  box-shadow:
+    0 1px 0 rgba(255, 255, 255, 0.04) inset,
+    0 30px 80px rgba(0, 0, 0, 0.5);
+}
+
+/* ─── Header strip ─────────────────────────────────────────────────── */
+
+.hr-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0 2px;
+}
+
+.hr-header__left {
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+}
+
+.hr-header__title {
+  font-size: 10px;
+  font-weight: 600;
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+  color: var(--hr-text-muted);
+}
+
+.hr-header__time {
+  font-size: 13.5px;
+  font-weight: 500;
+  letter-spacing: -0.01em;
+  color: var(--hr-text);
+}
+
+.hr-header__pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  height: 30px;
+  padding: 0 12px 0 8px;
+  border-radius: 999px;
+  transition: background 320ms ease, color 320ms ease;
+}
+
+.hr-header__pill--active {
+  background: rgba(253, 156, 18, 0.20);
+  color: var(--hr-orange);
+}
+
+.hr-header__pill--muted {
+  background: rgba(255, 255, 255, 0.05);
+  color: var(--hr-text-muted);
+}
+
+.hr-header__pill-count {
+  display: inline-grid;
+  place-items: center;
+  min-width: 22px;
+  height: 22px;
+  padding: 0 6px;
+  border-radius: 999px;
+  background: rgba(0, 0, 0, 0.32);
+  font-size: 12px;
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+}
+
+.hr-header__pill--active .hr-header__pill-count {
+  color: var(--hr-orange);
+}
+
+.hr-header__pill-label {
+  font-size: 10px;
+  font-weight: 600;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+}
+
+.hr-header__pill--flash {
+  animation: hr-pill-flash 420ms ease;
+}
+
+@keyframes hr-pill-flash {
+  0%   { transform: scale(1.08); }
+  100% { transform: scale(1); }
+}
+
+/* ─── 2×2 grid ─────────────────────────────────────────────────────── */
+
+.hr-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  grid-template-rows: 1fr 1fr;
+  gap: 12px;
+  flex: 1;
+  min-height: 0;
+}
+
+/* ─── Card ─────────────────────────────────────────────────────────── */
+
+.hr-card {
+  position: relative;
+  background: var(--hr-surface-lift);
+  border-radius: 12px;
+  padding: 14px;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  overflow: hidden;
+  transition:
+    background 380ms ease,
+    opacity 380ms ease;
+}
+
+/* Top accent strip — colour shifts to match state. */
+.hr-card::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: 2px;
+  background: transparent;
+  opacity: 0.75;
+  transition: background 380ms ease;
+}
+
+.hr-card--working::before    { background: var(--hr-cyan); }
+.hr-card--needs-you::before  { background: var(--hr-orange); }
+.hr-card--done::before       { background: var(--hr-jade); }
+
+.hr-card--working {
+  background: linear-gradient(180deg, rgba(1, 201, 250, 0.07), var(--hr-surface-lift));
+}
+
+.hr-card--needs-you {
+  background: linear-gradient(180deg, rgba(253, 156, 18, 0.10), var(--hr-surface-lift));
+}
+
+.hr-card--done {
+  background: linear-gradient(180deg, rgba(46, 190, 111, 0.09), var(--hr-surface-lift));
+}
+
+.hr-card--idle {
+  opacity: 0.55;
+}
+
+/* needs-you: pulsing corner dot. Same idiom as the avatar pulse in
+   hero-loop. Suppressed in static mode below. */
+.hr-card--needs-you::after {
+  content: '';
+  position: absolute;
+  top: 10px;
+  right: 10px;
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: var(--hr-orange);
+  animation: hr-pulse-dot 1.8s ease-out infinite;
+}
+
+/* ─── Card top row (avatar + identity + pill) ──────────────────────── */
+
+.hr-card__top {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  min-width: 0;
+}
+
+.hr-card__avatar {
+  width: 34px;
+  height: 34px;
+  flex-shrink: 0;
+  border-radius: 50%;
+  background: linear-gradient(135deg, var(--hr-violet), var(--hr-cyan));
+  color: var(--hr-text);
+  font-size: 11.5px;
+  font-weight: 600;
+  letter-spacing: 0.04em;
+  display: grid;
+  place-items: center;
+}
+
+.hr-card__id {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+}
+
+.hr-card__name {
+  font-size: 12.5px;
+  font-weight: 500;
+  letter-spacing: -0.005em;
+  color: var(--hr-text);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.hr-card__role {
+  font-size: 10.5px;
+  color: var(--hr-text-faint);
+}
+
+.hr-card__pill {
+  display: inline-flex;
+  align-items: center;
+  height: 18px;
+  padding: 0 7px;
+  border-radius: 999px;
+  font-size: 9px;
+  font-weight: 600;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  white-space: nowrap;
+  transition: background 380ms ease, color 380ms ease;
+}
+
+.hr-card--working   .hr-card__pill { color: var(--hr-cyan);        background: rgba(1, 201, 250, 0.18); }
+.hr-card--needs-you .hr-card__pill { color: var(--hr-orange);      background: rgba(253, 156, 18, 0.20); }
+.hr-card--done      .hr-card__pill { color: var(--hr-jade-strong); background: rgba(46, 190, 111, 0.22); }
+.hr-card--idle      .hr-card__pill { color: var(--hr-text-faint);  background: rgba(255, 255, 255, 0.05); }
+
+/* ─── Card body (task + meta) ──────────────────────────────────────── */
+
+.hr-card__body {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  justify-content: flex-end;
+  min-height: 0;
+}
+
+.hr-card__task {
+  font-size: 13px;
+  font-weight: 500;
+  letter-spacing: -0.005em;
+  color: var(--hr-text);
+  display: flex;
+  align-items: flex-start;
+  gap: 6px;
+  transition: color 320ms ease;
+}
+
+.hr-card--done .hr-card__task {
+  color: var(--hr-jade-strong);
+}
+
+.hr-card--idle .hr-card__task {
+  color: var(--hr-text-muted);
+}
+
+.hr-card__task-text {
+  min-width: 0;
+}
+
+.hr-card__check {
+  display: inline-grid;
+  place-items: center;
+  width: 16px;
+  height: 16px;
+  border-radius: 50%;
+  background: rgba(46, 190, 111, 0.22);
+  color: var(--hr-jade-strong);
+  flex-shrink: 0;
+  margin-top: 1px;
+}
+
+.hr-card__meta {
+  font-size: 11px;
+  color: var(--hr-text-faint);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+/* ─── Progress strip (only visible in 'working' state) ─────────────── */
+
+.hr-card__progress {
+  height: 3px;
+  border-radius: 2px;
+  background: rgba(255, 255, 255, 0.05);
+  overflow: hidden;
+  opacity: 0;
+  transition: opacity 320ms ease;
+}
+
+.hr-card--working .hr-card__progress {
+  opacity: 1;
+}
+
+.hr-card__progress-bar {
+  height: 100%;
+  width: 32%;
+  background: var(--hr-cyan);
+  border-radius: 2px;
+  animation: hr-progress-slide 1.8s ease-in-out infinite;
+}
+
+@keyframes hr-progress-slide {
+  0%   { transform: translateX(-100%); }
+  100% { transform: translateX(420%); }
+}
+
+@keyframes hr-pulse-dot {
+  0% {
+    box-shadow: 0 0 0 0 rgba(253, 156, 18, 0.55);
+  }
+  70% {
+    box-shadow: 0 0 0 8px rgba(253, 156, 18, 0);
+  }
+  100% {
+    box-shadow: 0 0 0 0 rgba(253, 156, 18, 0);
+  }
+}
+
+/* ─── Static mode: small viewport OR reduced motion ────────────────── */
+
+@media (max-width: 640px), (prefers-reduced-motion: reduce) {
+  .hr-card__progress-bar,
+  .hr-card--needs-you::after,
+  .hr-header__pill--flash {
+    animation: none;
+  }
+
+  .hr-card,
+  .hr-card__pill,
+  .hr-card__task,
+  .hr-card__progress {
+    transition: opacity 220ms ease, background 220ms ease, color 220ms ease;
+  }
+}

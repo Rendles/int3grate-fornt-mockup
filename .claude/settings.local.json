@@ -98,7 +98,11 @@
       "Bash(grep -vE \"//|className|interface |const |function |type \")",
       "Bash(node scripts/gen-radix-alphas.mjs)",
       "Bash(git -C \"D:/Work/int3grate-fornt-mockup\" status --short)",
-      "Bash(cmd //c \"rmdir /s /q integrate-ai-brand\")"
+      "Bash(cmd //c \"rmdir /s /q integrate-ai-brand\")",
+      "Bash(grep -E \"^    [A-Z][A-Za-z0-9]+:$\" /tmp/gateway-new.yaml)",
+      "Read(//d/Work/int3grate-fornt-mockup/**)",
+      "Bash(grep -E \"^ [A-Z][A-Za-z0-9]+:$\" docs/gateway.yaml)",
+      "Bash(git add *)"
     ]
   }
 }

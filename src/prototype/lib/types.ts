@@ -30,6 +30,14 @@ export interface User {
   created_at: string
 }
 
+// Paginated envelope for GET /users (gateway 0.3.0). Admin / domain_admin only.
+export interface UserList {
+  items: User[]
+  total: number
+  limit?: number
+  offset?: number
+}
+
 // ─────────────────────────────────────────────── Agent
 
 export type AgentStatus = 'draft' | 'active' | 'paused' | 'archived'
@@ -86,6 +94,29 @@ export interface CreateAgentVersionRequest {
   tool_scope_config?: Record<string, unknown>
   approval_rules?: Record<string, unknown>
   model_chain_config?: Record<string, unknown>
+}
+
+// Paginated envelope for GET /agents/{id}/versions (gateway 0.3.0).
+export interface AgentVersionList {
+  items: AgentVersion[]
+  total: number
+  limit?: number
+  offset?: number
+}
+
+// Body for PATCH /agents/{id} (gateway 0.3.0). All fields optional; at least
+// one must be provided. Absent fields are left unchanged (true PATCH).
+export interface PatchAgentRequest {
+  name?: string
+  description?: string | null
+  domain_id?: string | null
+  owner_user_id?: string | null
+}
+
+// Body for PATCH /agents/{id}/status (gateway 0.3.0). Single required field.
+// Legal transitions are enforced server-side; illegal transitions return 409.
+export interface PatchAgentStatusRequest {
+  status: AgentStatus
 }
 
 // ─────────────────────────────────────────────── ToolGrant (legacy CRUD axis)
@@ -257,7 +288,10 @@ export interface RunsList {
 
 // ─────────────────────────────────────────────── Chat (docs/gateway.yaml)
 
-export type ChatStatus = 'active' | 'closed' | 'failed'
+// `awaiting_approval` added in gateway 0.2.0 (ADR-0011): the chat is
+// suspended on a pending approval — `POST /chat/{id}/message` returns 409
+// while in this status; resume happens after the approval is decided.
+export type ChatStatus = 'active' | 'closed' | 'failed' | 'awaiting_approval'
 export type ChatMessageRole = 'user' | 'assistant' | 'tool' | 'system'
 
 export interface Chat {
@@ -328,14 +362,22 @@ export interface SendMessageRequest {
 
 // SSE frames for POST /chat/{chatId}/message. The wire format is `data: <json>`
 // per docs/gateway.yaml; the mock yields these as a typed AsyncIterable.
+//
+// `suspended` was added in gateway 0.2.0 (ADR-0011): emitted as the FINAL
+// frame when a tool call hits an approval gate. The turn ends, the chat
+// flips to `status: 'awaiting_approval'`, and the client polls
+// `GET /approvals/{approval_id}` for resolution before continuing.
+// `kind: 'approval_required'` is the pre-0.2.0 way and has been removed
+// from the union.
 export type ChatStreamFrame =
   | { event: 'turn_start'; message_id: string }
   | { event: 'text_delta'; delta: string }
   | { event: 'tool_call'; tool: string; args: Record<string, unknown>; tool_call_id: string }
   | { event: 'tool_result'; tool_call_id: string; status: 'ok' | 'error'; output_ref: Record<string, unknown> | null }
   | { event: 'turn_end'; message_id: string; cost_usd: number; tokens_in: number; tokens_out: number }
+  | { event: 'suspended'; approval_id: string; tool: string; tool_call_id: string }
   | { event: 'done' }
-  | { event: 'error'; kind: 'approval_required' | 'tool_error' | 'llm_error'; message: string }
+  | { event: 'error'; kind: 'tool_error' | 'llm_error'; message: string }
 
 // ─────────────────────────────────────────────── Audit (docs/gateway.yaml)
 // Tenant-scoped step-level events unified across runs and chats.
@@ -383,13 +425,28 @@ export interface AuditList {
 
 export type ApprovalStatus = 'pending' | 'approved' | 'rejected' | 'expired' | 'cancelled'
 
+// ApprovalRequest is polymorphic over its source as of gateway 0.2.0
+// (ADR-0011): EXACTLY ONE of `run_id` / `chat_id` is non-null per row.
+// The other is null. Mutual exclusion is enforced server-side by the
+// `approval_requests_one_surface` CHECK constraint.
+//
+// The shared schema lives in docs/shared/approval-request.yaml on the
+// backend; this is the TypeScript projection.
 export interface ApprovalRequest {
   id: string
-  run_id: string
+  run_id: string | null
+  chat_id: string | null
   task_id: string | null
   tenant_id: string
   requested_action: string
   requested_by: string | null
+  // MOCK-ONLY: the real backend does NOT return a denormalised
+  // `requested_by_name`. UI integration will need to look the name up via
+  // `GET /users/{requested_by}` (or a tenant-wide user map cached at app
+  // boot). Kept in the mock so existing screens keep rendering without
+  // an extra fetch round-trip in the prototype.
+  // See docs/agent-plans/2026-05-13-2330-prototype-spec-0.3.0-sync-plan.md
+  // (T1.1 / D3 — "keep with mock-only flag").
   requested_by_name: string | null
   approver_role: string | null
   approver_user_id: string | null
@@ -408,10 +465,14 @@ export interface ApprovalDecisionRequest {
   reason?: string
 }
 
+// `status` widened from `'queued'` to `'queued' | 'recorded'` in gateway
+// 0.2.0 (ADR-0011 Phases 6-7) to distinguish chat-source (queued — async
+// resume on the outbox) from run-source (recorded — gateway already
+// persisted, nothing else queued).
 export interface ApprovalDecisionAccepted {
   approval_id: string
   decision: 'approve' | 'reject'
-  status: 'queued'
+  status: 'queued' | 'recorded'
 }
 
 export interface ApprovalList {

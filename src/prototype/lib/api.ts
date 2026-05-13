@@ -17,7 +17,9 @@ import {
 import type {
   Agent,
   AgentList,
+  AgentStatus,
   AgentVersion,
+  AgentVersionList,
   ApprovalDecisionAccepted,
   ApprovalList,
   ApprovalRequest,
@@ -34,6 +36,8 @@ import type {
   GrantsSnapshotEntry,
   HandoffList,
   LoginResponse,
+  PatchAgentRequest,
+  PatchAgentStatusRequest,
   ReplaceToolGrantsRequest,
   Role,
   RunDetail,
@@ -50,6 +54,7 @@ import type {
   ToolPolicyMode,
   UpdateWorkspaceRequest,
   User,
+  UserList,
   Workspace,
   WorkspaceList,
 } from './types'
@@ -101,7 +106,12 @@ function userInSelectedWorkspaces(userId: string, workspaceIds?: string[]): bool
 // ApprovalRequest doesn't carry agent_id directly — resolve via run_id →
 // run.agent_version_id → version.agent_id. Returns null if any link is
 // missing (such approvals are filtered out by inSelectedWorkspaces).
+//
+// Chat-source approvals (gateway 0.2.0 / ADR-0011) have run_id == null;
+// agent lookup for those needs to go via chat_id → chat.agent_id instead.
+// That path isn't wired here yet — Tier 3.
 function approvalAgentId(a: ApprovalRequest): string | null {
+  if (!a.run_id) return null
   const run = fxRuns[a.run_id]
   if (!run || !run.agent_version_id) return null
   const version = fxVersions.find(v => v.id === run.agent_version_id)
@@ -136,6 +146,23 @@ function paginate<T>(all: T[], filter?: { limit?: number; offset?: number }): { 
 }
 
 const delay = () => new Promise(r => setTimeout(r, 120 + Math.random() * 260))
+
+// Legal lifecycle transitions for PATCH /agents/{id}/status (gateway 0.3.0).
+// `archived` is terminal — can't be re-activated. `paused` is reversible.
+// Note: draft→active normally happens via version activation (POST
+// /agents/{id}/versions/{verId}/activate), but the PATCH endpoint also
+// accepts it for completeness.
+const _AGENT_STATUS_TRANSITIONS: Record<AgentStatus, readonly AgentStatus[]> = {
+  draft:    ['active', 'archived'],
+  active:   ['paused', 'archived'],
+  paused:   ['active', 'archived'],
+  archived: [],
+}
+
+function _isLegalAgentStatusTransition(from: AgentStatus, to: AgentStatus): boolean {
+  if (from === to) return true
+  return _AGENT_STATUS_TRANSITIONS[from].includes(to)
+}
 
 function toIdSegment(value: string, fallback: string, maxLength = 24): string {
   const slug = value
@@ -302,12 +329,23 @@ export const api = {
     return u
   },
 
-  // ── GET /users (resolution helper for owner_user_id, requested_by, etc.)
-  async listUsers(): Promise<User[]> {
+  // ── GET /users (gateway 0.3.0). Admin / domain_admin only — the gate is
+  // enforced by the real backend; the mock leaves it open. Returns the
+  // paginated `UserList` envelope per spec.
+  async listUsers(filter?: { limit?: number; offset?: number }): Promise<UserList> {
     await delay()
-    if (await _devGate() === 'empty') return []
+    if (await _devGate() === 'empty') return { items: [], total: 0, limit: filter?.limit, offset: filter?.offset }
     const scenario = _trainingScenario()
-    return [...(scenario?.users ?? fxUsers)]
+    const source = scenario?.users ?? fxUsers
+    return paginate([...source], filter)
+  },
+
+  // ── GET /users/{userId} (gateway 0.3.0).
+  async getUser(userId: string): Promise<User | undefined> {
+    await delay()
+    if (await _devGate() === 'empty') return undefined
+    const scenario = _trainingScenario()
+    return (scenario?.users ?? fxUsers).find(u => u.id === userId)
   },
 
   // ── GET /agents ────────────────────────────────────────────────────
@@ -370,6 +408,44 @@ export const api = {
     return agent
   },
 
+  // ── PATCH /agents/{id} (gateway 0.3.0) ────────────────────────────
+  // True PATCH semantics: absent fields are left unchanged. Empty patch
+  // (zero fields provided) is rejected — must mutate at least one.
+  async patchAgent(agentId: string, patch: PatchAgentRequest): Promise<Agent> {
+    await delay()
+    const a = fxAgents.find(a => a.id === agentId)
+    if (!a) throw Object.assign(new Error('Agent not found'), { code: 'not_found' })
+    const provided = Object.entries(patch).filter(([, v]) => v !== undefined)
+    if (provided.length === 0) {
+      throw Object.assign(new Error('PATCH /agents requires at least one field'), { code: 'bad_request' })
+    }
+    if (patch.name !== undefined) a.name = patch.name
+    if (patch.description !== undefined) a.description = patch.description
+    if (patch.domain_id !== undefined) a.domain_id = patch.domain_id
+    if (patch.owner_user_id !== undefined) a.owner_user_id = patch.owner_user_id
+    a.updated_at = new Date().toISOString()
+    return a
+  },
+
+  // ── PATCH /agents/{id}/status (gateway 0.3.0) ─────────────────────
+  // Lifecycle transitions: draft→active (activate), active↔paused,
+  // active→archived (decommission). Illegal transitions return 409 on the
+  // real backend; the mock raises with code 'conflict'.
+  async patchAgentStatus(agentId: string, patch: PatchAgentStatusRequest): Promise<Agent> {
+    await delay()
+    const a = fxAgents.find(a => a.id === agentId)
+    if (!a) throw Object.assign(new Error('Agent not found'), { code: 'not_found' })
+    if (!_isLegalAgentStatusTransition(a.status, patch.status)) {
+      throw Object.assign(
+        new Error(`Illegal transition: ${a.status} → ${patch.status}`),
+        { code: 'conflict', from: a.status, to: patch.status },
+      )
+    }
+    a.status = patch.status
+    a.updated_at = new Date().toISOString()
+    return a
+  },
+
   // ── POST /agents/{id}/versions ────────────────────────────────────
   async createAgentVersion(agentId: string, input: {
     instruction_spec: string
@@ -417,6 +493,30 @@ export const api = {
       a.updated_at = new Date().toISOString()
     }
     return v
+  },
+
+  // ── GET /agents/{id}/versions (gateway 0.3.0) ─────────────────────
+  // Paginated history of an agent's versions. Sorted newest-first.
+  async listAgentVersions(
+    agentId: string,
+    filter?: { limit?: number; offset?: number },
+  ): Promise<AgentVersionList> {
+    await delay()
+    if (await _devGate() === 'empty') {
+      return { items: [], total: 0, limit: filter?.limit, offset: filter?.offset }
+    }
+    const all = fxVersions
+      .filter(v => v.agent_id === agentId)
+      .sort((a, b) => b.version - a.version)
+    return paginate(all, filter)
+  },
+
+  // ── GET /agents/{id}/versions/{versionId} (gateway 0.3.0) ─────────
+  // Returns 404 if the versionId doesn't belong to the agent.
+  async getAgentVersion(agentId: string, versionId: string): Promise<AgentVersion | undefined> {
+    await delay()
+    if (await _devGate() === 'empty') return undefined
+    return fxVersions.find(v => v.id === versionId && v.agent_id === agentId)
   },
 
   // ── GET /agents/{id}/grants ───────────────────────────────────────
@@ -696,7 +796,12 @@ export const api = {
       a.resolved_at = now
       a.reason = reason
 
-      const run = fxRuns[a.run_id]
+      // Run-side resume only applies to run-anchored approvals. Chat-source
+      // approvals (a.run_id == null per ADR-0011) resume via the chat
+      // messages stream — Tier 3 will wire that.
+      const runId = a.run_id
+      if (!runId) return
+      const run = fxRuns[runId]
       if (!run) return
       const gate = run.steps.find(
         s => s.step_type === 'approval_gate' &&
@@ -725,10 +830,12 @@ export const api = {
       }
     }, resumeAt)
 
-    // Stage 2 — run reaches terminal state (approved path only).
-    if (decision === 'approved') {
+    // Stage 2 — run reaches terminal state (approved path only). Chat-source
+    // approvals don't have a run terminal state to drive here.
+    if (decision === 'approved' && a.run_id) {
+      const runId = a.run_id
       setTimeout(() => {
-        const run = fxRuns[a.run_id]
+        const run = fxRuns[runId]
         if (!run || run.status !== 'running') return
         const now = new Date().toISOString()
         run.status = 'completed'
@@ -736,10 +843,14 @@ export const api = {
       }, completeAt)
     }
 
+    // `status` per gateway 0.2.0:
+    //  - 'queued'   — chat-source: gateway queued an async resume on the outbox.
+    //  - 'recorded' — run-source: gateway persisted the decision directly,
+    //                 nothing else queued (orchestrator polls the row).
     return {
       approval_id: a.id,
       decision: decision === 'approved' ? 'approve' : 'reject',
-      status: 'queued',
+      status: a.chat_id ? 'queued' : 'recorded',
     }
   },
 

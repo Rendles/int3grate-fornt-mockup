@@ -96,6 +96,7 @@ export const APPROVAL_REVIEW: TrainingScenario = {
     {
       id: APPROVAL_REVIEW_APPROVAL_ID,
       run_id: APPROVAL_REVIEW_RUN_ID,
+      chat_id: null,
       task_id: null,
       tenant_id: 'ten_acme',
       requested_action: 'stripe.refund · $412 on charge ch_3P8fL2 (order #44021)',

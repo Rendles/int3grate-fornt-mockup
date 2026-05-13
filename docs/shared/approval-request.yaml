@@ -1,0 +1,76 @@
+type: object
+description: |
+  Approval request shared by the public gateway spec and the internal
+  service-to-service spec. ADR-0011: an approval is polymorphic over run
+  vs chat. Exactly one of `run_id` (run-sourced) and `chat_id` (chat-
+  sourced) is non-null per row; the other is omitted. Mutual exclusion
+  is enforced both by the gateway service layer and the
+  `approval_requests_one_surface` CHECK constraint.
+x-changelog:
+  - version: "0.2.0"
+    change: "Added `chat_id` (nullable). `run_id` is now nullable. Exactly one of `run_id` or `chat_id` is set per row (ADR-0011 Phase 3)."
+required:
+  - id
+  - tenant_id
+  - task_id
+  - requested_action
+  - status
+  - evidence_ref
+  - created_at
+  - updated_at
+properties:
+  id:
+    type: string
+    format: uuid
+  tenant_id:
+    type: string
+    format: uuid
+  run_id:
+    type: [string, "null"]
+    format: uuid
+    description: |
+      Set for run-sourced approvals. Mutually exclusive with `chat_id`.
+  chat_id:
+    type: [string, "null"]
+    format: uuid
+    description: |
+      Set for chat-sourced approvals. Mutually exclusive with `run_id`.
+  task_id:
+    type: string
+    format: uuid
+    description: |
+      Currently always set; will become nullable once the task concept
+      (ADR-0003) is removed from the upstream service contract.
+  requested_action:
+    type: string
+  requested_by:
+    type: [string, "null"]
+    format: uuid
+  approver_role:
+    type: [string, "null"]
+  approver_user_id:
+    type: [string, "null"]
+    format: uuid
+  status:
+    type: string
+    enum: [pending, approved, rejected, expired, cancelled]
+  reason:
+    type: [string, "null"]
+  evidence_ref:
+    description: Payload diff shown to the approver.
+    oneOf:
+      - type: object
+        additionalProperties: true
+      - type: "null"
+  expires_at:
+    type: [string, "null"]
+    format: date-time
+  resolved_at:
+    type: [string, "null"]
+    format: date-time
+  created_at:
+    type: string
+    format: date-time
+  updated_at:
+    type: string
+    format: date-time

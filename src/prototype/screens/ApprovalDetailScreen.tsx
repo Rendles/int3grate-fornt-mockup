@@ -67,7 +67,10 @@ export default function ApprovalDetailScreen({ approvalId }: { approvalId: strin
           setReasonTouched(false)
         }
       }
-      if (a) {
+      // Run context only loads for run-anchored approvals. Chat-source
+      // approvals (a.run_id == null per gateway 0.2.0) need a different
+      // context surface — Tier 3 work.
+      if (a && a.run_id) {
         api.getRun(a.run_id).then(r => { if (!cancelled && r) setRunContext(r) })
       }
     })
@@ -96,7 +99,11 @@ export default function ApprovalDetailScreen({ approvalId }: { approvalId: strin
       if (cancelled) return
       if (fresh) setApproval(fresh)
       if (fresh && fresh.status !== 'pending') {
-        timer = setTimeout(() => tickRun(fresh.run_id), 600)
+        // Resume polling only makes sense for run-anchored approvals;
+        // chat-source resumes via `GET /chat/{id}/messages?after=<last>`
+        // and isn't wired in Tier 1.
+        const rid = fresh.run_id
+        if (rid) timer = setTimeout(() => tickRun(rid), 600)
         return
       }
       timer = setTimeout(tickApproval, 800)

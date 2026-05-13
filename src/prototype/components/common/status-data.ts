@@ -23,6 +23,9 @@ export const STATUS_VALUES = [
   'rejected',
   'expired',
   'closed',
+  // Chat status — gateway 0.2.0 (ADR-0011). The chat is suspended on a
+  // pending approval; `POST /chat/{id}/message` returns 409 in this state.
+  'awaiting_approval',
 ] as const
 
 export type StatusValue = typeof STATUS_VALUES[number]
@@ -43,4 +46,5 @@ export const STATUS_MAP: Record<StatusValue, StatusMeta> = {
   rejected: { tone: 'danger', label: 'Rejected' },
   expired: { tone: 'ghost', label: 'Expired' },
   closed: { tone: 'ghost', label: 'Closed' },
+  awaiting_approval: { tone: 'warn', label: 'Waiting on you', pulse: true },
 }

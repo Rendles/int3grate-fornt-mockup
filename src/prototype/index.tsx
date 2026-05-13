@@ -51,6 +51,11 @@ import TeamMapScreen from './screens/sandbox/TeamMapScreen'
 import HeroLoopScreen from './screens/sandbox/HeroLoopScreen'
 import HeroChatLoopScreen from './screens/sandbox/HeroChatLoopScreen'
 import HeroJourneyLoopScreen from './screens/sandbox/HeroJourneyLoopScreen'
+import HeroRosterLoopScreen from './screens/sandbox/HeroRosterLoopScreen'
+import HeroOvernightLoopScreen from './screens/sandbox/HeroOvernightLoopScreen'
+import HeroLadderLoopScreen from './screens/sandbox/HeroLadderLoopScreen'
+import HeroOnboardingLoopScreen from './screens/sandbox/HeroOnboardingLoopScreen'
+import HeroLoopsScreen from './screens/sandbox/HeroLoopsScreen'
 // WelcomeChatScreen removed — standalone preview no longer needed
 import { DevModeProvider, DevModeRemount } from './dev/dev-mode-provider'
 import { WorkspaceRemount } from './components/workspace-remount'
@@ -163,6 +168,11 @@ function Router() {
     { pattern: '/sandbox/hero-loop', render: () => <HeroLoopScreen /> },
     { pattern: '/sandbox/hero-chat-loop', render: () => <HeroChatLoopScreen /> },
     { pattern: '/sandbox/hero-journey-loop', render: () => <HeroJourneyLoopScreen /> },
+    { pattern: '/sandbox/hero-roster-loop', render: () => <HeroRosterLoopScreen /> },
+    { pattern: '/sandbox/hero-overnight-loop', render: () => <HeroOvernightLoopScreen /> },
+    { pattern: '/sandbox/hero-ladder-loop', render: () => <HeroLadderLoopScreen /> },
+    { pattern: '/sandbox/hero-onboarding-loop', render: () => <HeroOnboardingLoopScreen /> },
+    { pattern: '/sandbox/hero-loops', render: () => <HeroLoopsScreen /> },
     // /sandbox/welcome-chat removed — standalone preview no longer needed
   ]
 

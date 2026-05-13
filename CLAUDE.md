@@ -152,24 +152,27 @@ Self-contained mock of a multi-tenant agent control plane. **No backend** — ev
 
 #### Backend contract
 
-Canonical backend contract: **`docs/gateway.yaml`** (OpenAPI 3.2.0). **This file is synced verbatim from the live stage backend** at `https://stage.api.int3grate.ai/docs/openapi.yaml` (last pulled 2026-05-01). It IS what the backend actually exposes — not what we wish it exposed. Refresh with `curl -sS https://stage.api.int3grate.ai/docs/openapi.yaml > docs/gateway.yaml`. The earlier local-only extended draft (which had endpoints the real backend never had — `/auth/register`, `/users`, `/tasks/*`, `/tenants/*`, integration registry) is archived as `docs/gateway-legacy-2026-04.yaml` for diff/history only.
+Canonical backend contract: **`docs/gateway.yaml`** (OpenAPI 3.2.0). **This file is synced verbatim from the live stage backend** at `https://api.stage.int3grate.ai/docs/openapi.yaml` (last pulled 2026-05-13, spec version **0.3.0**). It IS what the backend actually exposes — not what we wish it exposed. Refresh with `curl -sSk https://api.stage.int3grate.ai/docs/openapi.yaml > docs/gateway.yaml` (Windows curl needs `-k` for the local cert chain). The shared `ApprovalRequest` schema is `$ref`-d from `docs/shared/approval-request.yaml` — pull both when refreshing. The earlier local-only extended draft (which had endpoints the real backend never had — `/auth/register`, `/tasks/*`, `/tenants/*`, integration registry) is archived as `docs/gateway-legacy-2026-04.yaml` for diff/history only.
 
 `docs/backend-gaps.md` catalogues every place the UI promises functionality the backend doesn't yet expose. **Read it before invoking new endpoints or proposing backend wiring.**
 
-Key gaps (validated against live spec 2026-05-01):
+Key gaps (validated against live spec **0.3.0**, 2026-05-13):
 
 - `POST /auth/register` — absent. UI hidden (registration screen + "Create account" button commented out).
-- `GET /users` — absent. UI uses `requested_by_name` (denormalised in approval) where possible; ALL user-name surfaces removed (approver name, agent owner, version author).
-- `GET /approvals/{id}` — absent (deep-link single-fetch). UI hydrates from the list response.
+- `GET /users` — ✅ exists as of 0.3.0 (`listUsers` / `getUser`, admin-or-domain_admin only). UI still uses mock-only `requested_by_name` field on approvals (real backend doesn't return it); integration will route through a tenant user-lookup map. UI surfaces that show approver/owner/version-author names by name are still deliberately stripped per § 11 of `docs/ux-spec.md` — restoration is a Tier 2 product decision (see `docs/agent-plans/2026-05-13-2330-prototype-spec-0.3.0-sync-plan.md`).
 - `/tasks/*` — absent in live spec entirely. UI fully removed 2026-05-02 (4 screens deleted, routes/types/fixtures cleaned). Approval `task_id` field stays in spec but no UI consumer.
 - Integration registry / OAuth flow (`/integrations/*`) — absent and architecturally out-of-scope (see `docs/handoff-prep.md § 0` — shared backend credentials, no per-tenant OAuth). Apps page hidden.
-- `PATCH /agents/{id}` (Pause/Fire) — absent. Settings page hidden; AgentDetail "Manage employment" surface removed from the visible Settings tab.
-- Workspace CRUD + membership endpoints — absent (no `Workspace` schema in spec at all). UI ships a mock-only multi-membership flow as of 2026-05-06: switcher in sidebar header, `/workspaces` page (list + Create/Edit/Delete), filter cascade through `listAgents` / `listApprovals` / `listRuns` / `getSpend`. Agent → workspace association is held in side-table `agentWorkspace` in fixtures (Agent type stays 1:1 with spec). MockBadge on every workspace surface. See `docs/backend-gaps.md § 1.15`.
+- `PATCH /agents/{id}` (metadata) and `PATCH /agents/{id}/status` (Pause/Fire) — ✅ exist as of 0.3.0. UI restoration of Settings → "Manage employment" surface is a Tier 2 product decision.
+- `GET /agents/{id}/versions` (paginated list) and `GET /agents/{id}/versions/{vid}` — ✅ exist as of 0.3.0. Versions tab on AgentDetail is a Tier 2 product decision.
+- `GET /runs` (paginated list) — ✅ exists as of 0.3.0. `RunsScreen` already lists runs (was using `/dashboard/runs`); shape matches.
+- Workspace CRUD + membership endpoints — absent (no `Workspace` schema in spec at all). UI ships a mock-only multi-membership flow as of 2026-05-06: switcher in sidebar header, `/workspaces` page (list + Create/Edit/Delete), filter cascade through `listAgents` / `listApprovals` / `listRuns` / `getSpend`. Agent → workspace association via `agent.domain_id` (§ 0.1 of `docs/handoff-prep.md`). MockBadge on every workspace surface. See `docs/backend-gaps.md § 1.15`.
 - Per-week spend buckets — backend exposes only aggregate ranges; 4-week trend is split client-side.
 - Activity sentence summaries — backend doesn't return per-run summary; headlines on `/activity` are derived client-side from `RunStatus`.
 - Naming mismatch: tool catalog endpoint is `/tool-catalog` in live, but `api.listTools()` in mock targets `/tools`. Update at production swap; mock layer is unaffected.
 - `AgentVersion.*_config` shapes — `model_chain_config` / `memory_scope_config` / `tool_scope_config` / `approval_rules` are spec'd as `object additionalProperties: true`, so internal fields aren't fixed. UI used to render speculated fields (Model / Memory / Apps / Approval rules cards on AgentDetail → Advanced); those four cards were removed 2026-05-06. See `docs/backend-gaps.md § 1.13`.
-- `GET /internal/agents/{id}/grants/snapshot` is `x-internal: true` (orchestrator-only). UI used to render a `PolicySnapshotPanel` on AgentDetail → Advanced calling this endpoint; the panel was removed 2026-05-06. `api.getGrantsSnapshot()` + `GrantsSnapshot` types kept for a possible future internal-tools UI. See `docs/backend-gaps.md § 1.14`.
+- `/internal/*` paths — moved to a separate `gateway-internal.yaml` spec as of 0.2.1 (not served via `/docs`, not for frontend). The mock's `api.getGrantsSnapshot()` is still in code for a possible future internal-tools UI.
+- **Polymorphic approvals (gateway 0.2.0 / ADR-0011):** `ApprovalRequest.run_id` is nullable; new `chat_id` field; exactly one set per row. `ApprovalDecisionAccepted.status` widened to `'queued' | 'recorded'`. Mock fixtures + types updated 2026-05-13; one chat-source approval row seeded. Dedicated UI for chat-source approvals is **Tier 3** (separate plan).
+- **Chat suspension (gateway 0.2.0 / ADR-0011):** new `Chat.status: 'awaiting_approval'`, new SSE frame `event: 'suspended'` (replaces the old `error/approval_required` path), 409 on `POST /chat/{id}/message` while suspended. Mock types updated; chat-panel falls back to a generic error message — proper inline-card UX is Tier 3.
 
 #### Routing (`router.tsx`, `index.tsx`)
 

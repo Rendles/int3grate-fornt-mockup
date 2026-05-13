@@ -376,12 +376,18 @@ function applyFrame(
     )
     return
   }
+  if (frame.event === 'suspended') {
+    // gateway 0.2.0 / ADR-0011: a tool inside the turn hit an approval gate.
+    // The chat is now in `awaiting_approval` status; `POST /chat/{id}/message`
+    // returns 409 until the approval is decided and the resumed turn replays
+    // via `GET /chat/{id}/messages?after=<last_seen>`. Tier 3 will turn this
+    // into a proper inline-card UX; for now keep it on the existing error
+    // surface so the user at least knows what happened.
+    setError('This action needs approval. Approve it from the Approvals queue — the conversation will resume after.')
+    return
+  }
   if (frame.event === 'error') {
-    if (frame.kind === 'approval_required') {
-      setError('This action needs approval. Approve it from the Approvals queue, then try again.')
-    } else {
-      setError(frame.message)
-    }
+    setError(frame.message)
   }
 }
 

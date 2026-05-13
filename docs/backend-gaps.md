@@ -17,22 +17,21 @@
 - **Что нужно от backend:** endpoint создания tenant + первого admin user. Возвращает `LoginResponse` (token + expires_at) + созданного user.
 - **MockBadge:** ✅ помечен на `RegisterScreen.tsx:157`.
 
-### 1.2 — `GET /users` 🚨 critical
+### 1.2 — ~~`GET /users`~~ — RESOLVED 2026-05-13 (gateway 0.3.0)
 
-- **UI:** Везде где UI резолвит имя по `user_id` (owner, requested_by, approver_user_id) — `AgentsScreen`, `ApprovalsScreen`, `ApprovalDetailScreen`, `RunDetailScreen`, `SettingsScreen` (Team members tab), и т.д.
-- **Текущий мок:** `api.listUsers()` возвращает все `fxUsers`.
-- **Что нужно от backend:** `GET /users?tenant_id=...` (или embedded в bearer scope). Минимально — `id`, `name`, `email`, `role`, `approval_level`. Учитывая privacy — возможно scoped views для `member` (видят только себя + admin контакты).
-- **Альтернатива:** denormalize `name` в каждый response (сейчас уже есть `requested_by_name` в approvals — расширить до agent.owner_name, etc).
+> **Этот gap закрыт.** Live backend 0.3.0 экспонирует `GET /users` (paginated `UserList`) и `GET /users/{userId}` — операции `listUsers` / `getUser`, доступ admin/domain_admin. Мок обновлён: `api.listUsers()` теперь возвращает `UserList` envelope, добавлен `api.getUser(id)`. **Важно:** real backend по-прежнему НЕ возвращает denormalised `requested_by_name` на approvals — мок оставил его как `mock-only` поле; при swap UI должен будет резолвить имена через `getUser` или кэш `listUsers` на старте сессии. Восстановление UI-поверхностей с именами approver/owner/version-author — Tier 2 продуктовое решение (см. `docs/agent-plans/2026-05-13-2330-prototype-spec-0.3.0-sync-plan.md`).
 
 ### 1.3 — ~~`GET /approvals/{id}`~~ — RESOLVED 2026-05-01
 
 > **Этот gap не существует.** Live backend (см. `docs/gateway.yaml`) экспонирует `GET /approvals/{approvalId}` (operationId `getApproval`). Frontend workaround (cache + sequential list sweep), который мы добавили ранее, был основан на устаревшем local draft. Workaround снят, `api.getApproval(id)` снова делает прямой single-fetch. Запись оставлена как stub чтобы не ломать ссылки `§1.3`.
 
-### 1.4 — `PATCH /agents/{id}` или транзиция `draft → active` ⚠️ medium
+### 1.4 — ~~`PATCH /agents/{id}` / status transition~~ — RESOLVED 2026-05-13 (gateway 0.3.0)
 
-- **UI:** `AgentNewScreen.tsx:147` — после `activateVersion` мок мутирует `agent.status = 'active'` напрямую.
-- **Текущий мок:** Hack — `fresh.status = 'active'` после `activateVersion`. Real backend почти наверняка флипает статус сам, но это не задокументировано в спеке.
-- **Что нужно от backend:** либо POST `/agents/{id}/versions/{verId}/activate` сам флипает agent.status, либо отдельный endpoint `PATCH /agents/{id}` для status-перехода.
+> **Этот gap закрыт.** Live backend 0.3.0 экспонирует:
+> - `PATCH /agents/{id}` (`patchAgent`) — обновление `name` / `description` / `domain_id` / `owner_user_id`. True PATCH semantics, минимум одно поле.
+> - `PATCH /agents/{id}/status` (`patchAgentStatus`) — lifecycle `draft / active / paused / archived`. Illegal transitions возвращают 409.
+>
+> Мок обновлён 2026-05-13: добавлены `api.patchAgent()` и `api.patchAgentStatus()` с проверкой легальных переходов. Восстановление спрятанных UI-поверхностей (Settings → "Manage employment" / agent rename / re-owner) — Tier 2 продуктовое решение.
 
 ### 1.5 — Workspace CRUD ⏸ planned
 
@@ -176,6 +175,26 @@
   - `src/prototype/prototype.css` — стили `.team-map*`.
 - **Removability:** удаляется как одна единица — sandbox surface, без production-зависимостей. См. self-описание в комментарии шапки `TeamMapScreen.tsx`.
 - **План:** design doc `docs/plans/2026-05-07-1830-team-map-preview.md`, impl plan `docs/agent-plans/2026-05-07-1900-team-map-impl.md`.
+
+### 1.17 — Polymorphic approvals + chat suspension ⚠️ semantic change
+
+Gateway 0.2.0 (ADR-0011) ввёл два связанных изменения, которые **существуют на backend, но ещё не surface'ятся в UI**:
+
+- **Polymorphic `ApprovalRequest`.** `run_id` теперь nullable; добавлен nullable `chat_id`. Ровно одно из двух non-null на строку (CHECK constraint `approval_requests_one_surface`). Run-source approvals продолжают работать как раньше; chat-source — новый класс, появляется когда tool inside чата упирается в approval gate.
+- **Chat suspension flow.** Новый статус `Chat.status: 'awaiting_approval'`. Новый SSE event `event: 'suspended'` — финальный кадр потока когда tool блокируется. `POST /chat/{id}/message` возвращает 409 пока chat suspended. После решения approval'а клиент polling'ует `GET /chat/{id}/messages?after=<last_seen>` для resumed turn'а. `ApprovalDecisionAccepted.status` расширен до `'queued' | 'recorded'` — `queued` для chat-source (async resume через outbox), `recorded` для run-source.
+- **Текущий мок (Tier 1, 2026-05-13):**
+  - Типы обновлены (`ApprovalRequest`, `ChatStatus`, `ChatStreamFrame`, `ApprovalDecisionAccepted`).
+  - 1 chat-source approval row в фикстурах (`apv_9030`, `chat_id: 'cht_3801'`).
+  - `api.decideApproval()` возвращает `queued`/`recorded` в зависимости от source.
+  - Существующие UI-screens (ApprovalsScreen, ApprovalDetailScreen, TeamBridgeScreen) фильтруют run-anchored only с комментариями указывающими на Tier 3.
+  - `chat-panel.tsx` обрабатывает `event: 'suspended'` через generic error banner (заглушка).
+- **Что нужно для полноценного UI (Tier 3 — отдельный план):**
+  - Inline-card в chat: "This action needs approval — review it" с прямой ссылкой на `/approvals/{id}`.
+  - Approval card variant для chat-source: контекст "from chat with {AgentName}" вместо "from run #XXXX".
+  - `awaiting_approval` empty-state в chat input — нельзя печатать пока suspended.
+  - Resume flow в mock streamer: после Approve/Reject — replay resumed turn через `listChatMessages({ after })`.
+  - Approvals list: иконка/фильтр chat-source vs run-source.
+- **Files (Tier 1 trail):** `lib/types.ts`, `lib/api.ts` (decideApproval + listUsers/getUser/patchAgent/patchAgentStatus/listAgentVersions/getAgentVersion), `lib/fixtures.ts` (chat-source row), `components/chat-panel.tsx`, `components/common/status-data.ts`, `screens/{Approvals,ApprovalDetail,sandbox/TeamBridge}Screen.tsx` (run-source filters).
 
 ---
 

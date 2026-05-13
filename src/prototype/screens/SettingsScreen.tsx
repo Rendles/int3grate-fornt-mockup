@@ -133,7 +133,7 @@ function TeamTab() {
   useEffect(() => {
     let cancelled = false
     api.listUsers()
-      .then(u => { if (!cancelled) { setUsers(u); setError(null) } })
+      .then(u => { if (!cancelled) { setUsers(u.items); setError(null) } })
       .catch(e => { if (!cancelled) setError((e as Error).message ?? 'Failed to load team') })
     return () => { cancelled = true }
   }, [])

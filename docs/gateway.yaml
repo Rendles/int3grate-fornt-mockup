@@ -1,13 +1,17 @@
 # ─────────────────────────────────────────────────────────────────────
-# CANONICAL — synced verbatim from the live backend on 2026-05-01:
-#   https://stage.api.int3grate.ai/docs/openapi.yaml
+# CANONICAL — synced verbatim from the live backend on 2026-05-13:
+#   https://api.stage.int3grate.ai/docs/openapi.yaml
 #
 # This file IS the source of truth for what the backend actually exposes.
 # Do not hand-edit. To refresh:
-#   curl -sS https://stage.api.int3grate.ai/docs/openapi.yaml > docs/gateway.yaml
+#   curl -sSk https://api.stage.int3grate.ai/docs/openapi.yaml > docs/gateway.yaml
 #
-# The previous local-only extended draft (which had some endpoints the
-# real backend never had) is preserved as `docs/gateway-legacy-2026-04.yaml`
+# Backend version: 0.3.0 (see x-changelog inside info.description for
+# per-version notes). The shared ApprovalRequest schema is `$ref`-d from
+# `./shared/approval-request.yaml` — also synced from the live backend.
+#
+# The earlier local-only extended draft (which had endpoints the real
+# backend never had) is preserved as `docs/gateway-legacy-2026-04.yaml`
 # for diff/history purposes only.
 #
 # When we say "the spec" anywhere in CLAUDE.md / handoff-prep.md /
@@ -17,13 +21,51 @@
 openapi: 3.2.0
 info:
   title: Int3grate Gateway API
-  version: 0.1.0
+  version: 0.3.0
   description: |
     Control plane API for Int3grate — B2B AI agent platform.
     Manages identity, agents, chats, approvals, audit, and dashboards.
-  contact:
-    name: Int3grate Team
-    email: team.access@sprouter.ai
+
+    Per-version changes are listed in [openapi/CHANGELOG.md](./CHANGELOG.md).
+    Schemas and operations changed in a given version carry an `x-changelog`
+    extension pointing at the changelog entry — searchable via grep.
+
+    Service-to-service `/internal/*` endpoints live in a separate spec at
+    [openapi/gateway-internal.yaml](./gateway-internal.yaml); they are not
+    served via `/docs` and are not for frontend consumption.
+  x-changelog:
+    - version: "0.3.0"
+      date: "2026-05-03"
+      summary: |
+        Full UI-control surface. New public endpoints:
+        GET /users, GET /users/{userId} (tenant user listing);
+        PATCH /agents/{agentId} (metadata update),
+        PATCH /agents/{agentId}/status (lifecycle transitions),
+        GET /agents/{agentId}/versions (version listing),
+        GET /agents/{agentId}/versions/{versionId} (version detail),
+        GET /runs (paginated run listing).
+        New schemas: AgentVersionList, PatchAgentRequest,
+        PatchAgentStatusRequest, UserList. All changes additive.
+    - version: "0.2.1"
+      date: "2026-05-02"
+      summary: |
+        Split internal service-to-service surface out into
+        gateway-internal.yaml. Five `/internal/*` paths and their
+        internal-only schemas (CreateApprovalInternalRequest,
+        GrantsSnapshot, AgentVersionRef, ToolGrantCheck,
+        OutboxPendingRow, OutboxPendingList) moved verbatim. Shared
+        ApprovalRequest schema extracted to shared/approval-request.yaml
+        and `$ref`-d from both specs. No public-API behavior change.
+    - version: "0.2.0"
+      date: "2026-05-02"
+      summary: |
+        Chat-side approval support (ADR-0011). Polymorphic
+        approval_requests (run_id|chat_id), `awaiting_approval` chat
+        status, suspended SSE event, ApprovalDecisionAccepted enum
+        widened to [queued, recorded]. All changes additive.
+    - version: "0.1.0"
+      date: "2026-04-21"
+      summary: Initial spec.
 
 servers:
   - url: https://stage.api.int3grate.ai
@@ -33,7 +75,7 @@ tags:
   - name: auth
     description: Authentication (JWT password flow)
   - name: users
-    description: Current user profile
+    description: Current user profile and tenant user management
   - name: agents
     description: Agent configuration and versioning
   - name: grants
@@ -52,8 +94,6 @@ tags:
     description: Tenant-scoped agent action timeline
   - name: health
     description: Liveness probe
-  - name: internal
-    description: Service-to-service endpoints (shared bearer token)
 
 paths:
   # ── Auth ────────────────────────────────────────────────────
@@ -97,6 +137,59 @@ paths:
                 $ref: "#/components/schemas/User"
         "401":
           $ref: "#/components/responses/Unauthorized"
+
+  /users:
+    get:
+      operationId: listUsers
+      summary: List users in the caller's tenant
+      description: Requires `admin` or `domain_admin` role.
+      x-changelog:
+        - version: "0.3.0"
+          change: "New endpoint — GET /users for tenant user listing."
+      tags: [users]
+      security:
+        - bearerAuth: []
+      parameters:
+        - $ref: "#/components/parameters/LimitParam"
+        - $ref: "#/components/parameters/OffsetParam"
+      responses:
+        "200":
+          description: Paginated list of tenant users
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/UserList"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+
+  /users/{userId}:
+    get:
+      operationId: getUser
+      summary: Get a single user by ID within the caller's tenant
+      description: Requires `admin` or `domain_admin` role.
+      x-changelog:
+        - version: "0.3.0"
+          change: "New endpoint — GET /users/{userId}."
+      tags: [users]
+      security:
+        - bearerAuth: []
+      parameters:
+        - $ref: "#/components/parameters/UserId"
+      responses:
+        "200":
+          description: User record
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/User"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
 
   # ── Agents ──────────────────────────────────────────────────
 
@@ -175,7 +268,110 @@ paths:
         "404":
           $ref: "#/components/responses/NotFound"
 
+    patch:
+      operationId: patchAgent
+      summary: Update mutable agent metadata
+      description: |
+        Updates any combination of `name`, `description`, `domain_id`,
+        `owner_user_id`. All fields are optional — absent fields are left
+        unchanged (true PATCH semantics). At least one field must be provided.
+        Requires `admin` or `domain_admin` role.
+        Note: `active_version` is not populated in PATCH responses; re-fetch
+        via `GET /agents/{agentId}` if the embedded version is needed.
+      x-changelog:
+        - version: "0.3.0"
+          change: "New operation — PATCH /agents/{agentId} for metadata updates."
+      tags: [agents]
+      security:
+        - bearerAuth: []
+      parameters:
+        - $ref: "#/components/parameters/AgentId"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/PatchAgentRequest"
+      responses:
+        "200":
+          description: Updated agent
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Agent"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "422":
+          $ref: "#/components/responses/ValidationError"
+
+  /agents/{agentId}/status:
+    patch:
+      operationId: patchAgentStatus
+      summary: Transition agent lifecycle status
+      description: |
+        Changes the agent's `status`. Valid values: `draft`, `active`,
+        `paused`, `archived`. `archived` is terminal — no transitions out.
+        Requires `admin` or `domain_admin` role.
+      x-changelog:
+        - version: "0.3.0"
+          change: "New endpoint — PATCH /agents/{agentId}/status."
+      tags: [agents]
+      security:
+        - bearerAuth: []
+      parameters:
+        - $ref: "#/components/parameters/AgentId"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/PatchAgentStatusRequest"
+      responses:
+        "200":
+          description: Updated agent
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Agent"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "422":
+          $ref: "#/components/responses/ValidationError"
+
   /agents/{agentId}/versions:
+    get:
+      operationId: listAgentVersions
+      summary: List versions for an agent (newest first)
+      x-changelog:
+        - version: "0.3.0"
+          change: "New operation — GET /agents/{agentId}/versions for version listing."
+      tags: [agents]
+      security:
+        - bearerAuth: []
+      parameters:
+        - $ref: "#/components/parameters/AgentId"
+        - $ref: "#/components/parameters/LimitParam"
+        - $ref: "#/components/parameters/OffsetParam"
+      responses:
+        "200":
+          description: Paginated list of agent versions
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/AgentVersionList"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "404":
+          $ref: "#/components/responses/NotFound"
+
     post:
       operationId: createAgentVersion
       summary: Create a new immutable version for an agent
@@ -206,6 +402,31 @@ paths:
           $ref: "#/components/responses/NotFound"
         "422":
           $ref: "#/components/responses/ValidationError"
+
+  /agents/{agentId}/versions/{versionId}:
+    get:
+      operationId: getAgentVersion
+      summary: Get a single version by ID
+      x-changelog:
+        - version: "0.3.0"
+          change: "New endpoint — GET /agents/{agentId}/versions/{versionId}."
+      tags: [agents]
+      security:
+        - bearerAuth: []
+      parameters:
+        - $ref: "#/components/parameters/AgentId"
+        - $ref: "#/components/parameters/VersionId"
+      responses:
+        "200":
+          description: Version detail
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/AgentVersion"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "404":
+          $ref: "#/components/responses/NotFound"
 
   /agents/{agentId}/versions/{versionId}/activate:
     post:
@@ -291,6 +512,40 @@ paths:
           $ref: "#/components/responses/ValidationError"
 
   # ── Runs ────────────────────────────────────────────────────
+
+  /runs:
+    get:
+      operationId: listRuns
+      summary: Paginated run listing for the caller's tenant
+      description: |
+        Proxied to the orchestrator. Optional `?status=` filter narrows the
+        result. All statuses returned when the parameter is absent.
+      x-changelog:
+        - version: "0.3.0"
+          change: "New endpoint — GET /runs for tenant-scoped run listing."
+      tags: [runs]
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: status
+          in: query
+          required: false
+          schema:
+            $ref: "#/components/schemas/RunStatus"
+          description: Filter by run status; omitted returns any status.
+        - $ref: "#/components/parameters/LimitParam"
+        - $ref: "#/components/parameters/OffsetParam"
+      responses:
+        "200":
+          description: Paginated runs list
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/RunsList"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "422":
+          $ref: "#/components/responses/ValidationError"
 
   /runs/{runId}:
     get:
@@ -398,13 +653,21 @@ paths:
     post:
       operationId: sendChatMessage
       summary: Send a user message and stream the assistant turn (SSE)
+      x-changelog:
+        - version: "0.2.0"
+          change: "SSE frame catalog gains `event:\"suspended\"` (emitted when an approval-gated tool stops the turn). Operation now returns `409` if the chat is in `awaiting_approval` status (ADR-0011 Phases 4-7)."
       description: |
         Appends the user message to the chat, runs one LLM turn (with any
         needed tool calls), and streams the result as Server-Sent Events.
         The response `Content-Type` is `text/event-stream`; SSE frames are
         described here in prose because they are not JSON Schema-validated.
 
-        Each frame is a single `data:` line carrying a JSON object:
+        Each frame is a single `data:` line carrying a JSON object. The
+        terminal frame on a normal turn is `done`; on a turn that hit an
+        approval gate, the terminal frames are `suspended` followed by
+        `done`. Possible event kinds: `turn_start`, `text_delta`,
+        `tool_call`, `tool_result`, `turn_end`, `suspended`, `done`,
+        `error`.
 
         ```
         data: {"event":"turn_start","message_id":"<uuid>"}
@@ -421,6 +684,24 @@ paths:
 
         data: {"event":"done"}
         ```
+
+        Approval-gated tool calls suspend the turn (ADR-0011 / Phase 4).
+        The orchestrator persists a partial assistant `chat_messages` row
+        carrying the new `approval_id` plus the pending `tool_calls`,
+        flips `chats.status` to `awaiting_approval`, and ends the stream
+        with:
+
+        ```
+        data: {"event":"suspended","approval_id":"<uuid>","tool":"<name>","tool_call_id":"<id>"}
+
+        data: {"event":"done"}
+        ```
+
+        After `suspended`, the stream closes; clients should render an
+        awaiting-approval state, poll `GET /approvals/{approval_id}` for
+        the decision, and then poll
+        `GET /chat/{chatId}/messages?after=<last_seen>` to retrieve the
+        resumed turn (D11 — SSE re-attach is intentionally out of scope).
 
         Error frames terminate the stream:
 
@@ -564,7 +845,7 @@ paths:
           content:
             application/json:
               schema:
-                $ref: "#/components/schemas/ApprovalRequest"
+                $ref: "./shared/approval-request.yaml"
         "401":
           $ref: "#/components/responses/Unauthorized"
         "404":
@@ -779,184 +1060,6 @@ paths:
               schema:
                 $ref: "#/components/schemas/HealthResponse"
 
-  # ── Internal (service-to-service, shared bearer token) ──────
-
-  /internal/approvals:
-    post:
-      operationId: createApprovalInternal
-      summary: Create an approval request (called by orchestrator)
-      tags: [internal]
-      x-internal: true
-      security:
-        - bearerToken: []
-      requestBody:
-        required: true
-        content:
-          application/json:
-            schema:
-              $ref: "#/components/schemas/CreateApprovalInternalRequest"
-      responses:
-        "201":
-          description: Approval request created
-          content:
-            application/json:
-              schema:
-                $ref: "#/components/schemas/ApprovalRequest"
-        "401":
-          $ref: "#/components/responses/Unauthorized"
-        "422":
-          $ref: "#/components/responses/ValidationError"
-
-  /internal/agents/{agentId}/grants/snapshot:
-    get:
-      operationId: getGrantsSnapshotInternal
-      summary: Snapshot of all tool grants for an agent (called by orchestrator)
-      description: |
-        Point-in-time snapshot of the agent's effective tool grants. The
-        orchestrator fetches this once at run start and references it for
-        the lifetime of the run, rather than calling
-        `/internal/tool-grants/check` per tool call.
-      tags: [internal]
-      x-internal: true
-      security:
-        - bearerToken: []
-      parameters:
-        - $ref: "#/components/parameters/AgentId"
-        - name: tenant_id
-          in: query
-          required: true
-          schema:
-            type: string
-            format: uuid
-      responses:
-        "200":
-          description: Grants snapshot for the agent
-          content:
-            application/json:
-              schema:
-                $ref: "#/components/schemas/GrantsSnapshot"
-        "400":
-          $ref: "#/components/responses/BadRequest"
-        "401":
-          $ref: "#/components/responses/Unauthorized"
-        "404":
-          $ref: "#/components/responses/NotFound"
-
-  /internal/agent-versions/{versionId}:
-    get:
-      operationId: getAgentVersionInternal
-      summary: Resolve an agent version to its owning agent (called by orchestrator)
-      description: |
-        Internal endpoint used by the execution plane at run-creation time
-        to resolve an `agent_version_id` to its owning `agent_id` plus
-        tenant binding. Tenant scoping is enforced via the mandatory
-        `tenant_id` query parameter.
-      tags: [internal]
-      x-internal: true
-      security:
-        - bearerToken: []
-      parameters:
-        - $ref: "#/components/parameters/VersionId"
-        - name: tenant_id
-          in: query
-          required: true
-          schema:
-            type: string
-            format: uuid
-      responses:
-        "200":
-          description: Agent-version reference
-          content:
-            application/json:
-              schema:
-                $ref: "#/components/schemas/AgentVersionRef"
-        "400":
-          $ref: "#/components/responses/BadRequest"
-        "401":
-          $ref: "#/components/responses/Unauthorized"
-        "404":
-          $ref: "#/components/responses/NotFound"
-
-  /internal/tool-grants/check:
-    get:
-      operationId: checkToolGrantInternal
-      summary: Check if a tool grant exists for a scope (called by orchestrator)
-      description: |
-        MVP only supports `scope_type=agent`; `scope_id` is interpreted as
-        the agent ID. Returns `{granted:false}` rather than 404 when the
-        grant is missing, to keep the orchestrator's per-call shape stable.
-      tags: [internal]
-      x-internal: true
-      security:
-        - bearerToken: []
-      parameters:
-        - name: tenant_id
-          in: query
-          required: true
-          schema:
-            type: string
-            format: uuid
-        - name: scope_type
-          in: query
-          required: true
-          schema:
-            type: string
-            enum: [agent]
-        - name: scope_id
-          in: query
-          required: true
-          schema:
-            type: string
-            format: uuid
-        - name: tool_name
-          in: query
-          required: true
-          schema:
-            type: string
-      responses:
-        "200":
-          description: Grant check result
-          content:
-            application/json:
-              schema:
-                $ref: "#/components/schemas/ToolGrantCheck"
-        "400":
-          $ref: "#/components/responses/BadRequest"
-        "401":
-          $ref: "#/components/responses/Unauthorized"
-
-  /internal/outbox/pending:
-    get:
-      operationId: listOutboxPendingInternal
-      summary: List pending outbox rows (ops read-only)
-      description: |
-        Read-only ops view over the outbox table. Used by ops tooling to
-        inspect the dispatcher backlog. Not a public surface.
-      tags: [internal]
-      x-internal: true
-      security:
-        - bearerToken: []
-      parameters:
-        - name: limit
-          in: query
-          required: false
-          schema:
-            type: integer
-            minimum: 1
-            maximum: 500
-            default: 50
-      responses:
-        "200":
-          description: Pending outbox rows
-          content:
-            application/json:
-              schema:
-                $ref: "#/components/schemas/OutboxPendingList"
-        "400":
-          $ref: "#/components/responses/BadRequest"
-        "401":
-          $ref: "#/components/responses/Unauthorized"
-
 # ════════════════════════════════════════════════════════════════
 # Components
 # ════════════════════════════════════════════════════════════════
@@ -971,10 +1074,6 @@ components:
       scheme: bearer
       bearerFormat: JWT
       description: JWT issued by `POST /auth/login`.
-    bearerToken:
-      type: http
-      scheme: bearer
-      description: Shared service token for `/internal/*` endpoints.
 
   # ── Parameters ──────────────────────────────────────────────
 
@@ -1009,6 +1108,13 @@ components:
         format: uuid
     ChatId:
       name: chatId
+      in: path
+      required: true
+      schema:
+        type: string
+        format: uuid
+    UserId:
+      name: userId
       in: path
       required: true
       schema:
@@ -1130,6 +1236,24 @@ components:
         created_at:
           type: string
           format: date-time
+
+    UserList:
+      type: object
+      required: [items, total, limit, offset]
+      x-changelog:
+        - version: "0.3.0"
+          change: "New schema — paginated user list response."
+      properties:
+        items:
+          type: array
+          items:
+            $ref: "#/components/schemas/User"
+        total:
+          type: integer
+        limit:
+          type: integer
+        offset:
+          type: integer
 
     # ── Agent ─────────────────────────────────────────────────
 
@@ -1260,38 +1384,6 @@ components:
           type: string
           format: date-time
 
-    AgentVersionRef:
-      type: object
-      required:
-        - agent_version_id
-        - agent_id
-        - tenant_id
-        - instruction_spec
-        - is_active
-        - created_at
-      properties:
-        agent_version_id:
-          type: string
-          format: uuid
-        agent_id:
-          type: string
-          format: uuid
-        tenant_id:
-          type: string
-          format: uuid
-        instruction_spec:
-          type: string
-          description: |
-            System prompt / instruction text persisted on the agent version.
-            Orchestrator captures this at chat creation so the value at chat
-            start is frozen.
-        is_active:
-          type: boolean
-          description: True if this version is the currently active version.
-        created_at:
-          type: string
-          format: date-time
-
     CreateAgentVersionRequest:
       type: object
       required: [instruction_spec]
@@ -1311,6 +1403,57 @@ components:
         model_chain_config:
           type: object
           additionalProperties: true
+
+    AgentVersionList:
+      type: object
+      required: [items, total, limit, offset]
+      x-changelog:
+        - version: "0.3.0"
+          change: "New schema — paginated version list response."
+      properties:
+        items:
+          type: array
+          items:
+            $ref: "#/components/schemas/AgentVersion"
+        total:
+          type: integer
+        limit:
+          type: integer
+        offset:
+          type: integer
+
+    PatchAgentRequest:
+      type: object
+      description: |
+        All fields are optional. At least one must be provided.
+        Absent fields are left unchanged (true PATCH semantics).
+      x-changelog:
+        - version: "0.3.0"
+          change: "New schema — request body for PATCH /agents/{agentId}."
+      properties:
+        name:
+          type: string
+          minLength: 1
+          maxLength: 200
+        description:
+          type: [string, "null"]
+        domain_id:
+          type: [string, "null"]
+          format: uuid
+        owner_user_id:
+          type: [string, "null"]
+          format: uuid
+
+    PatchAgentStatusRequest:
+      type: object
+      required: [status]
+      x-changelog:
+        - version: "0.3.0"
+          change: "New schema — request body for PATCH /agents/{agentId}/status."
+      properties:
+        status:
+          type: string
+          enum: [draft, active, paused, archived]
 
     # ── Tool Grant ────────────────────────────────────────────
 
@@ -1374,57 +1517,6 @@ components:
               config:
                 type: object
                 additionalProperties: true
-
-    ToolGrantCheck:
-      type: object
-      required: [granted, mode, approval_required]
-      properties:
-        granted:
-          type: boolean
-        mode:
-          oneOf:
-            - type: string
-              enum: [read, write, read_write]
-            - type: "null"
-        approval_required:
-          type: boolean
-
-    GrantsSnapshot:
-      type: object
-      required: [agent_id, tenant_id, version, grants, issued_at]
-      description: |
-        Point-in-time snapshot of the agent's effective tool grants.
-        Orchestrator fetches once at run start and references for the
-        lifetime of the run.
-      properties:
-        agent_id:
-          type: string
-          format: uuid
-        tenant_id:
-          type: string
-          format: uuid
-        version:
-          type: string
-          description: Monotonic counter derived from the agent row's updated_at.
-        grants:
-          type: array
-          items:
-            type: object
-            required: [tool_name, mode, approval_required]
-            properties:
-              tool_name:
-                type: string
-              mode:
-                type: string
-                enum: [read, write, read_write]
-              approval_required:
-                type: boolean
-              config:
-                type: object
-                additionalProperties: true
-        issued_at:
-          type: string
-          format: date-time
 
     # ── Tool Catalog ──────────────────────────────────────────
 
@@ -1689,6 +1781,9 @@ components:
 
     Chat:
       type: object
+      x-changelog:
+        - version: "0.2.0"
+          change: "status enum extended with `awaiting_approval` (ADR-0011 Phase 4)."
       required:
         - id
         - tenant_id
@@ -1726,7 +1821,12 @@ components:
           type: [string, "null"]
         status:
           type: string
-          enum: [active, closed, failed]
+          enum: [active, closed, failed, awaiting_approval]
+          description: |
+            Lifecycle state of the chat. `awaiting_approval` is set while
+            the chat is suspended on a pending approval (the latest
+            `chat_messages` row carries the `approval_id`); the chat
+            returns to `active` after resume completes. See ADR-0011.
         started_at:
           type: string
           format: date-time
@@ -1847,71 +1947,9 @@ components:
           minLength: 1
 
     # ── Approval ──────────────────────────────────────────────
-
-    ApprovalStatus:
-      type: string
-      enum: [pending, approved, rejected, expired, cancelled]
-
-    ApprovalRequest:
-      type: object
-      required:
-        - id
-        - tenant_id
-        - run_id
-        - task_id
-        - requested_action
-        - status
-        - evidence_ref
-        - created_at
-        - updated_at
-      properties:
-        id:
-          type: string
-          format: uuid
-        tenant_id:
-          type: string
-          format: uuid
-        run_id:
-          type: string
-          format: uuid
-        task_id:
-          type: string
-          format: uuid
-          description: |
-            Currently always set; will become nullable once the task concept
-            (ADR-0003) is removed from the upstream service contract.
-        requested_action:
-          type: string
-        requested_by:
-          type: [string, "null"]
-          format: uuid
-        approver_role:
-          type: [string, "null"]
-        approver_user_id:
-          type: [string, "null"]
-          format: uuid
-        status:
-          $ref: "#/components/schemas/ApprovalStatus"
-        reason:
-          type: [string, "null"]
-        evidence_ref:
-          description: Payload diff shown to the approver.
-          oneOf:
-            - type: object
-              additionalProperties: true
-            - type: "null"
-        expires_at:
-          type: [string, "null"]
-          format: date-time
-        resolved_at:
-          type: [string, "null"]
-          format: date-time
-        created_at:
-          type: string
-          format: date-time
-        updated_at:
-          type: string
-          format: date-time
+    # `ApprovalRequest` (and its `status` enum) live in
+    # `shared/approval-request.yaml` — referenced from both this spec and
+    # `gateway-internal.yaml`.
 
     ApprovalList:
       type: object
@@ -1920,7 +1958,7 @@ components:
         items:
           type: array
           items:
-            $ref: "#/components/schemas/ApprovalRequest"
+            $ref: "./shared/approval-request.yaml"
         total:
           type: integer
         limit:
@@ -1941,11 +1979,20 @@ components:
 
     ApprovalDecisionAccepted:
       type: object
+      x-changelog:
+        - version: "0.2.0"
+          change: "`status` enum widened from `[queued]` to `[queued, recorded]` to distinguish chat-source (queued) from run-source (recorded) decisions (ADR-0011 Phases 6-7)."
       required: [approval_id, decision, status]
       description: |
         202 body returned by `POST /approvals/{approvalId}/decision`. The
-        decision is persisted; resume is dispatched asynchronously via the
-        gateway outbox. Clients poll `GET /runs/{runId}` for terminal state.
+        decision is always persisted before this response is returned.
+        Whether the gateway also queues an asynchronous resume on the
+        outbox depends on the approval's source — see `status`.
+
+        For chat-sourced approvals, clients poll
+        `GET /approvals/{approvalId}` for the resolved decision and then
+        `GET /chat/{chatId}/messages?after=<last_seen>` to retrieve the
+        resumed turn.
       properties:
         approval_id:
           type: string
@@ -1955,34 +2002,18 @@ components:
           enum: [approved, rejected]
         status:
           type: string
-          enum: [queued]
-
-    CreateApprovalInternalRequest:
-      type: object
-      required: [run_id, task_id, tenant_id, requested_action]
-      properties:
-        run_id:
-          type: string
-          format: uuid
-        task_id:
-          type: string
-          format: uuid
+          enum: [queued, recorded]
           description: |
-            Currently required; will become optional once the task concept
-            (ADR-0003) is removed from the upstream service contract.
-        tenant_id:
-          type: string
-          format: uuid
-        requested_action:
-          type: string
-        requested_by:
-          type: string
-          format: uuid
-        reason:
-          type: string
-        evidence_ref:
-          type: object
-          additionalProperties: true
+            * `queued`: the decision was persisted **and** an asynchronous
+              resume was enqueued on the gateway outbox. Today this is the
+              path used for chat-sourced approvals (the outbox dispatcher
+              calls `POST /internal/chats/{chatId}/resume` with bounded
+              backoff — see ADR-0011 / Phase 6).
+            * `recorded`: the decision was persisted, no async dispatch was
+              scheduled. Today this is the path used for run-sourced
+              approvals — runs are create+read-only on the wire post-ADR-0011
+              / R1, so no resume work is queued. Returned for forward-compat
+              with sources that don't need a follow-up dispatch.
 
     # ── Dashboard ─────────────────────────────────────────────
 
@@ -2098,60 +2129,6 @@ components:
         limit:
           type: integer
         offset:
-          type: integer
-
-    # ── Outbox (internal ops) ─────────────────────────────────
-
-    OutboxPendingRow:
-      type: object
-      required:
-        - id
-        - tenant_id
-        - kind
-        - payload
-        - status
-        - attempts
-        - next_attempt_at
-        - created_at
-        - updated_at
-      properties:
-        id:
-          type: string
-          format: uuid
-        tenant_id:
-          type: string
-          format: uuid
-        kind:
-          type: string
-        payload:
-          type: object
-          description: Opaque event payload, shape varies by `kind`.
-          additionalProperties: true
-        status:
-          type: string
-        attempts:
-          type: integer
-        next_attempt_at:
-          type: string
-          format: date-time
-        last_error:
-          type: [string, "null"]
-        created_at:
-          type: string
-          format: date-time
-        updated_at:
-          type: string
-          format: date-time
-
-    OutboxPendingList:
-      type: object
-      required: [items, limit]
-      properties:
-        items:
-          type: array
-          items:
-            $ref: "#/components/schemas/OutboxPendingRow"
-        limit:
           type: integer
 
     # ── Health ────────────────────────────────────────────────

@@ -52,7 +52,9 @@ function buildSnapshot(
     .filter(r => r.agent_id === agent.id)
     .sort((a, b) => b.created_at.localeCompare(a.created_at))
   const myRunIds = new Set(myRuns.map(r => r.id))
-  const myPending = approvals.filter(a => a.status === 'pending' && myRunIds.has(a.run_id))
+  // Chat-source approvals (gateway 0.2.0) have run_id == null; this screen
+  // surfaces only run-anchored approvals — chat-source UI is Tier 3.
+  const myPending = approvals.filter(a => a.status === 'pending' && a.run_id != null && myRunIds.has(a.run_id))
 
   const startOfToday = new Date()
   startOfToday.setHours(0, 0, 0, 0)
@@ -513,6 +515,8 @@ function ApprovalsDeck({
     const agentById = new Map(agents.map(a => [a.id, a]))
     const m = new Map<string, Agent>()
     for (const ap of pending) {
+      // Chat-source approvals lack a run_id; skip — handled in Tier 3.
+      if (!ap.run_id) continue
       const r = runById.get(ap.run_id)
       const ag = r?.agent_id ? agentById.get(r.agent_id) : undefined
       if (ag) m.set(ap.id, ag)

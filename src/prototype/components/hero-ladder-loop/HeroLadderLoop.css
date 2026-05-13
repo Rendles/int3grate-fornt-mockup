@@ -1,0 +1,538 @@
+/* Hero-ladder-loop scripted scene — self-contained styles.
+   Brand tokens inlined so this folder compiles outside the prototype.
+   Reference: docs/landing-colors-handoff.md (palette of record).
+   Variable namespace: --ld-* (ladder). */
+
+.hero-ladder,
+.hero-ladder *,
+.hero-ladder *::before,
+.hero-ladder *::after {
+  box-sizing: border-box;
+}
+
+.hero-ladder {
+  --ld-bg: #05070A;
+  --ld-panel: #0E1117;
+  --ld-text: #F7F8FA;
+  --ld-text-muted: #9499A3;
+  --ld-text-faint: #6E737D;
+  --ld-border: rgba(255, 255, 255, 0.08);
+  --ld-surface-lift: rgba(255, 255, 255, 0.04);
+  --ld-violet: #701DFD;
+  --ld-cyan: #01C9FA;
+  --ld-orange: #FD9C12;
+  --ld-jade: #2EBE6F;
+  --ld-jade-strong: #3DD68C;
+  --ld-red: #E5484D;
+
+  font-family: Inter, ui-sans-serif, system-ui, -apple-system, "Segoe UI", sans-serif;
+  font-size: 13px;
+  line-height: 1.45;
+  letter-spacing: -0.005em;
+  color: var(--ld-text);
+  display: inline-block;
+}
+
+.hero-ladder__stage {
+  width: 500px;
+  height: 600px;
+  background: var(--ld-panel);
+  border-radius: 16px;
+  padding: 20px;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  position: relative;
+  overflow: hidden;
+  box-shadow:
+    0 1px 0 rgba(255, 255, 255, 0.04) inset,
+    0 30px 80px rgba(0, 0, 0, 0.5);
+}
+
+/* ─── Agent strip ──────────────────────────────────────────────────── */
+
+.ld-agent {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 0 2px;
+}
+
+.ld-agent__avatar {
+  width: 38px;
+  height: 38px;
+  flex-shrink: 0;
+  border-radius: 50%;
+  background: linear-gradient(135deg, var(--ld-violet), var(--ld-cyan));
+  color: var(--ld-text);
+  font-size: 12px;
+  font-weight: 600;
+  letter-spacing: 0.04em;
+  display: grid;
+  place-items: center;
+}
+
+.ld-agent__id {
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+}
+
+.ld-agent__name {
+  font-size: 14px;
+  font-weight: 500;
+  letter-spacing: -0.01em;
+  color: var(--ld-text);
+}
+
+.ld-agent__role {
+  font-size: 10.5px;
+  color: var(--ld-text-faint);
+}
+
+/* ─── Trust meter ──────────────────────────────────────────────────── */
+
+.ld-meter {
+  display: flex;
+  align-items: center;
+  gap: 0;
+  padding: 0 2px;
+}
+
+.ld-meter__cell {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.ld-meter__arrow {
+  color: var(--ld-text-faint);
+  font-size: 11px;
+  padding: 0 4px;
+}
+
+.ld-meter__chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  height: 26px;
+  padding: 0 10px 0 6px;
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.05);
+  color: var(--ld-text-faint);
+  transition: background 480ms ease, color 480ms ease;
+}
+
+.ld-meter__dot {
+  width: 14px;
+  height: 14px;
+  border-radius: 50%;
+  display: grid;
+  place-items: center;
+  background: rgba(255, 255, 255, 0.10);
+  color: var(--ld-text-faint);
+  transition: background 480ms ease, color 480ms ease;
+}
+
+.ld-meter__chip--pending .ld-meter__dot {
+  /* hollow inner ring */
+  background: transparent;
+  box-shadow: inset 0 0 0 1.5px rgba(255, 255, 255, 0.20);
+}
+
+.ld-meter__label {
+  font-size: 10px;
+  font-weight: 600;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+}
+
+/* Active states — colour per level. */
+.ld-meter__chip--supervised.ld-meter__chip--active {
+  background: rgba(253, 156, 18, 0.20);
+  color: var(--ld-orange);
+}
+
+.ld-meter__chip--supervised.ld-meter__chip--active .ld-meter__dot {
+  background: var(--ld-orange);
+  box-shadow: 0 0 0 4px rgba(253, 156, 18, 0.18);
+  animation: ld-meter-pulse 1.8s ease-out infinite;
+}
+
+.ld-meter__chip--assisted.ld-meter__chip--active {
+  background: rgba(1, 201, 250, 0.20);
+  color: var(--ld-cyan);
+}
+
+.ld-meter__chip--assisted.ld-meter__chip--active .ld-meter__dot {
+  background: var(--ld-cyan);
+  box-shadow: 0 0 0 4px rgba(1, 201, 250, 0.18);
+  animation: ld-meter-pulse 1.8s ease-out infinite;
+}
+
+.ld-meter__chip--autonomous.ld-meter__chip--active {
+  background: rgba(46, 190, 111, 0.22);
+  color: var(--ld-jade-strong);
+}
+
+.ld-meter__chip--autonomous.ld-meter__chip--active .ld-meter__dot {
+  background: var(--ld-jade);
+  box-shadow: 0 0 0 4px rgba(46, 190, 111, 0.20);
+}
+
+/* Passed state: muted, checkmark in the dot. */
+.ld-meter__chip--passed {
+  background: rgba(255, 255, 255, 0.04);
+  color: var(--ld-text-muted);
+}
+
+.ld-meter__chip--passed .ld-meter__dot {
+  background: rgba(46, 190, 111, 0.22);
+  color: var(--ld-jade-strong);
+}
+
+@keyframes ld-meter-pulse {
+  0%   { transform: scale(1); }
+  50%  { transform: scale(1.10); }
+  100% { transform: scale(1); }
+}
+
+/* ─── Trust-level caption (cross-fade on level change) ─────────────── */
+
+.ld-caption {
+  font-size: 11.5px;
+  color: var(--ld-text-muted);
+  padding: 0 4px;
+  animation: ld-caption-fade 320ms ease;
+}
+
+@keyframes ld-caption-fade {
+  0%   { opacity: 0.25; transform: translateY(-2px); }
+  100% { opacity: 1;    transform: translateY(0); }
+}
+
+/* ─── Runs container ───────────────────────────────────────────────── */
+
+.ld-runs {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  min-height: 0;
+  overflow: hidden;
+}
+
+/* ─── Run card (shared base) ───────────────────────────────────────── */
+
+.ld-run {
+  background: var(--ld-surface-lift);
+  border-radius: 12px;
+  padding: 12px 14px;
+  display: flex;
+  flex-direction: column;
+  position: relative;
+  overflow: hidden;
+  opacity: 1;
+  transition:
+    max-height 480ms cubic-bezier(0.4, 0, 0.2, 1),
+    opacity 320ms ease,
+    padding 480ms cubic-bezier(0.4, 0, 0.2, 1),
+    background 380ms ease;
+}
+
+.ld-run--hidden {
+  max-height: 0;
+  opacity: 0;
+  padding-top: 0;
+  padding-bottom: 0;
+  pointer-events: none;
+}
+
+/* Left-border accent reflects current run state. */
+.ld-run::before {
+  content: '';
+  position: absolute;
+  left: 0;
+  top: 0;
+  bottom: 0;
+  width: 2px;
+  background: transparent;
+  transition: background 380ms ease;
+}
+
+.ld-run--expanded::before  { background: var(--ld-orange); }
+.ld-run--countdown::before { background: var(--ld-cyan);   }
+.ld-run--done::before      { background: var(--ld-jade);   }
+.ld-run--visible::before   { background: var(--ld-jade);   }
+
+.ld-run--expanded {
+  background: linear-gradient(180deg, rgba(253, 156, 18, 0.07), var(--ld-surface-lift));
+}
+
+.ld-run--countdown {
+  background: linear-gradient(180deg, rgba(1, 201, 250, 0.07), var(--ld-surface-lift));
+}
+
+.ld-run--done,
+.ld-run--visible {
+  background: linear-gradient(180deg, rgba(46, 190, 111, 0.06), var(--ld-surface-lift));
+}
+
+/* Approximate heights — flex-driven, transition-friendly. */
+.ld-run--1.ld-run--expanded  { max-height: 170px; }
+.ld-run--1.ld-run--done      { max-height: 64px;  }
+.ld-run--2.ld-run--countdown { max-height: 92px;  }
+.ld-run--2.ld-run--done      { max-height: 64px;  }
+.ld-run--3.ld-run--visible   { max-height: 64px;  }
+
+/* ─── Top row: label · time · indicator ────────────────────────────── */
+
+.ld-run__top {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 10.5px;
+  color: var(--ld-text-muted);
+}
+
+.ld-run__label {
+  font-weight: 600;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--ld-text);
+}
+
+.ld-run__sep {
+  color: var(--ld-text-faint);
+}
+
+.ld-run__time {
+  font-variant-numeric: tabular-nums;
+}
+
+.ld-run__indicator {
+  margin-left: auto;
+  display: flex;
+  align-items: center;
+}
+
+.ld-run__pill {
+  display: none;
+  align-items: center;
+  gap: 5px;
+  height: 18px;
+  padding: 0 7px;
+  border-radius: 999px;
+  font-size: 9px;
+  font-weight: 600;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+}
+
+.ld-run__pill--pending {
+  color: var(--ld-orange);
+  background: rgba(253, 156, 18, 0.20);
+}
+
+.ld-run__pill--rule {
+  color: var(--ld-cyan);
+  background: rgba(1, 201, 250, 0.20);
+}
+
+.ld-run__pill--rule .ld-run__pill-dot {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: var(--ld-cyan);
+  animation: ld-pulse 1.6s ease-out infinite;
+}
+
+.ld-run__pill--done {
+  width: 18px;
+  padding: 0;
+  justify-content: center;
+  color: var(--ld-jade-strong);
+  background: rgba(46, 190, 111, 0.22);
+}
+
+.ld-run--expanded  .ld-run__pill--pending { display: inline-flex; }
+.ld-run--countdown .ld-run__pill--rule    { display: inline-flex; }
+.ld-run--done      .ld-run__pill--done,
+.ld-run--visible   .ld-run__pill--done    { display: inline-flex; }
+
+/* ─── Body lines ───────────────────────────────────────────────────── */
+
+.ld-run__headline {
+  margin-top: 6px;
+  font-size: 13.5px;
+  font-weight: 500;
+  letter-spacing: -0.008em;
+  color: var(--ld-text);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+/* Context line — only on Run 1 expanded. */
+.ld-run__context,
+.ld-run__rule-caption,
+.ld-run__footer,
+.ld-run__done-caption {
+  max-height: 0;
+  opacity: 0;
+  overflow: hidden;
+  margin-top: 0;
+  transition:
+    max-height 380ms cubic-bezier(0.4, 0, 0.2, 1),
+    opacity 240ms ease,
+    margin-top 380ms ease;
+}
+
+.ld-run--expanded .ld-run__context {
+  max-height: 22px;
+  opacity: 1;
+  margin-top: 6px;
+}
+
+.ld-run__context {
+  font-size: 11.5px;
+  color: var(--ld-text-muted);
+}
+
+.ld-run--countdown .ld-run__rule-caption {
+  max-height: 22px;
+  opacity: 1;
+  margin-top: 6px;
+}
+
+.ld-run__rule-caption {
+  font-size: 11.5px;
+  color: var(--ld-cyan);
+}
+
+/* Footer (Approve/Reject) — only Run 1 expanded. */
+.ld-run--expanded .ld-run__footer {
+  max-height: 44px;
+  opacity: 1;
+  margin-top: 10px;
+}
+
+.ld-run__footer {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 6px;
+}
+
+/* Done caption — shown only in 'done' / 'visible' state, hidden when card
+   is expanded or counting down. */
+.ld-run--done .ld-run__done-caption,
+.ld-run--visible .ld-run__done-caption {
+  max-height: 22px;
+  opacity: 1;
+  margin-top: 6px;
+}
+
+.ld-run__done-caption {
+  font-size: 11.5px;
+  color: var(--ld-jade-strong);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+/* ─── Approve / Reject soft buttons ────────────────────────────────── */
+
+.ld-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  height: 32px;
+  padding: 0 12px;
+  border-radius: 6px;
+  font-size: 12px;
+  font-weight: 500;
+  letter-spacing: -0.005em;
+  font-family: inherit;
+  cursor: pointer;
+  border: 0;
+  transition:
+    background 140ms ease,
+    transform 140ms ease,
+    filter 140ms ease;
+}
+
+.ld-btn--approve {
+  color: var(--ld-jade-strong);
+  background: rgba(46, 190, 111, 0.20);
+}
+
+.ld-btn--reject {
+  color: #FF8A8E;
+  background: rgba(229, 72, 77, 0.18);
+}
+
+.ld-btn--pressed {
+  transform: scale(0.965);
+  filter: brightness(1.18);
+}
+
+/* ─── Synthetic cursor ─────────────────────────────────────────────── */
+
+.ld-cursor {
+  position: absolute;
+  left: 0;
+  top: 0;
+  pointer-events: none;
+  z-index: 10;
+  transform: translate3d(var(--ld-cursor-x, 0px), var(--ld-cursor-y, 0px), 0);
+  filter: drop-shadow(0 2px 3px rgba(0, 0, 0, 0.55));
+  transition: transform 1.2s cubic-bezier(0.4, 0, 0.2, 1), opacity 380ms ease;
+  opacity: 1;
+}
+
+.ld-cursor--hidden {
+  opacity: 0;
+}
+
+/* ─── Shared pulse keyframe ────────────────────────────────────────── */
+
+@keyframes ld-pulse {
+  0% {
+    box-shadow: 0 0 0 0 rgba(1, 201, 250, 0.55);
+  }
+  70% {
+    box-shadow: 0 0 0 6px rgba(1, 201, 250, 0);
+  }
+  100% {
+    box-shadow: 0 0 0 0 rgba(1, 201, 250, 0);
+  }
+}
+
+/* ─── Static mode: small viewport OR reduced motion ────────────────── */
+
+@media (max-width: 640px), (prefers-reduced-motion: reduce) {
+  .ld-cursor {
+    display: none;
+  }
+
+  .ld-meter__chip--active .ld-meter__dot,
+  .ld-run__pill--rule .ld-run__pill-dot {
+    animation: none;
+  }
+
+  .ld-run,
+  .ld-run__context,
+  .ld-run__rule-caption,
+  .ld-run__footer,
+  .ld-run__done-caption,
+  .ld-btn,
+  .ld-caption {
+    transition: opacity 220ms ease, background 220ms ease;
+    animation: none;
+  }
+
+  .ld-btn--pressed {
+    transform: none;
+  }
+}

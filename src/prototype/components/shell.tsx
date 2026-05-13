@@ -97,6 +97,13 @@ export function Sidebar() {
       // dividerAbove not needed — team-bridge already provides the sandbox
       // section divider.
     },
+    {
+      key: 'hero-loops',
+      label: 'Hero loops',
+      to: '/sandbox/hero-loops',
+      icon: <IconAgent />,
+      badge: { count: 'preview', tone: 'muted' },
+    },
     // Settings is hidden in MVP; the Audit log was extracted into its own
     // top-level admin route. See docs/handoff-prep.md (Settings hide entry).
     // Restore this nav item together with the /settings/* routes in

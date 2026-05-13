@@ -1,0 +1,535 @@
+/* Hero-onboarding-loop scripted scene — self-contained styles.
+   Brand tokens inlined so this folder compiles outside the prototype.
+   Reference: docs/landing-colors-handoff.md (palette of record).
+   Variable namespace: --ob-* (onboarding). */
+
+.hero-onboarding,
+.hero-onboarding *,
+.hero-onboarding *::before,
+.hero-onboarding *::after {
+  box-sizing: border-box;
+}
+
+.hero-onboarding {
+  --ob-bg: #05070A;
+  --ob-panel: #0E1117;
+  --ob-text: #F7F8FA;
+  --ob-text-muted: #9499A3;
+  --ob-text-faint: #6E737D;
+  --ob-border: rgba(255, 255, 255, 0.08);
+  --ob-surface-lift: rgba(255, 255, 255, 0.04);
+  --ob-violet: #701DFD;
+  --ob-violet-soft: rgba(112, 29, 253, 0.20);
+  --ob-cyan: #01C9FA;
+  --ob-orange: #FD9C12;
+  --ob-jade: #2EBE6F;
+  --ob-jade-strong: #3DD68C;
+
+  font-family: Inter, ui-sans-serif, system-ui, -apple-system, "Segoe UI", sans-serif;
+  font-size: 13px;
+  line-height: 1.45;
+  letter-spacing: -0.005em;
+  color: var(--ob-text);
+  display: inline-block;
+}
+
+.hero-onboarding__stage {
+  width: 500px;
+  height: 600px;
+  background: var(--ob-panel);
+  border-radius: 16px;
+  padding: 20px;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  position: relative;
+  overflow: hidden;
+  box-shadow:
+    0 1px 0 rgba(255, 255, 255, 0.04) inset,
+    0 30px 80px rgba(0, 0, 0, 0.5);
+}
+
+/* ─── Greeting (always visible) ────────────────────────────────────── */
+
+.ob-greeting {
+  display: flex;
+  align-items: baseline;
+  gap: 8px;
+  font-size: 14px;
+  letter-spacing: -0.01em;
+  padding: 0 2px;
+  flex-shrink: 0;
+}
+
+.ob-greeting__primary {
+  font-weight: 500;
+  color: var(--ob-text);
+}
+
+.ob-greeting__divider {
+  color: var(--ob-text-faint);
+}
+
+.ob-greeting__secondary {
+  font-size: 12.5px;
+  color: var(--ob-text-muted);
+}
+
+/* ─── KPI strip (collapses when empty) ─────────────────────────────── */
+
+.ob-kpi {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 8px;
+  flex-shrink: 0;
+  overflow: hidden;
+  transition:
+    max-height 520ms cubic-bezier(0.4, 0, 0.2, 1),
+    opacity 380ms ease,
+    margin-top 520ms ease,
+    transform 520ms cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.ob-kpi--visible {
+  max-height: 80px;
+  opacity: 1;
+  transform: translateY(0);
+}
+
+.ob-kpi--hidden {
+  max-height: 0;
+  opacity: 0;
+  transform: translateY(-10px);
+  pointer-events: none;
+}
+
+.ob-kpi__tile {
+  padding: 12px 14px 11px;
+  background: var(--ob-surface-lift);
+  border-radius: 10px;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  min-width: 0;
+  overflow: hidden;
+}
+
+.ob-kpi__value {
+  font-size: 22px;
+  font-weight: 500;
+  letter-spacing: -0.025em;
+  line-height: 1;
+  font-variant-numeric: tabular-nums;
+  color: var(--ob-text);
+  animation: ob-kpi-tick 460ms ease;
+}
+
+.ob-kpi__tile--spend .ob-kpi__value {
+  color: var(--ob-violet);
+}
+
+.ob-kpi__label {
+  font-size: 9.5px;
+  font-weight: 600;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--ob-text-muted);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+@keyframes ob-kpi-tick {
+  0%   { transform: translateY(-3px); opacity: 0.35; }
+  100% { transform: translateY(0);    opacity: 1; }
+}
+
+/* ─── Main area: CTA overlay + grid overlay ────────────────────────── */
+
+.ob-main {
+  flex: 1;
+  position: relative;
+  min-height: 0;
+}
+
+/* Empty-state CTA wrap — absolute fill, vertical-centred contents. */
+.ob-cta-wrap {
+  position: absolute;
+  inset: 0;
+  display: grid;
+  place-items: center;
+  transition:
+    opacity 460ms ease,
+    transform 460ms cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.ob-cta-wrap--visible {
+  opacity: 1;
+  transform: scale(1);
+}
+
+.ob-cta-wrap--hidden {
+  opacity: 0;
+  transform: scale(0.94);
+  pointer-events: none;
+}
+
+.ob-cta {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 14px;
+  text-align: center;
+  padding: 8px 24px;
+}
+
+.ob-cta__caption {
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+  color: var(--ob-text-muted);
+}
+
+.ob-cta__btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
+  height: 46px;
+  padding: 0 22px;
+  border-radius: 10px;
+  font-size: 14px;
+  font-weight: 500;
+  letter-spacing: -0.005em;
+  font-family: inherit;
+  color: #FFFFFF;
+  background: var(--ob-violet);
+  border: 0;
+  cursor: pointer;
+  box-shadow:
+    0 0 0 3px var(--ob-violet-soft),
+    0 8px 24px rgba(112, 29, 253, 0.35);
+  transition:
+    transform 140ms ease,
+    filter 140ms ease,
+    box-shadow 220ms ease;
+}
+
+.ob-cta__btn--pressed {
+  transform: scale(0.965);
+  filter: brightness(1.10);
+}
+
+.ob-cta__hint {
+  font-size: 11.5px;
+  color: var(--ob-text-faint);
+}
+
+/* Full-state grid wrap — absolute fill, 2×2 grid inside. */
+.ob-grid-wrap {
+  position: absolute;
+  inset: 0;
+  transition: opacity 460ms ease;
+}
+
+.ob-grid-wrap--visible {
+  opacity: 1;
+}
+
+.ob-grid-wrap--hidden {
+  opacity: 0;
+  pointer-events: none;
+}
+
+.ob-grid {
+  width: 100%;
+  height: 100%;
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  grid-template-rows: 1fr 1fr;
+  gap: 10px;
+}
+
+/* ─── Agent card ───────────────────────────────────────────────────── */
+
+.ob-card {
+  position: relative;
+  background: var(--ob-surface-lift);
+  border-radius: 12px;
+  padding: 12px 14px;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  min-width: 0;
+  overflow: hidden;
+  transition:
+    opacity 420ms ease,
+    transform 460ms cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.ob-card--hidden {
+  opacity: 0;
+  transform: translateY(-16px);
+  pointer-events: none;
+}
+
+.ob-card--visible {
+  opacity: 1;
+  transform: translateY(0);
+}
+
+/* Cyan accent on left edge of every card — "working / online". */
+.ob-card::before {
+  content: '';
+  position: absolute;
+  left: 0;
+  top: 0;
+  bottom: 0;
+  width: 2px;
+  background: var(--ob-cyan);
+  opacity: 0.7;
+}
+
+.ob-card__avatar {
+  width: 34px;
+  height: 34px;
+  flex-shrink: 0;
+  border-radius: 50%;
+  background: linear-gradient(135deg, var(--ob-violet), var(--ob-cyan));
+  color: var(--ob-text);
+  font-size: 11.5px;
+  font-weight: 600;
+  letter-spacing: 0.04em;
+  display: grid;
+  place-items: center;
+}
+
+.ob-card__id {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+}
+
+.ob-card__name {
+  font-size: 12.5px;
+  font-weight: 500;
+  letter-spacing: -0.005em;
+  color: var(--ob-text);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.ob-card__role {
+  font-size: 10.5px;
+  color: var(--ob-text-faint);
+}
+
+.ob-card__dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: var(--ob-cyan);
+  flex-shrink: 0;
+  animation: ob-pulse 1.8s ease-out infinite;
+}
+
+/* ─── Activity feed (collapses when empty) ─────────────────────────── */
+
+.ob-activity {
+  flex-shrink: 0;
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  transition:
+    max-height 520ms cubic-bezier(0.4, 0, 0.2, 1),
+    opacity 380ms ease,
+    margin-top 520ms ease,
+    transform 520ms cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.ob-activity--visible {
+  max-height: 180px;
+  opacity: 1;
+  transform: translateY(0);
+}
+
+.ob-activity--hidden {
+  max-height: 0;
+  opacity: 0;
+  transform: translateY(10px);
+  pointer-events: none;
+}
+
+.ob-activity__head {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 0 2px 2px;
+}
+
+.ob-activity__title {
+  font-size: 10px;
+  font-weight: 600;
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+  color: var(--ob-text-muted);
+}
+
+.ob-activity__rows {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.ob-activity__row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 7px 12px;
+  background: var(--ob-surface-lift);
+  border-radius: 8px;
+  min-width: 0;
+  transition: opacity 320ms ease, transform 380ms cubic-bezier(0.4, 0, 0.2, 1), max-height 380ms ease;
+  max-height: 40px;
+  overflow: hidden;
+}
+
+.ob-activity__row--hidden {
+  opacity: 0;
+  transform: translateY(6px);
+  max-height: 0;
+  padding-top: 0;
+  padding-bottom: 0;
+  pointer-events: none;
+}
+
+.ob-activity__row--visible {
+  opacity: 1;
+  transform: translateY(0);
+}
+
+.ob-activity__avatar {
+  width: 22px;
+  height: 22px;
+  flex-shrink: 0;
+  border-radius: 50%;
+  background: linear-gradient(135deg, var(--ob-violet), var(--ob-cyan));
+  color: var(--ob-text);
+  font-size: 9px;
+  font-weight: 600;
+  letter-spacing: 0.04em;
+  display: grid;
+  place-items: center;
+}
+
+.ob-activity__body {
+  flex: 1;
+  display: flex;
+  align-items: baseline;
+  gap: 5px;
+  min-width: 0;
+}
+
+.ob-activity__name {
+  font-size: 11px;
+  color: var(--ob-text-muted);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  flex-shrink: 0;
+}
+
+.ob-activity__sep {
+  color: var(--ob-text-faint);
+  font-size: 10px;
+  flex-shrink: 0;
+}
+
+.ob-activity__action {
+  font-size: 12px;
+  font-weight: 500;
+  letter-spacing: -0.005em;
+  color: var(--ob-text);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  min-width: 0;
+}
+
+.ob-activity__ago {
+  font-size: 10.5px;
+  color: var(--ob-text-faint);
+  white-space: nowrap;
+  flex-shrink: 0;
+}
+
+/* ─── Synthetic cursor ─────────────────────────────────────────────── */
+
+.ob-cursor {
+  position: absolute;
+  left: 0;
+  top: 0;
+  pointer-events: none;
+  z-index: 10;
+  transform: translate3d(var(--ob-cursor-x, 0px), var(--ob-cursor-y, 0px), 0);
+  filter: drop-shadow(0 2px 3px rgba(0, 0, 0, 0.55));
+  transition: transform 1.2s cubic-bezier(0.4, 0, 0.2, 1), opacity 380ms ease;
+  opacity: 1;
+}
+
+.ob-cursor--hidden {
+  opacity: 0;
+}
+
+/* ─── Shared pulse keyframe ────────────────────────────────────────── */
+
+@keyframes ob-pulse {
+  0% {
+    box-shadow: 0 0 0 0 rgba(1, 201, 250, 0.55);
+  }
+  70% {
+    box-shadow: 0 0 0 6px rgba(1, 201, 250, 0);
+  }
+  100% {
+    box-shadow: 0 0 0 0 rgba(1, 201, 250, 0);
+  }
+}
+
+/* ─── Static mode: small viewport OR reduced motion ────────────────── */
+
+@media (max-width: 640px), (prefers-reduced-motion: reduce) {
+  .ob-cursor {
+    display: none;
+  }
+
+  .ob-card__dot {
+    animation: none;
+  }
+
+  .ob-card,
+  .ob-kpi,
+  .ob-activity,
+  .ob-activity__row,
+  .ob-cta-wrap,
+  .ob-grid-wrap,
+  .ob-kpi__value {
+    transition: opacity 220ms ease, background 220ms ease;
+    animation: none;
+  }
+
+  .ob-cta-wrap--hidden,
+  .ob-kpi--hidden,
+  .ob-activity--hidden,
+  .ob-card--hidden,
+  .ob-activity__row--hidden {
+    transform: none;
+  }
+
+  .ob-cta__btn--pressed {
+    transform: none;
+  }
+}

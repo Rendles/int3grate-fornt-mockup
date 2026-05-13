@@ -448,7 +448,10 @@ export default function ApprovalsScreen() {
           <div className="card card--flush">
             <Flex direction="column">
               {visible.map(a => {
-                const agentName = agentNameByRun.get(a.run_id) ?? 'Agent'
+                // Approvals are polymorphic in gateway 0.2.0 (run_id | chat_id);
+                // this screen still assumes run-anchored. Chat-source approvals
+                // fall back to 'Agent' until Tier 3 ships dedicated UI.
+                const agentName = (a.run_id && agentNameByRun.get(a.run_id)) || 'Agent'
                 const actionVerb = prettifyRequestedAction(a.requested_action).toLowerCase()
                 const isPending = a.status === 'pending'
                 const isRejectExpanded = rejectTarget?.approval.id === a.id
@@ -490,7 +493,7 @@ export default function ApprovalsScreen() {
                               {actionVerb}
                             </Text>
                           </Text>
-                          <WorkspaceContextPill agentId={agentIdByRun.get(a.run_id)} show={shouldShowWorkspacePill(workspaceFilter, myWorkspaces.length)} />
+                          <WorkspaceContextPill agentId={a.run_id ? agentIdByRun.get(a.run_id) : undefined} show={shouldShowWorkspacePill(workspaceFilter, myWorkspaces.length)} />
                         </Flex>
                         {a.requested_by_name && (
                           <Text as="div" size="1" color="gray" mt="1">
@@ -562,8 +565,10 @@ export default function ApprovalsScreen() {
               data-tour="approvals-card-grid"
             >
               {visible.map(a => {
-                const agentName = agentNameByRun.get(a.run_id) ?? 'Agent'
-                const agentId = agentIdByRun.get(a.run_id) ?? null
+                // See note above — chat-anchored approvals (a.run_id == null)
+                // fall back to 'Agent' / null until Tier 3 UI ships.
+                const agentName = (a.run_id && agentNameByRun.get(a.run_id)) || 'Agent'
+                const agentId = (a.run_id && agentIdByRun.get(a.run_id)) ?? null
                 const actionVerb = prettifyRequestedAction(a.requested_action).toLowerCase()
                 return (
                   <ApprovalCard

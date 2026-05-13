@@ -1354,10 +1354,37 @@ for (let i = 1; i <= 80; i++) {
 // ══════════════════════════════════════════════════ APPROVALS
 
 export const approvals: ApprovalRequest[] = [
+  // Chat-source approval (gateway 0.2.0 / ADR-0011): a tool call mid-chat hit
+  // an approval gate. `run_id` is null; `chat_id` points at the suspended chat.
+  // This single row exercises the polymorphic shape — none of the existing UI
+  // surfaces it specially yet (that's Tier 3 work).
+  {
+    id: 'apv_9030',
+    run_id: null,
+    chat_id: 'cht_3801',
+    task_id: null,
+    tenant_id: 'ten_acme',
+    requested_action: 'email.send · reply to support ticket #TKT-8821 with refund offer ($90)',
+    requested_by: 'usr_marcelo',
+    requested_by_name: 'Marcelo Ito',
+    approver_role: 'domain_admin',
+    approver_user_id: 'usr_marcelo',
+    status: 'pending',
+    reason: null,
+    evidence_ref: {
+      ticket_id: 'TKT-8821',
+      offer_usd: 90,
+      sample_subject: 'Re: charged twice in October — sorted',
+    },
+    expires_at: future(170),
+    resolved_at: null,
+    created_at: mins(2),
+  },
   {
     id: 'apv_9021',
     run_id: 'run_4081',
     task_id: 'tsk_4081',
+    chat_id: null,
     tenant_id: 'ten_acme',
     requested_action: 'stripe.refund · $412 on charge ch_3P8fL2 (order #44021)',
     requested_by: 'usr_priya',
@@ -1381,6 +1408,7 @@ export const approvals: ApprovalRequest[] = [
     id: 'apv_9024',
     run_id: 'run_4082',
     task_id: null,
+    chat_id: null,
     tenant_id: 'ten_acme',
     requested_action: 'email.send batch × 6 · outreach drafts (partial — 2 contacts skipped after enrich timeouts)',
     requested_by: 'usr_marcelo',
@@ -1403,6 +1431,7 @@ export const approvals: ApprovalRequest[] = [
     id: 'apv_9023',
     run_id: 'run_4080',
     task_id: 'tsk_4080',
+    chat_id: null,
     tenant_id: 'ten_acme',
     requested_action: 'email.send batch × 8 · personalised outreach to high-fit leads',
     requested_by: 'usr_marcelo',
@@ -1424,6 +1453,7 @@ export const approvals: ApprovalRequest[] = [
     id: 'apv_9014',
     run_id: 'run_4050',
     task_id: 'tsk_4050',
+    chat_id: null,
     tenant_id: 'ten_acme',
     requested_action: 'stripe.refund · $280 duplicate subscription charge',
     requested_by: 'usr_priya',
@@ -1441,6 +1471,7 @@ export const approvals: ApprovalRequest[] = [
     id: 'apv_9011',
     run_id: 'run_4030',
     task_id: 'tsk_4030',
+    chat_id: null,
     tenant_id: 'ten_acme',
     requested_action: 'brex.create_vendor · Taubman & Co · Net-30 ACH',
     requested_by: 'usr_ada',
@@ -1458,6 +1489,7 @@ export const approvals: ApprovalRequest[] = [
     id: 'apv_9005',
     run_id: 'run_4010',
     task_id: 'tsk_4010',
+    chat_id: null,
     tenant_id: 'ten_acme',
     requested_action: 'okta.create_user · new hire · role template "sales_ae"',
     requested_by: 'usr_ada',
