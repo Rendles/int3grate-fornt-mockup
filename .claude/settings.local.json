@@ -97,7 +97,8 @@
       "Bash(grep -vE \"//|className|interface |const |function |type |multi-scope\")",
       "Bash(grep -vE \"//|className|interface |const |function |type \")",
       "Bash(node scripts/gen-radix-alphas.mjs)",
-      "Bash(git -C \"D:/Work/int3grate-fornt-mockup\" status --short)"
+      "Bash(git -C \"D:/Work/int3grate-fornt-mockup\" status --short)",
+      "Bash(cmd //c \"rmdir /s /q integrate-ai-brand\")"
     ]
   }
 }

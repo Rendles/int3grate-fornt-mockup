@@ -179,28 +179,35 @@
   min-height: 48px;
   box-sizing: border-box;
 }
-.sb__brand-mark {
+/* Full wordmark — shown in expanded sidebar mode. Two <img> variants for
+   dark / light themes; visibility toggled by .dark-theme / .light-theme
+   selectors below. */
+.sb__brand-logo--full {
+  display: block;
+  min-width: 0;
+  flex: 0 1 auto;
+  line-height: 0;
+}
+.sb__brand-logo-img {
+  display: block;
+  width: auto;
+  height: 26px;
+  max-width: 100%;
+}
+.sb__brand-logo--mini {
+  display: none;
   width: 24px;
   height: 24px;
-  display: grid;
-  place-items: center;
   flex: none;
 }
-.sb__brand-mark img,
-.sb__brand-mark svg {
+.sb__brand-logo--mini img {
   width: 100%;
   height: 100%;
   display: block;
 }
-.sb__brand-name {
-  letter-spacing: -0.01em;
-  line-height: 1;
-}
-.sb__brand-sub {
-  color: var(--gray-10);
-  letter-spacing: 0.05em;
-  text-transform: uppercase;
-}
+/* Theme-aware swap between dark-bg (white text) and light-bg (dark text) SVGs. */
+:where(.dark, .dark-theme) .sb__brand-logo-img--light { display: none; }
+:where(.light, .light-theme) .sb__brand-logo-img--dark { display: none; }
 
 /* Workspace switcher block — sits between .sb__brand and .sb__nav.
    See components/workspace-switcher.tsx. */
@@ -315,8 +322,7 @@
 .sb__footer {
   margin-top: auto;
   padding: 10px 12px 14px;
-  border-top: 1px solid var(--gray-6);
-  background: var(--gray-2);
+  border-top: 1px solid var(--gray-a2);
 }
 .sb__user {
   display: flex;
@@ -877,6 +883,18 @@
   gap: 12px;
   position: relative;
 }
+.login__brand-logo {
+  display: block;
+  line-height: 0;
+}
+.login__brand-logo-img {
+  display: block;
+  width: auto;
+  height: 36px;
+  max-width: 100%;
+}
+:where(.dark, .dark-theme) .login__brand-logo-img--light { display: none; }
+:where(.light, .light-theme) .login__brand-logo-img--dark { display: none; }
 .login__tagline {
   line-height: 1.02;
   letter-spacing: -0.02em;
@@ -1028,8 +1046,11 @@
 
 @media (max-width: 1100px) {
   .shell { grid-template-columns: 72px 1fr; }
-  .sb__brand-name, .sb__brand-sub,
   .sb__user-name, .sb__user-role, .sb__footer { display: none; }
+  /* Collapsed brand: swap full wordmark for the square mark. */
+  .sb__brand { justify-content: center; padding: 12px 0; }
+  .sb__brand-logo--full { display: none; }
+  .sb__brand-logo--mini { display: grid; place-items: center; }
   /* Workspace switcher: text-only block — hide entirely in narrow mode.
      Switching is still reachable from the /workspaces page. */
   .sb__ws { display: none; }

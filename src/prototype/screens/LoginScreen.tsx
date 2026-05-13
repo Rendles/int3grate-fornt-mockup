@@ -6,7 +6,8 @@ import { useRouter } from '../router'
 import { PasswordField, TextInput } from '../components/fields'
 import { Banner } from '../components/states'
 import { IconArrowRight } from '../components/icons'
-import logo from '../../assets/logo.svg'
+import logoFullDark from '../../assets/brand/logo-full.svg'
+import logoFullLight from '../../assets/brand/logo-full-onlight.svg'
 
 interface FieldErrors {
   email?: string
@@ -67,15 +68,15 @@ export default function LoginScreen() {
   return (
     <div className="login">
       <div className="login__side">
-        <Heading as="h2" size="6" weight="regular" className="login__brand">
-          <div className="sb__brand-mark" style={{ width: 28, height: 28 }}>
-            <img src={logo} alt="" />
-          </div>
-          <Text as="span">Int3grate.ai</Text>
+        <div className="login__brand">
+          <picture className="login__brand-logo">
+            <img src={logoFullDark} alt="Int3grate.ai" className="login__brand-logo-img login__brand-logo-img--dark" />
+            <img src={logoFullLight} alt="Int3grate.ai" className="login__brand-logo-img login__brand-logo-img--light" />
+          </picture>
           <Code variant="ghost" size="1" color="gray" ml="2" style={{ letterSpacing: '0.14em', textTransform: 'uppercase' }}>
             Control Plane
           </Code>
-        </Heading>
+        </div>
         <Heading as="h1" size="9" weight="regular" className="login__tagline">
           Let agents do work.<br />
           Keep humans <em>in control.</em>

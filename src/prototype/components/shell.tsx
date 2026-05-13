@@ -6,7 +6,9 @@ import { Link, useRouter } from '../router'
 import { useAuth } from '../auth'
 import { useTheme } from '../theme'
 import { api } from '../lib/api'
-import logo from '../../assets/logo.svg'
+import logoFullDark from '../../assets/brand/logo-full.svg'
+import logoFullLight from '../../assets/brand/logo-full-onlight.svg'
+import logoMark from '../../assets/brand/logo-mark.svg'
 import {
   IconAgent,
   IconApproval,
@@ -119,12 +121,12 @@ export function Sidebar() {
   return (
     <nav className="shell__sidebar" aria-label="Main">
       <div className="sb__brand" data-tour="sb-brand">
-        <div className="sb__brand-mark">
-          <img src={logo} alt="" />
-        </div>
-        <div>
-          <Text as="div" size="5" weight="medium" className="sb__brand-name">Int3grate.ai</Text>
-          <Text as="div" size="1" className="sb__brand-sub">CONTROL · v0.7</Text>
+        <picture className="sb__brand-logo sb__brand-logo--full">
+          <img src={logoFullDark} alt="Int3grate.ai" className="sb__brand-logo-img sb__brand-logo-img--dark" />
+          <img src={logoFullLight} alt="Int3grate.ai" className="sb__brand-logo-img sb__brand-logo-img--light" />
+        </picture>
+        <div className="sb__brand-logo sb__brand-logo--mini" aria-hidden>
+          <img src={logoMark} alt="" />
         </div>
       </div>
 
