@@ -145,20 +145,19 @@
 - **Recommendation:** **A** — удалить. Toggle без эффекта плох по UX-эвристике (Nielsen #1: visibility of system status); даже с info-box это «фантомная фича».
 - **Status:** ⏳ open — нужно решение пользователя
 
-### 2.2 — Pause / Fire agent (Manage employment) — 🙈 hidden in UI on 2026-05-01
+### 2.2 — Pause / Fire agent (Manage employment) — ✅ restored as working surface 2026-05-14
 
-> Resolved by hiding the entire `Manage employment` card in `AgentDetailScreen.tsx` SettingsTab. Disabled-buttons + MockBadge паттерн снят — теперь tab чище, без placeholder элементов. Файл-уровневые JSX оставлен в виде комментария-stub с ссылкой назад на эту секцию для восстановления когда backend даст endpoints. Также удалены unused imports (`MockBadge`, `IconLock`, `IconStop`) и `canEdit` prop у `SettingsTab` (использовался только в скрытой card).
+> **Status (2026-05-14):** карточка восстановлена и работает поверх реального `PATCH /agents/{id}/status` (gateway 0.3.0). Disabled-placeholder паттерн полностью снят. Текущая реализация — `ManageEmploymentCard` в `AgentDetailScreen.tsx` (~140 строк) + helper `EmploymentAction`. См. план `docs/agent-plans/2026-05-14-2300-manage-employment-pause-resume-fire.md` и обновлённый § 1.4 в `backend-gaps.md`.
 
+- **Текущее поведение:**
+  - `draft` — текст «Set up brief to activate», без actions.
+  - `active` — секции `Pause employment` + `Fire {Name}` с описаниями. Pause → confirm-dialog. Fire → confirm-dialog с red action.
+  - `paused` — `Resume employment` (instant, без dialog) + `Fire {Name}`.
+  - `archived` — «{Name} was fired {ago}.», без actions.
+  - Member роль видит карточку, но кнопки скрыты.
 
-
-- **Где:** `src/prototype/screens/AgentDetailScreen.tsx:451-484` (вкладка Settings агента)
-- **Что есть:** Две `disabled`-кнопки `Pause (planned)` / `Fire (planned)`, под ними честные тексты *«Pausing stops new activity. You can resume any time. Planned for the next release.»* / *«Removes the agent from your team. The activity history is kept for audit. Planned.»*. `<MockBadge>` на header с подробным hint про `PATCH /agents/{id}` или `POST /agents/{id}/pause` + `DELETE /agents/{id}`
-- **Опции:**
-  - **A.** Оставить как сейчас (disabled buttons + MockBadge + объяснение). Это уже честный roadmap-hint.
-  - **B.** Заменить на «Coming soon» card без кнопок-плейсхолдеров.
-  - **C.** Скрыть весь блок «Manage employment» полностью.
-- **Recommendation:** **A** — оставить. В отличие от Diagnostic это **не toggle с фантомным эффектом**, а просто disabled-кнопка с конкретной формулировкой *«planned for next release»* + бейдж. Пользователь не нажимает; информация доносится.
-- **Status:** ⏳ open — нужно решение пользователя
+> **Previous state (preserved for context):**
+> Между 2026-05-01 и 2026-05-14 карточка была спрятана. В тот период placeholder-кнопок `Pause (planned)` / `Fire (planned)` с MockBadge не было — был только комментарий-stub в коде. Когда бэк 0.3.0 закрыл этот gap, surface восстановлен сразу как working, без disabled-фазы.
 
 ### 2.3 — Tasks subtree (`/tasks`, `/tasks/new`, `/tasks/:id`)
 

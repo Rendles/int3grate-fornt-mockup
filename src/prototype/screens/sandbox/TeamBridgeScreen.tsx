@@ -15,6 +15,7 @@ import { IconApproval, IconArrowRight, IconChat, IconRun } from '../../component
 import { statusLabel } from '../../components/common/status-label'
 import { Link } from '../../router'
 import { ago, approverRoleLabel, prettifyRequestedAction } from '../../lib/format'
+import { useUsers } from '../../lib/user-lookup'
 import type { RunStatus } from '../../lib/types'
 import { api } from '../../lib/api'
 import type { Agent, ApprovalRequest, RunListItem } from '../../lib/types'
@@ -52,9 +53,18 @@ function buildSnapshot(
     .filter(r => r.agent_id === agent.id)
     .sort((a, b) => b.created_at.localeCompare(a.created_at))
   const myRunIds = new Set(myRuns.map(r => r.id))
-  // Chat-source approvals (gateway 0.2.0) have run_id == null; this screen
-  // surfaces only run-anchored approvals — chat-source UI is Tier 3.
-  const myPending = approvals.filter(a => a.status === 'pending' && a.run_id != null && myRunIds.has(a.run_id))
+  // Pending approvals for this agent: either run-anchored on one of my runs,
+  // OR chat-anchored on any chat with this agent. Chat-source approvals
+  // (gateway 0.2.0 / ADR-0011) are surfaced here as part of Tier 3.
+  const myPending = approvals.filter(a => {
+    if (a.status !== 'pending') return false
+    if (a.run_id && myRunIds.has(a.run_id)) return true
+    // Chat-source: TeamBridge doesn't fetch chats — we can't resolve
+    // chat→agent here without expanding the data load. Cheap path: skip
+    // chat-source from per-agent rollups in this sandbox. They still
+    // appear in /approvals (Step 4 wired the main list).
+    return false
+  })
 
   const startOfToday = new Date()
   startOfToday.setHours(0, 0, 0, 0)
@@ -507,6 +517,7 @@ function ApprovalsDeck({
   agents: Agent[]
   runs: RunListItem[]
 }) {
+  const users = useUsers()
   const pending = approvals.filter(a => a.status === 'pending')
 
   // approval.run_id → agent — for the per-card "from {Agent}" line.
@@ -573,7 +584,7 @@ function ApprovalsDeck({
                         )}
                       </Flex>
                       <Text as="div" size="1" color="gray" className="truncate">
-                        {ag ? `from ${ag.name}` : (ap.requested_by_name ?? '—')} · {ago(ap.created_at)}
+                        {ag ? `from ${ag.name}` : ((ap.requested_by && users.get(ap.requested_by)?.name) || '—')} · {ago(ap.created_at)}
                       </Text>
                     </div>
                     <IconArrowRight className="ic ic--sm card--tile__arrow" />

@@ -1,12 +1,17 @@
 import { useEffect, useState } from 'react'
-import { Badge, Box, Button, DataList, DropdownMenu, Flex, Grid, Text } from '@radix-ui/themes'
+import { Box, Button, DataList, Dialog, DropdownMenu, Flex, Grid, IconButton, Text, TextField } from '@radix-ui/themes'
+import { Edit02Icon } from '@hugeicons/core-free-icons'
 import { AppShell } from '../components/shell'
 import { Avatar, Caption, MockBadge, PageHeader, MetaRow, Status, Tabs } from '../components/common'
 import { Banner, EmptyState, LoadingList, NoAccessState } from '../components/states'
+import { Icon } from '../components/icon'
 import { IconArrowRight, IconPlus, IconRun } from '../components/icons'
 import { GrantsEditor } from '../components/grants-editor'
 import { ChatPanel } from '../components/chat-panel'
 import { RetrainDialog } from '../components/retrain-dialog'
+import { VersionHistory } from '../components/version-history'
+import { TextAreaField } from '../components/fields'
+import { useUser } from '../lib/user-lookup'
 import { Link, useRouter } from '../router'
 import { api } from '../lib/api'
 import { useAuth } from '../auth'
@@ -98,12 +103,8 @@ export default function AgentDetailScreen({
         <PageHeader
           eyebrow="AGENT"
           title={
-            <Flex align="center" gap="3">
-              <Avatar initials={agent.name.slice(0, 2).toUpperCase()} size={36} />
-              <span>{agent.name}</span>
-            </Flex>
+            <EditableAgentName agent={agent} canEdit={canEdit} onSaved={handleRetrained} />
           }
-          subtitle={agent.description ?? ''}
           actions={
             <>
               <Status status={agent.status} />
@@ -121,6 +122,7 @@ export default function AgentDetailScreen({
             recentRuns={runs.slice(0, 4)}
             canEdit={canEdit}
             onRetrain={() => setRetrainOpen(true)}
+            onAgentSaved={handleRetrained}
           />
         )}
         {tab === 'talk' && <TalkToTab agent={agent} chats={chats} canTalk={canTalk} chatId={chatId} />}
@@ -129,7 +131,7 @@ export default function AgentDetailScreen({
         )}
         {tab === 'activity' && <ActivityTab agent={agent} runs={runs} />}
         {tab === 'settings' && (
-          <SettingsTab agent={agent} />
+          <SettingsTab agent={agent} canEdit={canEdit} onAgentSaved={handleRetrained} />
         )}
         {tab === 'advanced' && (
           <AdvancedTab
@@ -137,6 +139,7 @@ export default function AgentDetailScreen({
             version={activeVersion}
             canEdit={canEdit}
             onRetrain={() => setRetrainOpen(true)}
+            onActivated={handleRetrained}
           />
         )}
       </div>
@@ -162,28 +165,33 @@ function OverviewTab({
   recentRuns,
   canEdit,
   onRetrain,
+  onAgentSaved,
 }: {
   agent: Agent
   version: AgentVersion | null
   recentRuns: RunListItem[]
   canEdit: boolean
   onRetrain: () => void
+  onAgentSaved: () => void
 }) {
   if (!version) {
     return (
-      <div className="card">
-        <div className="card__head">
-          <Text as="div" size="2" weight="medium" className="card__title">Not configured yet</Text>
-          {canEdit && (
-            <Button size="1" onClick={onRetrain}><IconPlus />Set up brief</Button>
-          )}
+      <Flex direction="column" gap="4">
+        <AboutCard agent={agent} canEdit={canEdit} onSaved={onAgentSaved} />
+        <div className="card">
+          <div className="card__head">
+            <Text as="div" size="2" weight="medium" className="card__title">Not configured yet</Text>
+            {canEdit && (
+              <Button size="1" onClick={onRetrain}><IconPlus />Set up brief</Button>
+            )}
+          </div>
+          <div className="card__body">
+            <Text as="div" size="2" color="gray" mb="4">
+              This agent doesn't have a setup yet. {canEdit ? 'Give them a brief to make them runnable.' : 'An admin needs to give them a brief.'}
+            </Text>
+          </div>
         </div>
-        <div className="card__body">
-          <Text as="div" size="2" color="gray" mb="4">
-            This agent doesn't have a setup yet. {canEdit ? 'Give them a brief to make them runnable.' : 'An admin needs to give them a brief.'}
-          </Text>
-        </div>
-      </div>
+      </Flex>
     )
   }
 
@@ -195,6 +203,7 @@ function OverviewTab({
 
   return (
     <Flex direction="column" gap="4">
+      <AboutCard agent={agent} canEdit={canEdit} onSaved={onAgentSaved} />
       <div className="card">
         <Box p="4">
           <Caption mb="2">What this agent does</Caption>
@@ -452,18 +461,25 @@ function ActivityTab({ agent, runs }: { agent: Agent; runs: RunListItem[] }) {
 
 function SettingsTab({
   agent,
+  canEdit,
+  onAgentSaved,
 }: {
   agent: Agent
+  canEdit: boolean
+  onAgentSaved: () => void
 }) {
+  const ownerName = useUser(agent.owner_user_id)?.name
   return (
     <Flex direction="column" gap="4">
       <div className="card">
         <div className="card__head"><Text as="div" size="2" weight="medium" className="card__title">Agent details</Text></div>
         <div className="card__body">
           <DataList.Root size="2">
-            <MetaRow label="name" value={agent.name} />
-            <MetaRow label="description" value={agent.description ?? <Text color="gray">—</Text>} />
             <MetaRow label="status" value={<Status status={agent.status} />} />
+            <MetaRow
+              label="owner"
+              value={ownerName ?? <Text color="gray">Not assigned</Text>}
+            />
             <MetaRow label="created" value={absTime(agent.created_at)} />
             <MetaRow label="updated" value={`${absTime(agent.updated_at)} · ${ago(agent.updated_at)}`} />
           </DataList.Root>
@@ -472,21 +488,19 @@ function SettingsTab({
 
       <WorkspaceCard agent={agent} />
 
-      {/* "Manage employment" card (Pause / Fire placeholder) hidden until
-          backend ships PATCH /agents/{id} or POST /agents/{id}/pause + DELETE
-          /agents/{id}. See docs/handoff-prep.md § 2.2. Restore the card here
-          when endpoints exist; remove the disabled-buttons pattern in favour
-          of real wiring. */}
+      <ManageEmploymentCard agent={agent} canEdit={canEdit} onSaved={onAgentSaved} />
     </Flex>
   )
 }
 
 // Workspace card — `agent.domain_id` IS the workspace FK in spec
 // (docs/handoff-prep.md § 0.1: backend `domain` ≡ frontend `workspace`),
-// so the field itself is real. The mock part is the move action: backend
-// has neither `PATCH /agents/{id}` to mutate it nor `Workspace` CRUD
-// endpoints to populate the picker (see docs/backend-gaps.md § 1.15).
-// MockBadge surfaces this honestly.
+// and PATCH /agents/{id} now exists to mutate it (gateway 0.3.0 —
+// setAgentWorkspace is a thin wrapper). The remaining spec-gap is the
+// picker source: no `Workspace` schema and no `/workspaces` endpoints
+// exist in spec, so the list of workspaces in the "Move to…" dropdown
+// comes from client-side fixtures (see docs/backend-gaps.md § 1.15).
+// MockBadge flags this honestly.
 function WorkspaceCard({ agent }: { agent: Agent }) {
   const { myWorkspaces } = useAuth()
   const [current, setCurrent] = useState<Workspace | null | undefined>(undefined)
@@ -521,7 +535,7 @@ function WorkspaceCard({ agent }: { agent: Agent }) {
           <Text as="span" size="2" weight="medium" className="card__title">Workspace</Text>
           <MockBadge
             kind="design"
-            hint="Agent.domain_id (the workspace FK) is in spec — see docs/handoff-prep.md § 0.1. The mock is in the move action: backend has no PATCH /agents/{id} to mutate it, and Workspace CRUD endpoints are missing too. Moves persist for the page session only. See docs/backend-gaps.md § 1.15."
+            hint="The workspace picker is mock — no `Workspace` schema and no `/workspaces` endpoints exist in the backend spec, so the list is fed from client-side fixtures. The PATCH /agents/{id} call that moves the agent IS real (gateway 0.3.0). See docs/backend-gaps.md § 1.15."
           />
         </Flex>
       </div>
@@ -581,6 +595,180 @@ function WorkspaceCard({ agent }: { agent: Agent }) {
   )
 }
 
+// Manage employment card — Pause / Resume / Fire actions. Backed by
+// PATCH /agents/{id}/status (gateway 0.3.0). Legal transitions are
+// enforced server-side; we only surface the buttons that match the
+// current state. Member role sees the card read-only (no buttons).
+// Resume is instant (no dialog — reverting a pause is non-destructive).
+// Pause needs a one-step confirm; Fire needs strong wording (history
+// stays — no typed-confirmation, but red action button).
+function ManageEmploymentCard({
+  agent,
+  canEdit,
+  onSaved,
+}: {
+  agent: Agent
+  canEdit: boolean
+  onSaved: () => void
+}) {
+  type DialogKind = 'pause' | 'fire' | null
+  const [dialog, setDialog] = useState<DialogKind>(null)
+  const [busy, setBusy] = useState(false)
+  const [error, setError] = useState<string | null>(null)
+  const firstName = agent.name.split(' ')[0] || agent.name
+
+  const transition = async (status: 'active' | 'paused' | 'archived') => {
+    setBusy(true)
+    setError(null)
+    try {
+      await api.patchAgentStatus(agent.id, { status })
+      setDialog(null)
+      onSaved()
+    } catch (err) {
+      setError((err as Error).message || 'Failed to update status')
+    } finally {
+      setBusy(false)
+    }
+  }
+
+  const body = (() => {
+    if (agent.status === 'draft') {
+      return (
+        <Text as="div" size="2" color="gray">
+          This agent doesn't have a brief yet. Set one up to activate them.
+        </Text>
+      )
+    }
+    if (agent.status === 'archived') {
+      return (
+        <Text as="div" size="2" color="gray">
+          {agent.name} was fired {ago(agent.updated_at)}. Their past activity stays in your history.
+        </Text>
+      )
+    }
+    return (
+      <Flex direction="column" gap="4">
+        {agent.status === 'active' ? (
+          <EmploymentAction
+            title="Pause employment"
+            description="Pausing stops new activity. You can resume them any time."
+            actionLabel="Pause"
+            onAction={() => setDialog('pause')}
+            disabled={!canEdit || busy}
+            hide={!canEdit}
+          />
+        ) : (
+          <EmploymentAction
+            title="Resume employment"
+            description={`${firstName} is currently paused. Resume to let them take on new work again.`}
+            actionLabel="Resume"
+            onAction={() => transition('active')}
+            disabled={!canEdit || busy}
+            hide={!canEdit}
+          />
+        )}
+
+        {canEdit && <Box style={{ height: 1, background: 'var(--gray-a3)' }} />}
+
+        <EmploymentAction
+          title={`Fire ${agent.name}`}
+          description="Removes them from your team. Their past activity stays in your history, but they can't be brought back."
+          actionLabel={`Fire ${firstName}`}
+          actionColor="red"
+          onAction={() => setDialog('fire')}
+          disabled={!canEdit || busy}
+          hide={!canEdit}
+        />
+
+        {error && <Text as="div" size="1" color="red">{error}</Text>}
+      </Flex>
+    )
+  })()
+
+  return (
+    <div className="card">
+      <div className="card__head">
+        <Text as="div" size="2" weight="medium" className="card__title">Manage employment</Text>
+      </div>
+      <div className="card__body">
+        {body}
+      </div>
+
+      <Dialog.Root open={dialog === 'pause'} onOpenChange={open => { if (!open && !busy) setDialog(null) }}>
+        <Dialog.Content size="2" maxWidth="440px">
+          <Dialog.Title>Pause {agent.name}?</Dialog.Title>
+          <Dialog.Description size="2" mb="3" color="gray">
+            They will stop taking on new work. You can resume them any time.
+          </Dialog.Description>
+          <Flex gap="2" justify="end" mt="4">
+            <Dialog.Close>
+              <Button variant="soft" color="gray" disabled={busy}>Cancel</Button>
+            </Dialog.Close>
+            <Button onClick={() => transition('paused')} disabled={busy}>
+              {busy ? 'Pausing…' : 'Pause'}
+            </Button>
+          </Flex>
+        </Dialog.Content>
+      </Dialog.Root>
+
+      <Dialog.Root open={dialog === 'fire'} onOpenChange={open => { if (!open && !busy) setDialog(null) }}>
+        <Dialog.Content size="2" maxWidth="460px">
+          <Dialog.Title>Fire {agent.name}?</Dialog.Title>
+          <Dialog.Description size="2" mb="3" color="gray">
+            They will stop working immediately. Their past activity stays in your history, but they can't be brought back.
+          </Dialog.Description>
+          <Flex gap="2" justify="end" mt="4">
+            <Dialog.Close>
+              <Button variant="soft" color="gray" disabled={busy}>Cancel</Button>
+            </Dialog.Close>
+            <Button color="red" onClick={() => transition('archived')} disabled={busy}>
+              {busy ? 'Firing…' : `Fire ${firstName}`}
+            </Button>
+          </Flex>
+        </Dialog.Content>
+      </Dialog.Root>
+    </div>
+  )
+}
+
+function EmploymentAction({
+  title,
+  description,
+  actionLabel,
+  actionColor,
+  onAction,
+  disabled,
+  hide,
+}: {
+  title: string
+  description: string
+  actionLabel: string
+  actionColor?: 'red'
+  onAction: () => void
+  disabled: boolean
+  hide: boolean
+}) {
+  return (
+    <Flex direction="column" gap="2">
+      <Text as="div" size="2" weight="medium">{title}</Text>
+      <Text as="div" size="2" color="gray">{description}</Text>
+      {!hide && (
+        <Flex>
+          <Button
+            variant="soft"
+            color={actionColor ?? 'gray'}
+            size="2"
+            onClick={onAction}
+            disabled={disabled}
+          >
+            {actionLabel}
+          </Button>
+        </Flex>
+      )}
+    </Flex>
+  )
+}
+
 // ────────────────────────────────────────────────────────── Advanced tab
 // Limited to fields the live OpenAPI actually defines on AgentVersion:
 // `version`, `is_active`, `created_at`, `instruction_spec`. The four
@@ -596,11 +784,13 @@ function AdvancedTab({
   version,
   canEdit,
   onRetrain,
+  onActivated,
 }: {
   agent: Agent
   version: AgentVersion | null
   canEdit: boolean
   onRetrain: () => void
+  onActivated: () => void
 }) {
   if (!version) {
     return (
@@ -611,50 +801,15 @@ function AdvancedTab({
   }
   return (
     <Flex direction="column" gap="4">
-      <ActiveVersionCard
-        version={version}
-        canEdit={canEdit}
-        agentName={agent.name}
-        onRetrain={onRetrain}
-      />
       <InstructionsCard text={version.instruction_spec} />
-      <Banner tone="info" title="Setup history is single-version for now">
-        Only the current setup is shown. Retraining replaces the current brief and archives the previous version.
-      </Banner>
+      <VersionHistory
+        agentId={agent.id}
+        agentName={agent.name}
+        canEdit={canEdit}
+        onRetrain={onRetrain}
+        onActivated={onActivated}
+      />
     </Flex>
-  )
-}
-
-function ActiveVersionCard({
-  version, canEdit, agentName, onRetrain,
-}: {
-  version: AgentVersion
-  canEdit: boolean
-  agentName: string
-  onRetrain: () => void
-}) {
-  const firstName = agentName.split(' ')[0] || agentName
-  return (
-    <div className="card">
-      <div className="card__head">
-        <Text as="div" size="2" weight="medium" className="card__title">Current setup</Text>
-        <Flex align="center" gap="2">
-          <Badge color="cyan" variant="soft" radius="full" size="1">v{version.version}</Badge>
-          {canEdit && (
-            <Button variant="ghost" size="1" onClick={onRetrain}>
-              Retrain {firstName}
-            </Button>
-          )}
-        </Flex>
-      </div>
-      <div className="card__body">
-        <DataList.Root size="2">
-          <MetaRow label="version" value={`v${version.version}`} />
-          <MetaRow label="status" value={version.is_active ? 'Active' : 'Inactive'} />
-          <MetaRow label="created" value={absTime(version.created_at)} />
-        </DataList.Root>
-      </div>
-    </div>
   )
 }
 
@@ -680,6 +835,172 @@ function InstructionsCard({ text }: { text: string }) {
         >
           {text}
         </Text>
+      </div>
+    </div>
+  )
+}
+
+// Inline-editable agent name. Lives inside PageHeader's `title` ReactNode
+// on AgentDetail. Pencil icon shows on hover (admin/domain_admin only).
+// Empty name disables Save (server also enforces 1-200 chars per spec).
+function EditableAgentName({
+  agent,
+  canEdit,
+  onSaved,
+}: {
+  agent: Agent
+  canEdit: boolean
+  onSaved: () => void
+}) {
+  const [editing, setEditing] = useState(false)
+  const [value, setValue] = useState(agent.name)
+  const [busy, setBusy] = useState(false)
+  const [error, setError] = useState<string | null>(null)
+
+  const startEdit = () => {
+    setValue(agent.name)
+    setError(null)
+    setEditing(true)
+  }
+  const cancel = () => { setEditing(false); setError(null) }
+  const save = async () => {
+    const trimmed = value.trim()
+    if (!trimmed) return
+    if (trimmed === agent.name) { setEditing(false); return }
+    setBusy(true)
+    setError(null)
+    try {
+      await api.patchAgent(agent.id, { name: trimmed })
+      onSaved()
+      setEditing(false)
+    } catch (err) {
+      setError((err as Error).message || 'Failed to save')
+    } finally {
+      setBusy(false)
+    }
+  }
+
+  if (editing) {
+    return (
+      <Flex align="center" gap="3" wrap="wrap">
+        <Avatar initials={agent.name.slice(0, 2).toUpperCase()} size={36} />
+        <Box width={{ initial: '220px', sm: '360px' }}>
+          <TextField.Root
+            size="3"
+            value={value}
+            onChange={e => setValue(e.target.value)}
+            maxLength={200}
+            autoFocus
+            disabled={busy}
+            onKeyDown={e => {
+              if (e.key === 'Enter') { e.preventDefault(); save() }
+              if (e.key === 'Escape') { e.preventDefault(); cancel() }
+            }}
+          />
+        </Box>
+        <Button onClick={save} disabled={busy || !value.trim()} size="2">
+          {busy ? 'Saving…' : 'Save'}
+        </Button>
+        <Button variant="soft" color="gray" onClick={cancel} disabled={busy} size="2">
+          Cancel
+        </Button>
+        {error && <Text as="span" size="1" color="red">{error}</Text>}
+      </Flex>
+    )
+  }
+
+  return (
+    <Flex align="center" gap="3" className="agent-title">
+      <Avatar initials={agent.name.slice(0, 2).toUpperCase()} size={36} />
+      <span>{agent.name}</span>
+      {canEdit && (
+        <IconButton
+          variant="ghost"
+          color="gray"
+          size="2"
+          onClick={startEdit}
+          aria-label="Rename agent"
+          className="agent-title__edit"
+        >
+          <Icon icon={Edit02Icon} className="ic ic--sm" />
+        </IconButton>
+      )}
+    </Flex>
+  )
+}
+
+// About card on Overview — describes what the agent does in Maria-facing
+// language (separate from `instruction_spec`, which is the LLM brief on
+// Advanced). Admin / domain_admin can edit through PATCH /agents/{id}
+// (description field, nullable per spec). Empty save clears to null.
+function AboutCard({
+  agent,
+  canEdit,
+  onSaved,
+}: {
+  agent: Agent
+  canEdit: boolean
+  onSaved: () => void
+}) {
+  const [editing, setEditing] = useState(false)
+  const [value, setValue] = useState(agent.description ?? '')
+  const [busy, setBusy] = useState(false)
+  const [error, setError] = useState<string | null>(null)
+
+  const startEdit = () => {
+    setValue(agent.description ?? '')
+    setError(null)
+    setEditing(true)
+  }
+  const cancel = () => { setEditing(false); setError(null) }
+  const save = async () => {
+    const trimmed = value.trim()
+    const next = trimmed || null
+    if (next === (agent.description ?? null)) { setEditing(false); return }
+    setBusy(true)
+    setError(null)
+    try {
+      await api.patchAgent(agent.id, { description: next })
+      onSaved()
+      setEditing(false)
+    } catch (err) {
+      setError((err as Error).message || 'Failed to save')
+    } finally {
+      setBusy(false)
+    }
+  }
+
+  return (
+    <div className="card">
+      <div className="card__head">
+        <Text as="div" size="2" weight="medium" className="card__title">About</Text>
+        {canEdit && !editing && (
+          <Button variant="ghost" size="1" onClick={startEdit}>Edit</Button>
+        )}
+      </div>
+      <div className="card__body">
+        {editing ? (
+          <Flex direction="column" gap="3">
+            <TextAreaField
+              value={value}
+              onChange={e => setValue(e.target.value)}
+              disabled={busy}
+              rows={3}
+              placeholder="What does this agent do?"
+            />
+            {error && <Text as="div" size="1" color="red">{error}</Text>}
+            <Flex gap="2" justify="end">
+              <Button variant="soft" color="gray" onClick={cancel} disabled={busy} size="1">Cancel</Button>
+              <Button onClick={save} disabled={busy} size="1">
+                {busy ? 'Saving…' : 'Save'}
+              </Button>
+            </Flex>
+          </Flex>
+        ) : (
+          <Text as="div" size="2" color={agent.description ? undefined : 'gray'}>
+            {agent.description ?? '—'}
+          </Text>
+        )}
       </div>
     </div>
   )

@@ -565,8 +565,11 @@ export const api = {
     return fxRuns[id]
   },
 
-  // ── GET /dashboard/runs ───────────────────────────────────────────
-  // Paginated list of runs with denormalized agent_id (docs/gateway.yaml).
+  // ── GET /runs (gateway 0.3.0) and legacy /dashboard/runs ──────────
+  // Paginated tenant-scoped run list. Spec params: `status`, `limit`,
+  // `offset`. The `workspace_ids` filter is **mock-only** — backend has
+  // no Workspace concept in spec yet (see docs/backend-gaps.md § 1.15);
+  // when workspaces ship, this filter goes with them.
   async listRuns(filter?: {
     status?: RunStatus
     limit?: number
@@ -581,28 +584,18 @@ export const api = {
     }
     const limit = filter?.limit ?? 20
     const offset = filter?.offset ?? 0
-    // Resolve agent_id once per run (via version) so we can workspace-filter
-    // before slicing the page. Without this, pagination totals would be
-    // wrong (we'd page over the unfiltered set, then trim per page).
-    const resolved = Object.values(fxRuns).map(r => {
-      const version = r.agent_version_id
-        ? fxVersions.find(v => v.id === r.agent_version_id)
-        : undefined
-      return { run: r, agentId: version?.agent_id ?? null }
-    })
-    const all = resolved
-      .filter(({ run, agentId }) => {
-        if (filter?.status && run.status !== filter.status) return false
-        if (!inSelectedWorkspaces(agentId, filter?.workspace_ids)) return false
+    const all = Object.values(fxRuns)
+      .filter(r => {
+        if (filter?.status && r.status !== filter.status) return false
+        if (!inSelectedWorkspaces(r.agent_id, filter?.workspace_ids)) return false
         return true
       })
-      .sort((a, b) => b.run.created_at.localeCompare(a.run.created_at))
-    const items: RunListItem[] = all.slice(offset, offset + limit).map(({ run: r, agentId }) => ({
+      .sort((a, b) => b.created_at.localeCompare(a.created_at))
+    const items: RunListItem[] = all.slice(offset, offset + limit).map(r => ({
       id: r.id,
       tenant_id: r.tenant_id,
-      domain_id: r.domain_id,
       task_id: r.task_id,
-      agent_id: agentId,
+      agent_id: r.agent_id,
       agent_version_id: r.agent_version_id,
       status: r.status,
       suspended_stage: r.suspended_stage,
@@ -796,9 +789,14 @@ export const api = {
       a.resolved_at = now
       a.reason = reason
 
-      // Run-side resume only applies to run-anchored approvals. Chat-source
-      // approvals (a.run_id == null per ADR-0011) resume via the chat
-      // messages stream — Tier 3 will wire that.
+      // Chat-source approvals (a.chat_id != null per ADR-0011): resume the
+      // chat by appending tool_result + agent's follow-up message (approve)
+      // or single acknowledgement (reject). Chat status flips back to
+      // 'active' inside applyChatResume.
+      if (a.chat_id) {
+        applyChatResume(a, decision, reason)
+        return
+      }
       const runId = a.run_id
       if (!runId) return
       const run = fxRuns[runId]
@@ -1001,7 +999,11 @@ export const api = {
     return streamMockTurn(chatId, req)
   },
 
-  // ── GET /tools (gateway v0.2.0) ───────────────────────────────────
+  // ── GET /tool-catalog (operationId `listToolCatalog` per gateway 0.3.0).
+  // Mock method name is `listTools` for historical reasons — when swapping
+  // to a real http client, point this method at `/tool-catalog` (NOT `/tools`,
+  // which does not exist in spec) and consider renaming to `listToolCatalog`
+  // for alignment with operationId. See docs/backend-gaps.md § 5.1.
   async listTools(): Promise<ToolDefinition[]> {
     await delay()
     if (await _devGate() === 'empty') return []
@@ -1097,6 +1099,16 @@ export const api = {
     const w = fxWorkspaces.find(w => w.id === id)
     if (!w) throw new Error('Workspace not found')
     return w
+  },
+
+  // Mock-only — tenant-wide workspace list, ignoring caller's memberships.
+  // Used by /company/members so admin / domain_admin can resolve workspace
+  // names for users outside their own workspace(s). No backend counterpart
+  // yet (Workspace schema is mock-only).
+  async listAllWorkspaces(): Promise<Workspace[]> {
+    await delay()
+    if (await _devGate() === 'empty') return []
+    return [...fxWorkspaces]
   },
 
   // POST /workspaces — creator is auto-joined.
@@ -1258,20 +1270,20 @@ export const api = {
     return fxWorkspaces.find(w => w.id === agent.domain_id) ?? null
   },
 
-  // Move an agent to a different workspace. Mutates `agent.domain_id`
-  // directly. Mock-only because backend has no PATCH /agents/{id} yet
-  // (see docs/backend-gaps.md § 1.4) — the field itself IS in spec.
+  // Move an agent to a different workspace. Thin wrapper around
+  // PATCH /agents/{id} with { domain_id } — the mutation shape is real
+  // (gateway 0.3.0). The mock-only part is the Workspace concept itself:
+  // no Workspace schema or /workspaces endpoints exist in spec, so the
+  // workspaceId we pass refers to a client-side fixture rather than a
+  // real backend record (see docs/backend-gaps.md § 1.15). The client
+  // pre-validates that the workspace exists in our fixtures — the real
+  // backend would return 422 on an unknown domain_id.
   // Used by hire-flow target override and by the AgentDetail Settings
   // "Move to" affordance.
   async setAgentWorkspace(agentId: string, workspaceId: string): Promise<void> {
-    await delay()
-    const agent = fxAgents.find(a => a.id === agentId)
-    if (!agent) throw new Error('Agent not found')
     const ws = fxWorkspaces.find(w => w.id === workspaceId)
     if (!ws) throw new Error('Workspace not found')
-    agent.domain_id = workspaceId
-    // Keep updated_at fresh so list views surface the move.
-    agent.updated_at = new Date().toISOString()
+    await api.patchAgent(agentId, { domain_id: workspaceId })
   },
 }
 
@@ -1315,6 +1327,137 @@ function shouldUseTool(input: string): boolean {
   return /\b(look ?up|find|search|check|fetch|read|verify|pull)\b/.test(k)
 }
 
+// Chat-side approval support (gateway 0.2.0 / ADR-0011).
+//
+// When the user asks for an approval-gated action (refund, send email, etc.)
+// the streamer emits a `tool_call` frame, then `'suspended'`, ends the stream,
+// flips chat.status → 'awaiting_approval', and creates an ApprovalRequest
+// row with chat_id set. `decideApproval` later picks up the resume via
+// `applyChatResume` — appending tool_result + the agent's follow-up message
+// to fxChatMessages and flipping chat.status back to 'active'.
+
+interface ChatResumeContext {
+  approvalId: string
+  chatId: string
+  toolName: string
+  toolCallId: string
+}
+
+const pendingResumes = new Map<string, ChatResumeContext>()
+
+// Detect user intent that needs an approval-gated tool. Returns the tool
+// spec or null. Trigger words are deliberately narrow — most chat turns
+// fall through to the standard kb.lookup or text-only path.
+function detectApprovalNeeded(input: string): {
+  tool: string
+  toolCallId: string
+  args: Record<string, unknown>
+  action: string
+  evidenceRef: Record<string, unknown>
+} | null {
+  const k = input.toLowerCase()
+  const toolCallId = `tcl_${Date.now()}`
+
+  // Refund — extract a dollar amount if present.
+  const refundMatch = k.match(/refund[^.]*?\$?(\d+)/)
+  if (refundMatch && /refund/.test(k)) {
+    const amount = Number(refundMatch[1])
+    return {
+      tool: 'stripe.refund',
+      toolCallId,
+      args: { amount_usd: amount, charge_id: 'ch_3P8fL2' },
+      action: `stripe.refund · $${amount} on charge ch_3P8fL2`,
+      evidenceRef: { amount_usd: amount, charge_id: 'ch_3P8fL2' },
+    }
+  }
+
+  // Email send.
+  if (/\bsend[^.]*?(email|reply|message)\b/.test(k) || /\breply[^.]*?to\b/.test(k)) {
+    return {
+      tool: 'gmail.send',
+      toolCallId,
+      args: { recipient: 'customer@example.com', subject: 'Re: your request' },
+      action: 'gmail.send · reply to customer email',
+      evidenceRef: { recipient: 'customer@example.com' },
+    }
+  }
+
+  return null
+}
+
+// Resume a chat after its approval is decided. Called from `decideApproval`
+// when the approval is chat-anchored. Synthesises the post-decision tail
+// (tool_result + agent's final message on approve, single message on reject)
+// and flips chat.status back to 'active'.
+function applyChatResume(
+  approval: ApprovalRequest,
+  decision: 'approved' | 'rejected',
+  reason: string | null,
+): void {
+  if (!approval.chat_id) return
+  const chat = fxChats.find(c => c.id === approval.chat_id)
+  if (!chat) return
+
+  const ctx = pendingResumes.get(approval.id)
+  pendingResumes.delete(approval.id)
+
+  // For pre-seeded fixture approvals (no pendingResume context) — derive
+  // a sensible tool name from the action prefix.
+  const toolName = ctx?.toolName ?? approval.requested_action.split(/[\s·]/)[0] ?? 'unknown'
+  const toolCallId = ctx?.toolCallId ?? `tcl_resume_${approval.id}`
+
+  const list = fxChatMessages[chat.id] ?? []
+  const now = new Date().toISOString()
+  const ts = Date.now()
+
+  if (decision === 'approved') {
+    list.push({
+      id: `msg_${chat.id}_${ts}_t`,
+      chat_id: chat.id,
+      role: 'tool',
+      content: JSON.stringify({ status: 'ok' }),
+      tool_calls: null,
+      tool_call_id: toolCallId,
+      tool_name: toolName,
+      cost_usd: null,
+      tokens_in: null,
+      tokens_out: null,
+      created_at: now,
+    })
+    list.push({
+      id: `msg_${chat.id}_${ts + 1}_a`,
+      chat_id: chat.id,
+      role: 'assistant',
+      content: `Done — ${toolName} completed. Let me know if you'd like anything else.`,
+      tool_calls: null,
+      tool_call_id: null,
+      tool_name: null,
+      cost_usd: 0.04,
+      tokens_in: 320,
+      tokens_out: 80,
+      created_at: now,
+    })
+  } else {
+    list.push({
+      id: `msg_${chat.id}_${ts}_a`,
+      chat_id: chat.id,
+      role: 'assistant',
+      content: `Understood — I won't proceed with that action.${reason ? ` Noted: ${reason}` : ''}`,
+      tool_calls: null,
+      tool_call_id: null,
+      tool_name: null,
+      cost_usd: 0.02,
+      tokens_in: 160,
+      tokens_out: 40,
+      created_at: now,
+    })
+  }
+
+  fxChatMessages[chat.id] = list
+  chat.status = 'active'
+  chat.updated_at = now
+}
+
 async function* streamMockTurn(
   chatId: string,
   req: SendMessageRequest,
@@ -1323,6 +1466,16 @@ async function* streamMockTurn(
   const trainingMessages = training ? trainingChatMessages(chatId) : null
   const chat = training ? training.find(c => c.id === chatId) : fxChats.find(c => c.id === chatId)
   if (!chat) throw new Error('chat not found')
+  if (chat.status === 'awaiting_approval') {
+    // Mock-equivalent of the real backend's 409 on POST /chat/{id}/message
+    // while suspended (gateway 0.2.0 / ADR-0011).
+    yield {
+      event: 'error',
+      kind: 'llm_error',
+      message: 'Chat is paused — waiting for your decision on a pending approval.',
+    }
+    return
+  }
   if (chat.status !== 'active') {
     yield { event: 'error', kind: 'llm_error', message: 'Chat is closed.' }
     return
@@ -1355,6 +1508,83 @@ async function* streamMockTurn(
   yield { event: 'turn_start', message_id: assistantMsgId }
 
   let assistantContent = ''
+
+  // Approval-gated path (gateway 0.2.0 / ADR-0011). When the user asks for
+  // a refund / email send / similar, the agent emits a tool_call → suspended,
+  // the chat flips to 'awaiting_approval', and an ApprovalRequest record is
+  // pushed. The turn does NOT continue — `decideApproval` later calls
+  // `applyChatResume` to append the post-decision tail.
+  const approvalNeeded = !trainingMessages ? detectApprovalNeeded(req.content) : null
+  if (approvalNeeded) {
+    const prefix = "Sure — I'll prepare that. It needs your approval before I can finish."
+    for (const chunk of chunkText(prefix, 16)) {
+      yield { event: 'text_delta', delta: chunk }
+      assistantContent += chunk
+      await sleep(50 + Math.random() * 70)
+    }
+    // Persist the partial assistant message so reload after suspension shows
+    // the agent's pre-decision context (text + the tool_call it wants to run).
+    const partialCreatedAt = new Date().toISOString()
+    list.push({
+      id: assistantMsgId,
+      chat_id: chatId,
+      role: 'assistant',
+      content: assistantContent,
+      tool_calls: [{ id: approvalNeeded.toolCallId, name: approvalNeeded.tool, args: approvalNeeded.args }],
+      tool_call_id: null,
+      tool_name: null,
+      cost_usd: 0.03,
+      tokens_in: 240,
+      tokens_out: 60,
+      created_at: partialCreatedAt,
+    })
+    fxChatMessages[chatId] = list
+
+    yield {
+      event: 'tool_call',
+      tool: approvalNeeded.tool,
+      tool_call_id: approvalNeeded.toolCallId,
+      args: approvalNeeded.args,
+    }
+
+    // Spawn the ApprovalRequest record.
+    const approvalId = `apv_${Date.now()}`
+    const nowIso = new Date().toISOString()
+    fxApprovals.unshift({
+      id: approvalId,
+      run_id: null,
+      chat_id: chatId,
+      task_id: null,
+      tenant_id: chat.tenant_id,
+      requested_action: approvalNeeded.action,
+      requested_by: chat.created_by,
+      approver_role: 'domain_admin',
+      approver_user_id: null,
+      status: 'pending',
+      reason: null,
+      evidence_ref: approvalNeeded.evidenceRef,
+      expires_at: new Date(Date.now() + 6 * 3_600_000).toISOString(),
+      resolved_at: null,
+      created_at: nowIso,
+    })
+    pendingResumes.set(approvalId, {
+      approvalId,
+      chatId,
+      toolName: approvalNeeded.tool,
+      toolCallId: approvalNeeded.toolCallId,
+    })
+    chat.status = 'awaiting_approval'
+    chat.updated_at = nowIso
+
+    yield {
+      event: 'suspended',
+      approval_id: approvalId,
+      tool: approvalNeeded.tool,
+      tool_call_id: approvalNeeded.toolCallId,
+    }
+    return
+  }
+
   const useTool = shouldUseTool(req.content)
   const toolCalls: ChatStreamFrame[] = []
 

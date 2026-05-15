@@ -1,10 +1,11 @@
-import { Box, Button, Flex, IconButton, Text } from '@radix-ui/themes'
+import { Badge, Box, Button, Flex, IconButton, Text } from '@radix-ui/themes'
 
 import { Avatar, Caption, Status, WorkspaceContextPill } from './common'
 import { IconArrowRight, IconCheck, IconX } from './icons'
 import { RejectInlineForm } from './reject-inline-form'
 import type { ApprovalRequest } from '../lib/types'
 import { ago } from '../lib/format'
+import { useUser } from '../lib/user-lookup'
 
 // Card-style preview of a single approval. Avatar + name in header,
 // "wants to" + action verb in body, wide Details button + ✓/✕ icon
@@ -17,11 +18,14 @@ import { ago } from '../lib/format'
 export interface ApprovalCardProps {
   approval: ApprovalRequest
   agentName: string
-  /** Resolved agent_id (via run_id → run.agent_id) so the card can render
-      a WorkspaceContextPill when the parent screen's page filter is showing
-      more than one workspace. Null when the chain can't be resolved
+  /** Resolved agent_id (via run.agent_id or chat.agent_id) so the card can
+      render a WorkspaceContextPill when the parent screen's page filter is
+      showing more than one workspace. Null when the chain can't be resolved
       (orphan run, etc.) — the pill is silently skipped. */
   agentId: string | null
+  /** True for chat-source approvals (gateway 0.2.0 / ADR-0011). When set,
+      the card shows a small "in chat" badge to distinguish the source. */
+  isChatSource?: boolean
   /** Drives whether the WorkspaceContextPill renders. Parent passes
       true when its page-level workspace filter is broader than 1. */
   showWorkspacePill: boolean
@@ -45,6 +49,7 @@ export function ApprovalCard(props: ApprovalCardProps) {
     approval,
     agentName,
     agentId,
+    isChatSource,
     showWorkspacePill,
     actionVerb,
     isRejectExpanded,
@@ -60,6 +65,7 @@ export function ApprovalCard(props: ApprovalCardProps) {
     onRejectConfirm,
   } = props
   const isPending = approval.status === 'pending'
+  const requesterName = useUser(approval.requested_by)?.name
 
   return (
     <div
@@ -78,12 +84,15 @@ export function ApprovalCard(props: ApprovalCardProps) {
         <Box minWidth="0" flexGrow="1">
           <Flex align="center" gap="2" wrap="wrap">
             <Text as="div" size="3" weight="medium" className="truncate">{agentName}</Text>
+            {isChatSource && (
+              <Badge color="cyan" variant="soft" radius="full" size="1">in chat</Badge>
+            )}
             <WorkspaceContextPill agentId={agentId} show={showWorkspacePill} />
           </Flex>
           <Text as="div" size="1" color="gray" mt="1" className="truncate">
-            {approval.requested_by_name
-              ? `Triggered by ${approval.requested_by_name} · ${ago(approval.created_at)}`
-              : ago(approval.created_at)}
+            {requesterName
+              ? `Triggered by ${requesterName} · ${ago(approval.created_at)}`
+              : `Triggered ${ago(approval.created_at)}`}
           </Text>
         </Box>
         <Status status={approval.status} />

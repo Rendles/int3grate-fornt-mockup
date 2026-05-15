@@ -159,13 +159,14 @@ Canonical backend contract: **`docs/gateway.yaml`** (OpenAPI 3.2.0). **This file
 Key gaps (validated against live spec **0.3.0**, 2026-05-13):
 
 - `POST /auth/register` — absent. UI hidden (registration screen + "Create account" button commented out).
-- `GET /users` — ✅ exists as of 0.3.0 (`listUsers` / `getUser`, admin-or-domain_admin only). UI still uses mock-only `requested_by_name` field on approvals (real backend doesn't return it); integration will route through a tenant user-lookup map. UI surfaces that show approver/owner/version-author names by name are still deliberately stripped per § 11 of `docs/ux-spec.md` — restoration is a Tier 2 product decision (see `docs/agent-plans/2026-05-13-2330-prototype-spec-0.3.0-sync-plan.md`).
+- `GET /users` — ✅ exists as of 0.3.0 (`listUsers` / `getUser`, admin-or-domain_admin only). UI is wired up: `UserLookupProvider` (`lib/user-lookup.tsx`) loads `listUsers()` once on auth and exposes `useUser(id)` / `useUsers()` hooks. The mock-only `requested_by_name` denorm field on approvals was removed 2026-05-14 — UI resolves names through `useUser(approval.requested_by)`. Member role intentionally gets an empty map (matches real backend's 403 on `/users`), so name copy degrades to "Triggered 2h ago" without "by X". Approver-name surface (`Decided by` row in approval Technical Details) and agent-owner row (Settings → Agent details) restored 2026-05-14 — both read-only.
 - `/tasks/*` — absent in live spec entirely. UI fully removed 2026-05-02 (4 screens deleted, routes/types/fixtures cleaned). Approval `task_id` field stays in spec but no UI consumer.
 - Integration registry / OAuth flow (`/integrations/*`) — absent and architecturally out-of-scope (see `docs/handoff-prep.md § 0` — shared backend credentials, no per-tenant OAuth). Apps page hidden.
-- `PATCH /agents/{id}` (metadata) and `PATCH /agents/{id}/status` (Pause/Fire) — ✅ exist as of 0.3.0. UI restoration of Settings → "Manage employment" surface is a Tier 2 product decision.
-- `GET /agents/{id}/versions` (paginated list) and `GET /agents/{id}/versions/{vid}` — ✅ exist as of 0.3.0. Versions tab on AgentDetail is a Tier 2 product decision.
-- `GET /runs` (paginated list) — ✅ exists as of 0.3.0. `RunsScreen` already lists runs (was using `/dashboard/runs`); shape matches.
-- Workspace CRUD + membership endpoints — absent (no `Workspace` schema in spec at all). UI ships a mock-only multi-membership flow as of 2026-05-06: switcher in sidebar header, `/workspaces` page (list + Create/Edit/Delete), filter cascade through `listAgents` / `listApprovals` / `listRuns` / `getSpend`. Agent → workspace association via `agent.domain_id` (§ 0.1 of `docs/handoff-prep.md`). MockBadge on every workspace surface. See `docs/backend-gaps.md § 1.15`.
+- `PATCH /agents/{id}` (metadata) — ✅ exists as of 0.3.0. UI wired up 2026-05-14: inline rename in AgentDetail header (`EditableAgentName`, pencil-on-hover for admin/domain_admin), description editing via `AboutCard` on Overview, workspace move on Settings WorkspaceCard now calls real PATCH (`setAgentWorkspace` is a thin wrapper). `owner_user_id` editing not surfaced yet — surface is read-only.
+- `PATCH /agents/{id}/status` (Pause/Resume/Fire) — ✅ exists as of 0.3.0. UI wired up 2026-05-14 via `ManageEmploymentCard` on Settings: state-based render per `agent.status` (draft / active / paused / archived), Pause+Fire confirmation dialogs, Resume is instant, archived shows "fired {ago}" with no actions. Legal transitions enforced in mock `_AGENT_STATUS_TRANSITIONS`.
+- `GET /agents/{id}/versions` (paginated list) and `GET /agents/{id}/versions/{vid}` — ✅ exist as of 0.3.0. UI wired up 2026-05-14 as `<VersionHistory>` block on AgentDetail → Advanced tab (NOT a separate tab). Timeline rendering, expandable brief preview, `Activate` rollback on non-active rows (admin/domain_admin) with confirmation dialog. The old "single-version" banner removed; the `ActiveVersionCard` component removed (its data is now the first row of the timeline).
+- `GET /runs` (paginated list) — ✅ exists as of 0.3.0. `RunsScreen` already lists runs (was using `/dashboard/runs`); shape matches. **Not yet formally verified** — T2.5 still open.
+- Workspace CRUD + membership endpoints — still absent (no `Workspace` schema in spec at all). UI ships a mock-only multi-membership flow: switcher in sidebar header, `/company` page (tabs **Members** + **Workspaces**), filter cascade through `listAgents` / `listApprovals` / `listRuns` / `getSpend`. Agent → workspace association via `agent.domain_id` (§ 0.1 of `docs/handoff-prep.md`). The mutation `setAgentWorkspace` now wraps real `PATCH /agents/{id}` for `domain_id` — the mock part is the workspace concept itself (picker source). MockBadge on every workspace surface. See `docs/backend-gaps.md § 1.15`.
 - Per-week spend buckets — backend exposes only aggregate ranges; 4-week trend is split client-side.
 - Activity sentence summaries — backend doesn't return per-run summary; headlines on `/activity` are derived client-side from `RunStatus`.
 - Naming mismatch: tool catalog endpoint is `/tool-catalog` in live, but `api.listTools()` in mock targets `/tools`. Update at production swap; mock layer is unaffected.
@@ -186,8 +187,10 @@ Current route map (live in `src/prototype/index.tsx`):
 - `/activity`, `/activity/:runId` (Technical view — labelled `advanced` in the UI).
 - `/costs`.
 - `/sandbox/team-bridge` — design-exploration preview, surfaced in the sidebar with a muted "preview" badge.
-- `/workspaces` — workspace management (list + Create/Edit/Delete). Reachable from the workspace switcher dropdown (`Manage workspaces`); no sidebar slot.
-- Legacy redirects: `/runs[/...]` → `/activity[/...]`, `/spend` → `/costs`, `/chats` → `/agents`, `/chats/:chatId` → resolves agent_id and forwards to `/agents/:agentId/talk/:chatId`. `/chats/new` still exists as a chat-creation form; after `createChat` it navigates to the embedded path.
+- `/company` — company hub (redirects to `/company/workspaces` by default). Reachable from the WorkspaceSwitcher dropdown (`Manage company`); no sidebar slot.
+- `/company/members` — tenant-wide user roster (admin / domain_admin only — member gets a redirect to `/company/workspaces`).
+- `/company/workspaces` — workspace management (list + Create/Edit/Delete + members of current). Replaces the previous `/workspaces` route.
+- Legacy redirects: `/runs[/...]` → `/activity[/...]`, `/spend` → `/costs`, `/chats` → `/agents`, `/chats/:chatId` → resolves agent_id and forwards to `/agents/:agentId/talk/:chatId`, `/workspaces` → `/company/workspaces`. `/chats/new` still exists as a chat-creation form; after `createChat` it navigates to the embedded path.
 - **Hidden (commented out, not deleted):** `/register`, `/apps` + `/tools` redirect, `/settings` + `/settings/{team,history,developer,diagnostic}`, `/audit`. Their screen files (`RegisterScreen.tsx`, `ToolsScreen.tsx`, `SettingsScreen.tsx`, `AuditScreen.tsx`) are preserved for restoration but no route currently mounts them.
 
 > ⚠️ **`Link` props pass-through**: the `Link` component accepts the full `AnchorHTMLAttributes` surface (minus `href`/`onClick`, which it owns) and spreads it onto the inner `<a>`. This is what makes Radix Themes `asChild` composition work. Don't tighten the props back to a fixed list.
@@ -196,7 +199,7 @@ Current route map (live in `src/prototype/index.tsx`):
 
 Header (`.sb__brand` logo) → **WorkspaceSwitcher** (between brand and nav) → 5 production nav items → 1 sandbox preview item → footer (user). Apps / Settings / Audit nav entries are commented out (alongside their routes). Settings was admin-only when shipped; the role gate is preserved in the comment block for restoration.
 
-The **WorkspaceSwitcher** (`components/workspace-switcher.tsx`) is the entry point for everything workspace: shows current workspace (emoji + name + caption), dropdown with radio-list of memberships + `+ Create workspace` (opens `WorkspaceFormDialog`) + `Manage workspaces` (navigates `/workspaces`) + MockBadge. Switching writes through `useAuth().switchWorkspace` to both `localStorage["proto.session.v1"].currentWorkspaceId` and the `lib/workspace-context` singleton; `WorkspaceRemount` (in `index.tsx`) re-mounts the Router subtree so list screens re-fetch with the new scope. Vocabulary: user-facing label is `Workspace`, NOT `Team` (collision with `/agents` nav label — see `docs/ux-spec.md § 8`).
+The **WorkspaceSwitcher** (`components/workspace-switcher.tsx`) is the entry point for everything workspace: shows current workspace (emoji + name + caption), dropdown with radio-list of memberships + `+ Create workspace` (opens `WorkspaceFormDialog`) + `Manage company` (navigates `/company` → default tab `/company/workspaces`) + MockBadge. Switching writes through `useAuth().switchWorkspace` to both `localStorage["proto.session.v1"].currentWorkspaceId` and the `lib/workspace-context` singleton; `WorkspaceRemount` (in `index.tsx`) re-mounts the Router subtree so list screens re-fetch with the new scope. Vocabulary: user-facing label is `Workspace`, NOT `Team` (collision with `/agents` nav label — see `docs/ux-spec.md § 8`).
 
 Production:
 1. **Home** (`/`) — operational dashboard.
@@ -368,14 +371,15 @@ Whenever a UI surface displays data that isn't backed by a real endpoint, mark i
 
 - **HomeScreen → ActivityHeatmap** — heatmap is synthesized client-side; backend doesn't expose hourly action aggregates.
 - **HomeScreen → SavingsBanner** — savings figure synthesized from a fictional baseline (38 min/task at $75/hr).
-- **Workspaces** (sidebar switcher dropdown + `/workspaces` page header + Members card) — no `Workspace` schema in spec at all. Switching, creating, editing, deleting are all client-side. See `docs/backend-gaps.md § 1.15`.
+- **Workspaces** (sidebar switcher dropdown + `/company/workspaces` tab + AgentDetail Settings → WorkspaceCard) — no `Workspace` schema in spec at all. Picker source is client-side fixtures. The PATCH that moves the agent (`Agent.domain_id`) IS real (gateway 0.3.0). See `docs/backend-gaps.md § 1.15`.
+- **Members** (`/company/members`) — data is real (`GET /users` exists in 0.3.0), but invite/remove/role-edit actions are absent in spec — surface is read-only with a MockBadge explaining why.
 - **Sandbox preview** (`/sandbox/team-bridge`) — design-only; mutations don't persist and may not call real api endpoints.
 
 Preserved in source but **not currently routed** (badges remain so they reappear correctly when restored):
 
 - `RegisterScreen` — no `POST /auth/register` in spec.
 - `ToolsScreen` (Apps page header + Connect new app modal) — connection status derived from grants; OAuth is a placeholder.
-- `SettingsScreen` Workspace / Team / Developer / Diagnostic tabs — Workspace edit endpoints missing, `GET /users` missing, Developer card is a reference doc, Diagnostic toggle is a placeholder.
+- `SettingsScreen` Workspace / Developer / Diagnostic tabs — Workspace edit endpoints missing, Developer card is a reference doc, Diagnostic toggle is a placeholder. (Team tab is now superseded by `/company/members`.)
 
 The full mapping (every gap → its UI flag) lives in `docs/backend-gaps.md`.
 

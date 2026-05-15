@@ -8,7 +8,7 @@ import { LoadingList, NoAccessState, Banner } from '../components/states'
 import { IconAlert, IconArrowRight } from '../components/icons'
 import { Link } from '../router'
 import { api } from '../lib/api'
-import type { Run, RunStep, RunStepType, RunToolError } from '../lib/types'
+import type { Agent, Run, RunStep, RunStepType, RunToolError } from '../lib/types'
 import { absTime, durationMs, errorKindLabel, money, num, runStepStatusLabel, shortRef, stageLabel, toolErrorStatusLabel, toolLabel, workspaceLabel } from '../lib/format'
 
 const STEP_KIND_LABEL: Record<RunStepType, string> = {
@@ -32,10 +32,22 @@ function statusTone(status: string): ToneColor {
 
 export default function RunDetailScreen({ runId }: { runId: string }) {
   const [run, setRun] = useState<Run | null | undefined>(undefined)
+  const [agent, setAgent] = useState<Agent | null>(null)
   const [expanded, setExpanded] = useState<Set<string>>(new Set())
 
+  // Workspace label is derived via `agent.domain_id` — Run has no
+  // `domain_id` field in the gateway spec. Load the agent right after
+  // the run so the workspace MetaRow has the name to show.
   useEffect(() => {
-    api.getRun(runId).then(r => setRun(r ?? null))
+    let cancelled = false
+    api.getRun(runId).then(r => {
+      if (cancelled) return
+      setRun(r ?? null)
+      if (r?.agent_id) {
+        api.getAgent(r.agent_id).then(a => { if (!cancelled) setAgent(a ?? null) })
+      }
+    })
+    return () => { cancelled = true }
   }, [runId])
 
   if (run === null) {
@@ -211,7 +223,7 @@ export default function RunDetailScreen({ runId }: { runId: string }) {
         <div className="card">
           <div className="card__head"><Text as="div" size="2" weight="medium" className="card__title">Activity details</Text></div>
           <div className="card__body">
-            <MetaRow label="workspace" value={workspaceLabel(run.domain_id)} />
+            <MetaRow label="workspace" value={workspaceLabel(agent?.domain_id ?? null)} />
             <MetaRow
               label="task"
               value={run.task_id

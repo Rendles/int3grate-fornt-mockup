@@ -5,11 +5,17 @@ import { CommandBar, Caption } from './common'
 import { statusLabel } from './common/status-label'
 import { TextAreaField } from './fields'
 import { Banner, LoadingList, NoAccessState } from './states'
-import { IconChat, IconCheck, IconPlay, IconStop, IconX } from './icons'
+import { IconAlert, IconChat, IconCheck, IconPlay, IconStop, IconX } from './icons'
+import { RejectInlineForm } from './reject-inline-form'
 import { useAuth } from '../auth'
 import { api } from '../lib/api'
-import type { Agent, AgentVersion, Chat, ChatMessage, ChatStreamFrame, ChatToolCall } from '../lib/types'
-import { absTime, ago, money, num, toolLabel } from '../lib/format'
+import { useUser } from '../lib/user-lookup'
+import type { Agent, AgentVersion, ApprovalRequest, Chat, ChatMessage, ChatStreamFrame, ChatToolCall } from '../lib/types'
+import { absTime, ago, money, num, prettifyRequestedAction, toolLabel } from '../lib/format'
+
+// Minimum characters required in the reject-reason textarea before Confirm
+// becomes enabled. Matches the pattern used in ApprovalsScreen / ApprovalCard.
+const REJECT_MIN_CHARS = 5
 
 interface StreamingState {
   messageId: string
@@ -70,6 +76,17 @@ export function ChatPanel(props: ChatPanelProps) {
   const [streamError, setStreamError] = useState<string | null>(null)
   const [busy, setBusy] = useState(false)
   const [closing, setClosing] = useState(false)
+  // Chat-side approval state (gateway 0.2.0 / ADR-0011). `chatApprovals`
+  // is all approvals tied to this chat (any status) — the pending one
+  // gates the chat, resolved ones stay in the timeline as historical
+  // cards showing "Approved/Rejected by X". Reject reason state is
+  // single-instance (only one pending approval per chat at a time).
+  const [chatApprovals, setChatApprovals] = useState<ApprovalRequest[]>([])
+  const [rejectExpanded, setRejectExpanded] = useState(false)
+  const [rejectReason, setRejectReason] = useState('')
+  const [rejectTouched, setRejectTouched] = useState(false)
+  const [deciding, setDeciding] = useState(false)
+  const [decisionError, setDecisionError] = useState<string | null>(null)
   const messagesEndRef = useRef<HTMLDivElement | null>(null)
 
   // Fetch only runs for existing chats. Draft mode skips it entirely.
@@ -97,6 +114,37 @@ export function ChatPanel(props: ChatPanelProps) {
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth', block: 'end' })
   }, [messages, streaming])
+
+  // Fetch all approvals for this chat (any status). Pending ones gate the
+  // chat (status === 'awaiting_approval'); resolved ones stay in the
+  // timeline as historical SuspendedCards showing the decision outcome.
+  // Spec has no chat_id filter on /approvals so we fetch the tenant-wide
+  // list and match client-side — same shape as future real-backend wiring.
+  // Refetches when chat.status flips (new approval may have been created
+  // or a pending one resolved).
+  const chatStatus = mode === 'draft' ? null : chat?.status
+  const currentChatId = mode === 'draft' ? null : chat?.id
+  useEffect(() => {
+    let cancelled = false
+    if (!currentChatId) {
+      queueMicrotask(() => {
+        if (cancelled) return
+        setChatApprovals([])
+        setRejectExpanded(false)
+        setRejectReason('')
+        setRejectTouched(false)
+      })
+      return () => { cancelled = true }
+    }
+    api.listApprovals({ limit: 500 }).then(res => {
+      if (cancelled) return
+      const mine = res.items
+        .filter(a => a.chat_id === currentChatId)
+        .sort((a, b) => a.created_at.localeCompare(b.created_at))
+      setChatApprovals(mine)
+    })
+    return () => { cancelled = true }
+  }, [chatStatus, currentChatId])
 
   // Loading / not-found gates only matter for existing chats.
   if (mode !== 'draft') {
@@ -217,6 +265,70 @@ export function ChatPanel(props: ChatPanelProps) {
     }
   }
 
+  // Approve or reject the pending chat-source approval. Per spec, after
+  // decideApproval the client polls `GET /chat/{id}/messages` until the
+  // resumed turn lands. Here we poll `getChat` (cheaper) every ~300ms
+  // until status flips back to 'active' (mock takes 1.5-3s), then refetch
+  // messages + approvals once. 4.5s safety cap.
+  const decideOnApproval = async (decision: 'approved' | 'rejected', reason: string | null) => {
+    const pending = chatApprovals.find(a => a.status === 'pending')
+    if (!pending || !user || !chat || deciding) return
+    setDeciding(true)
+    setDecisionError(null)
+    try {
+      await api.decideApproval(pending.id, decision, reason, user.id)
+      // Poll until orchestrator-side resume completes.
+      const targetChatId = chat.id
+      const maxAttempts = 15  // 15 × 300ms = 4.5s upper bound
+      let resumed = false
+      for (let attempt = 0; attempt < maxAttempts; attempt++) {
+        await new Promise(r => setTimeout(r, 300))
+        const fresh = await api.getChat(targetChatId)
+        if (fresh && fresh.status === 'active') {
+          setChat(fresh)
+          const [msgs, approvals] = await Promise.all([
+            api.listChatMessages(targetChatId, { limit: 200 }),
+            api.listApprovals({ limit: 500 }),
+          ])
+          setMessages([...msgs.items].reverse())
+          setChatApprovals(
+            approvals.items
+              .filter(a => a.chat_id === targetChatId)
+              .sort((a, b) => a.created_at.localeCompare(b.created_at)),
+          )
+          resumed = true
+          break
+        }
+      }
+      if (!resumed) {
+        // Safety net: orchestrator-side resume didn't land within 4.5s
+        // (mock should always be faster; real backend usually too). Pull
+        // latest state anyway + show a non-fatal hint so the user knows
+        // the decision IS recorded — just hasn't reached the chat yet.
+        const [fresh, msgs, approvals] = await Promise.all([
+          api.getChat(targetChatId),
+          api.listChatMessages(targetChatId, { limit: 200 }),
+          api.listApprovals({ limit: 500 }),
+        ])
+        if (fresh) setChat(fresh)
+        setMessages([...msgs.items].reverse())
+        setChatApprovals(
+          approvals.items
+            .filter(a => a.chat_id === targetChatId)
+            .sort((a, b) => a.created_at.localeCompare(b.created_at)),
+        )
+        setDecisionError('Decision recorded — the agent is taking longer than usual to resume. Reload if the chat doesn\'t catch up.')
+      }
+    } catch (e) {
+      setDecisionError((e as Error).message ?? 'Could not record decision')
+    } finally {
+      setDeciding(false)
+      setRejectExpanded(false)
+      setRejectReason('')
+      setRejectTouched(false)
+    }
+  }
+
   return (
     <>
       <div className="chat-detail__head">
@@ -286,12 +398,36 @@ export function ChatPanel(props: ChatPanelProps) {
               {emptyHint ?? `No messages yet — say something to ${agent?.name ?? 'the agent'}.`}
             </Text>
           )}
-          {messages?.map(msg => (
-            <MessageBubble
-              key={msg.id}
-              message={msg}
-              modelLabel={msg.role === 'assistant' ? (chat?.model ?? null) : null}
-            />
+          {buildTimeline(messages, chatApprovals).map(item => (
+            item.kind === 'message' ? (
+              <MessageBubble
+                key={`msg-${item.data.id}`}
+                message={item.data}
+                modelLabel={item.data.role === 'assistant' ? (chat?.model ?? null) : null}
+              />
+            ) : (
+              <SuspendedCard
+                key={`apv-${item.data.id}`}
+                approval={item.data}
+                agentName={agent?.name ?? 'The agent'}
+                currentUserId={user?.id ?? null}
+                deciding={deciding && item.data.status === 'pending'}
+                rejectExpanded={rejectExpanded && item.data.status === 'pending'}
+                rejectReason={rejectReason}
+                rejectTouched={rejectTouched}
+                decisionError={item.data.status === 'pending' ? decisionError : null}
+                onApprove={() => decideOnApproval('approved', null)}
+                onRejectStart={() => setRejectExpanded(true)}
+                onRejectReason={v => setRejectReason(v)}
+                onRejectBlur={() => setRejectTouched(true)}
+                onRejectCancel={() => {
+                  setRejectExpanded(false)
+                  setRejectReason('')
+                  setRejectTouched(false)
+                }}
+                onRejectConfirm={() => decideOnApproval('rejected', rejectReason.trim())}
+              />
+            )
           ))}
           {streaming && (
             <StreamingBubble streaming={streaming} modelLabel={chat?.model ?? ''} />
@@ -313,6 +449,12 @@ export function ChatPanel(props: ChatPanelProps) {
             onSend={send}
             busy={busy}
           />
+        </div>
+      ) : mode !== 'draft' && chat?.status === 'awaiting_approval' ? (
+        <div className="chat-detail__composer chat-detail__composer--readonly">
+          <Text as="div" size="1" color="gray">
+            Chat is paused — waiting for your decision on the action above.
+          </Text>
         </div>
       ) : mode !== 'draft' && chat?.status === 'active' ? (
         <div className="chat-detail__composer chat-detail__composer--readonly">
@@ -630,6 +772,165 @@ function Composer({
           <IconPlay /> {busy ? 'streaming…' : 'Send'}
         </Button>
       </Flex>
+    </div>
+  )
+}
+
+// ─────────────────────────────────────────────────────────────────
+// SuspendedCard — approval gate rendered inline in the chat timeline.
+// Positioned by approval.created_at relative to chat messages. Three
+// visual states:
+//   - pending: Approve / Reject buttons (Reject expands the inline
+//     reason form). Orange border, "Waiting for your approval".
+//   - approved: jade border, "Approved by {who} · {ago}".
+//   - rejected: red border, "Rejected by {who} · {ago}" + reason.
+// ─────────────────────────────────────────────────────────────────
+
+interface TimelineItem {
+  kind: 'message' | 'approval'
+  data: ChatMessage | ApprovalRequest
+  sortKey: string
+}
+
+// Build the interleaved chat timeline — messages + approvals sorted by
+// created_at. Stable when timestamps tie (insertion order preserved).
+function buildTimeline(
+  messages: ChatMessage[] | null,
+  approvals: ApprovalRequest[],
+): ({ kind: 'message'; data: ChatMessage } | { kind: 'approval'; data: ApprovalRequest })[] {
+  const items: TimelineItem[] = []
+  messages?.forEach(m => items.push({ kind: 'message', data: m, sortKey: m.created_at }))
+  approvals.forEach(a => items.push({ kind: 'approval', data: a, sortKey: a.created_at }))
+  items.sort((x, y) => x.sortKey.localeCompare(y.sortKey))
+  return items.map(it =>
+    it.kind === 'message'
+      ? { kind: 'message' as const, data: it.data as ChatMessage }
+      : { kind: 'approval' as const, data: it.data as ApprovalRequest },
+  )
+}
+
+function SuspendedCard({
+  approval,
+  agentName,
+  currentUserId,
+  deciding,
+  rejectExpanded,
+  rejectReason,
+  rejectTouched,
+  decisionError,
+  onApprove,
+  onRejectStart,
+  onRejectReason,
+  onRejectBlur,
+  onRejectCancel,
+  onRejectConfirm,
+}: {
+  approval: ApprovalRequest
+  agentName: string
+  currentUserId: string | null
+  deciding: boolean
+  rejectExpanded: boolean
+  rejectReason: string
+  rejectTouched: boolean
+  decisionError: string | null
+  onApprove: () => void
+  onRejectStart: () => void
+  onRejectReason: (v: string) => void
+  onRejectBlur: () => void
+  onRejectCancel: () => void
+  onRejectConfirm: () => void
+}) {
+  const actionVerb = prettifyRequestedAction(approval.requested_action)
+  const approverName = useUser(approval.approver_user_id)?.name
+  const isPending = approval.status === 'pending'
+  const isApproved = approval.status === 'approved'
+  const isRejected = approval.status === 'rejected'
+
+  const borderColor = isApproved
+    ? 'var(--jade-a6)'
+    : isRejected
+      ? 'var(--red-a6)'
+      : rejectExpanded
+        ? 'var(--red-a6)'
+        : 'var(--orange-a6)'
+
+  const headerLabel = isApproved
+    ? `Approved${approverName ? ` by ${approval.approver_user_id === currentUserId ? 'you' : approverName}` : ''}${approval.resolved_at ? ` · ${ago(approval.resolved_at)}` : ''}`
+    : isRejected
+      ? `Rejected${approverName ? ` by ${approval.approver_user_id === currentUserId ? 'you' : approverName}` : ''}${approval.resolved_at ? ` · ${ago(approval.resolved_at)}` : ''}`
+      : 'Waiting for your approval'
+
+  const headerColor = isApproved
+    ? 'var(--jade-11)'
+    : isRejected
+      ? 'var(--red-11)'
+      : 'var(--orange-11)'
+
+  return (
+    <div
+      className="card"
+      style={{
+        padding: 16,
+        gap: 12,
+        display: 'flex',
+        flexDirection: 'column',
+        borderColor,
+      }}
+    >
+      <Flex align="center" gap="2">
+        <Box style={{ color: headerColor, display: 'flex' }}>
+          {isApproved
+            ? <IconCheck className="ic ic--sm" />
+            : isRejected
+              ? <IconX className="ic ic--sm" />
+              : <IconAlert className="ic ic--sm" />}
+        </Box>
+        <Text as="span" size="2" weight="medium">{headerLabel}</Text>
+      </Flex>
+      <Box>
+        <Caption mb="1">{agentName} {isPending ? 'wants to' : 'wanted to'}</Caption>
+        <Text as="div" size="2" weight="medium" style={{ lineHeight: 1.45 }}>
+          {actionVerb}
+        </Text>
+      </Box>
+
+      {isRejected && approval.reason && (
+        <Box>
+          <Caption mb="1">Reason</Caption>
+          <Text as="div" size="2" color="gray">{approval.reason}</Text>
+        </Box>
+      )}
+
+      {isPending && (
+        deciding ? (
+          <Text as="div" size="1" color="gray">
+            Recording your decision — the agent will continue in a moment.
+          </Text>
+        ) : rejectExpanded ? (
+          <RejectInlineForm
+            reason={rejectReason}
+            touched={rejectTouched}
+            minChars={REJECT_MIN_CHARS}
+            onChangeReason={onRejectReason}
+            onBlurReason={onRejectBlur}
+            onCancel={onRejectCancel}
+            onConfirm={onRejectConfirm}
+          />
+        ) : (
+          <Flex gap="2" wrap="wrap">
+            <Button color="jade" onClick={onApprove} disabled={deciding} style={{ flex: '1 1 140px' }}>
+              <IconCheck /> Approve
+            </Button>
+            <Button color="red" variant="soft" onClick={onRejectStart} disabled={deciding} style={{ flex: '1 1 140px' }}>
+              <IconX /> Reject
+            </Button>
+          </Flex>
+        )
+      )}
+
+      {decisionError && (
+        <Text as="div" size="1" color="red">{decisionError}</Text>
+      )}
     </div>
   )
 }

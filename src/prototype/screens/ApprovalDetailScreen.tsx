@@ -26,12 +26,15 @@ import type {
   Agent,
   ApprovalDecisionAccepted,
   ApprovalRequest,
+  Chat,
+  ChatMessage,
   Run,
   RunDetail,
   RunStatus,
   RunStep,
 } from '../lib/types'
 import { absTime, ago, approverRoleLabel, prettifyRequestedAction, shortRef, toolLabel } from '../lib/format'
+import { useUser } from '../lib/user-lookup'
 
 type Decision = 'approved' | 'rejected'
 
@@ -52,6 +55,11 @@ export default function ApprovalDetailScreen({ approvalId }: { approvalId: strin
   const [resume, setResume] = useState<ApprovalDecisionAccepted | null>(null)
   const [runAfter, setRunAfter] = useState<Run | null>(null)
   const [runContext, setRunContext] = useState<RunDetail | null>(null)
+  // Chat-source context (gateway 0.2.0 / ADR-0011). Loaded when
+  // approval.chat_id is set; replaces the run-trail section with a
+  // conversation excerpt and points back-links at the chat URL.
+  const [chatContext, setChatContext] = useState<Chat | null>(null)
+  const [chatMessages, setChatMessages] = useState<ChatMessage[]>([])
   const [agents, setAgents] = useState<Agent[]>([])
 
   useEffect(() => {
@@ -67,11 +75,18 @@ export default function ApprovalDetailScreen({ approvalId }: { approvalId: strin
           setReasonTouched(false)
         }
       }
-      // Run context only loads for run-anchored approvals. Chat-source
-      // approvals (a.run_id == null per gateway 0.2.0) need a different
-      // context surface — Tier 3 work.
+      // Polymorphic per gateway 0.2.0 / ADR-0011: load run trail for
+      // run-source, conversation context for chat-source.
       if (a && a.run_id) {
         api.getRun(a.run_id).then(r => { if (!cancelled && r) setRunContext(r) })
+      } else if (a && a.chat_id) {
+        api.getChat(a.chat_id).then(c => { if (!cancelled && c) setChatContext(c) })
+        api.listChatMessages(a.chat_id, { limit: 50 }).then(list => {
+          if (cancelled) return
+          // listChatMessages returns newest-first per spec; reverse so the
+          // excerpt section reads top-down chronologically.
+          setChatMessages([...list.items].reverse())
+        })
       }
     })
     api.listAgents().then(res => { if (!cancelled) setAgents(res.items) })
@@ -117,9 +132,16 @@ export default function ApprovalDetailScreen({ approvalId }: { approvalId: strin
   }, [resume, approvalId])
 
   const agent = useMemo(() => {
-    if (!runContext?.agent_version_id) return null
-    return agents.find(a => a.active_version?.id === runContext.agent_version_id) ?? null
-  }, [runContext, agents])
+    // Chat-source: chat.agent_id directly. Run-source: resolve via the
+    // version on the run.
+    if (chatContext?.agent_id) {
+      return agents.find(a => a.id === chatContext.agent_id) ?? null
+    }
+    if (runContext?.agent_version_id) {
+      return agents.find(a => a.active_version?.id === runContext.agent_version_id) ?? null
+    }
+    return null
+  }, [chatContext, runContext, agents])
 
   if (approval === null) {
     return (
@@ -214,9 +236,13 @@ export default function ApprovalDetailScreen({ approvalId }: { approvalId: strin
               </Link>
             </Button>
             <Button asChild variant="soft" color="gray" size="2">
-              <Link to={`/agents/${agent.id}/talk`}>
+              <Link
+                to={chatContext
+                  ? `/agents/${agent.id}/talk/${chatContext.id}`
+                  : `/agents/${agent.id}/talk`}
+              >
                 <IconChat className="ic ic--sm" />
-                Open chat
+                {chatContext ? 'Return to chat' : 'Open chat'}
               </Link>
             </Button>
           </Flex>
@@ -238,7 +264,13 @@ export default function ApprovalDetailScreen({ approvalId }: { approvalId: strin
 
         {resume && (
           <>
-            <ResumeBanner ack={resume} approval={approval} run={runAfter} />
+            <ResumeBanner
+              ack={resume}
+              approval={approval}
+              run={runAfter}
+              chatAgentId={chatContext?.agent_id ?? null}
+              chatId={chatContext?.id ?? null}
+            />
             <Box mt="4" />
           </>
         )}
@@ -277,16 +309,20 @@ export default function ApprovalDetailScreen({ approvalId }: { approvalId: strin
         )}
 
         {/* Resolved state · ReviewCard isn't rendered here, so the
-            agent-step list comes back as a sibling card. */}
+            agent-step list comes back as a sibling card. For chat-source
+            approvals (gateway 0.2.0) we show a conversation excerpt
+            instead of the run-step trail. */}
         {approval.status !== 'pending' && !conflict && (
           <>
             <ResolvedCard approval={approval} />
-            <PriorActivitySection run={runContext} />
+            {approval.chat_id
+              ? <ChatExcerptSection chat={chatContext} messages={chatMessages} agentName={agentName} />
+              : <PriorActivitySection run={runContext} />}
           </>
         )}
 
         {/* Backend metadata + raw evidence — collapsible */}
-        <TechnicalDetailsAccordion approval={approval} />
+        <TechnicalDetailsAccordion approval={approval} chatAgentId={chatContext?.agent_id ?? null} />
       </div>
     </AppShell>
   )
@@ -314,6 +350,7 @@ function ReviewCard({
   onQuickApprove: () => void
 }) {
   const hasLeadingSteps = getLeadingSteps(run).length > 0
+  const requesterName = useUser(approval.requested_by)?.name
 
   return (
     <div className="card" style={{ borderColor: 'var(--orange-a6)' }}>
@@ -393,7 +430,7 @@ function ReviewCard({
 
       <Box px="4" pb="3">
         <Text as="div" size="1" color="gray" style={{ lineHeight: 1.5 }}>
-          Triggered {ago(approval.created_at)}{approval.requested_by_name ? ` by ${approval.requested_by_name}` : ''}.
+          Triggered {ago(approval.created_at)}{requesterName ? ` by ${requesterName}` : ''}.
           {' '}{approval.expires_at ? `Auto-expires ${ago(approval.expires_at)}.` : ''}
         </Text>
       </Box>
@@ -571,12 +608,15 @@ function ResolvedCard({ approval }: { approval: ApprovalRequest }) {
 // queued → resolved → terminal. Same logic as before, with action-centric copy.
 
 function ResumeBanner({
-  ack, approval, run,
+  ack, approval, run, chatAgentId, chatId,
 }: {
   ack: ApprovalDecisionAccepted
   approval: ApprovalRequest
   run: Run | null
+  chatAgentId: string | null
+  chatId: string | null
 }) {
+  const isChatSource = !!approval.chat_id
   const stage: 'queued' | 'resolved' | 'terminal' =
     run && isRunTerminal(run.status) ? 'terminal' :
     approval.status !== 'pending' ? 'resolved' :
@@ -593,6 +633,28 @@ function ResumeBanner({
         action={<Badge color="cyan" variant="soft" radius="small" size="1">waiting</Badge>}
       >
         Your decision is recorded. Your agent will resume shortly — usually within 8–15 seconds.
+      </Banner>
+    )
+  }
+
+  if (stage === 'resolved' && isChatSource) {
+    // Chat-source approvals resume the chat itself — no run terminal state
+    // to wait for. Point the reviewer back to the chat to see the agent
+    // pick up where it left off.
+    return (
+      <Banner
+        tone="info"
+        icon={<IconPlay className="ic" />}
+        title={`Decision recorded — back to the chat`}
+        action={chatAgentId && chatId ? (
+          <Button asChild size="1">
+            <Link to={`/agents/${chatAgentId}/talk/${chatId}`}>
+              <IconChat className="ic ic--sm" /> Return to chat
+            </Link>
+          </Button>
+        ) : undefined}
+      >
+        The agent will pick up where it left off — open the chat to see the next response.
       </Banner>
     )
   }
@@ -670,6 +732,49 @@ function PriorActivitySection({ run }: { run: RunDetail | null }) {
           </Text>
         </Flex>
         <AgentStepsList run={run} />
+      </div>
+    </Box>
+  )
+}
+
+// Conversation excerpt — shown on chat-source approval detail in place
+// of the run-trail. Renders the last few messages from the chat that
+// triggered this approval, so the reviewer sees what was being asked.
+function ChatExcerptSection({
+  chat,
+  messages,
+  agentName,
+}: {
+  chat: Chat | null
+  messages: ChatMessage[]
+  agentName: string
+}) {
+  if (!chat) return null
+  // Last 6 visible messages, top-down chronological. Skip tool messages
+  // which don't read well as conversation context.
+  const recent = messages.filter(m => m.role === 'user' || m.role === 'assistant').slice(-6)
+  if (recent.length === 0) return null
+  return (
+    <Box mt="5">
+      <div className="card" style={{ padding: '14px 18px' }}>
+        <Flex align="center" justify="between" mb="3">
+          <Text as="span" size="2" weight="medium">From the conversation</Text>
+          <Text as="span" size="1" color="gray">
+            {chat.title ?? `Chat with ${agentName}`}
+          </Text>
+        </Flex>
+        <Flex direction="column" gap="3">
+          {recent.map(m => (
+            <Box key={m.id}>
+              <Text as="div" size="1" color="gray" mb="1" style={{ textTransform: 'uppercase', letterSpacing: '0.04em' }}>
+                {m.role === 'user' ? 'User' : agentName}
+              </Text>
+              <Text as="div" size="2" color={m.role === 'user' ? undefined : 'gray'} style={{ lineHeight: 1.5, whiteSpace: 'pre-wrap' }}>
+                {m.content ?? ''}
+              </Text>
+            </Box>
+          ))}
+        </Flex>
       </div>
     </Box>
   )
@@ -774,9 +879,12 @@ function stepDetail(step: RunStep): string | null {
 
 function TechnicalDetailsAccordion({
   approval,
+  chatAgentId,
 }: {
   approval: ApprovalRequest
+  chatAgentId: string | null
 }) {
+  const deciderName = useUser(approval.approver_user_id)?.name
   return (
     <Box mt="3">
       <details className="card" style={{ padding: '14px 18px' }}>
@@ -785,9 +893,18 @@ function TechnicalDetailsAccordion({
         </summary>
         <Box mt="3">
           <Flex direction="column" gap="1">
-            <DetailRow label="Activity">
-              <Link to={`/activity/${approval.run_id}`}>{shortRef(approval.run_id)}</Link>
-            </DetailRow>
+            {approval.run_id && (
+              <DetailRow label="Activity">
+                <Link to={`/activity/${approval.run_id}`}>{shortRef(approval.run_id)}</Link>
+              </DetailRow>
+            )}
+            {approval.chat_id && (
+              <DetailRow label="Chat">
+                {chatAgentId
+                  ? <Link to={`/agents/${chatAgentId}/talk/${approval.chat_id}`}>{shortRef(approval.chat_id)}</Link>
+                  : shortRef(approval.chat_id)}
+              </DetailRow>
+            )}
             {approval.task_id && (
               <DetailRow label="Task">
                 <Link to={`/tasks/${approval.task_id}`}>{shortRef(approval.task_id)}</Link>
@@ -795,6 +912,7 @@ function TechnicalDetailsAccordion({
             )}
             <DetailRow label="Action key" value={approval.requested_action} />
             <DetailRow label="Approver role" value={approverRoleLabel(approval.approver_role)} />
+            {deciderName && <DetailRow label="Decided by" value={deciderName} />}
             <DetailRow label="Created" value={absTime(approval.created_at)} />
             {approval.expires_at && <DetailRow label="Expires" value={absTime(approval.expires_at)} />}
             {approval.resolved_at && <DetailRow label="Resolved" value={absTime(approval.resolved_at)} />}

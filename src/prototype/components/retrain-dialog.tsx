@@ -178,7 +178,6 @@ export function RetrainDialog({
             Cancel
           </Button>
           <Button
-            color="cyan"
             disabled={busy || empty}
             onClick={handleSubmit}
           >

@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
-import { Box, Button, Code, Flex, Grid, IconButton, SegmentedControl, Text } from '@radix-ui/themes'
+import { Badge, Box, Button, Code, Flex, Grid, IconButton, SegmentedControl, Text } from '@radix-ui/themes'
 import { GridViewIcon, Menu01Icon } from '@hugeicons/core-free-icons'
 
 import { AppShell } from '../components/shell'
@@ -15,10 +15,11 @@ import { useRouter } from '../router'
 import { api } from '../lib/api'
 import { APPROVAL_STATUS_FILTERS } from '../lib/filters'
 import type { ApprovalStatusFilter } from '../lib/filters'
-import type { Agent, ApprovalRequest, RunListItem } from '../lib/types'
+import type { Agent, ApprovalRequest, Chat, RunListItem } from '../lib/types'
 import { makeToastId, nowMs, type UndoToast } from '../lib/undo-toast'
 import { ago, prettifyRequestedAction } from '../lib/format'
 import { shouldShowWorkspacePill, useScopeFilter } from '../lib/scope-filter'
+import { useUsers } from '../lib/user-lookup'
 
 // Reject reason — UI-only validation. Backend spec has no minimum length;
 // 4 chars is the same threshold used in the sandbox preview to discourage
@@ -70,6 +71,7 @@ export default function ApprovalsScreen() {
   const { user, myWorkspaces } = useAuth()
   const { filter: workspaceFilter } = useScopeFilter()
   const { navigate } = useRouter()
+  const users = useUsers()
   // Items are appended page-by-page as the user scrolls. Order = server
   // order (newest first per spec). We don't re-sort client-side — that
   // would be incompatible with infinite scroll (we'd reorder rows on
@@ -80,8 +82,13 @@ export default function ApprovalsScreen() {
   const [loading, setLoading] = useState(true)
   const [loadingMore, setLoadingMore] = useState(false)
   const [runs, setRuns] = useState<RunListItem[]>([])
+  const [chats, setChats] = useState<Chat[]>([])
   const [agents, setAgents] = useState<Agent[]>([])
   const [statusFilter, setStatusFilter] = useState<ApprovalStatusFilter>('pending')
+  // Client-side source filter (no spec query param — see `visible` memo).
+  // 'all' shows both; 'run' / 'chat' narrow to a single source per
+  // gateway 0.2.0 polymorphism.
+  const [sourceFilter, setSourceFilter] = useState<'all' | 'run' | 'chat'>('all')
   const [viewMode, setViewMode] = useState<ApprovalsViewMode>(readStoredViewMode)
   const [error, setError] = useState<string | null>(null)
   const [reloadTick, setReloadTick] = useState(0)
@@ -275,16 +282,20 @@ export default function ApprovalsScreen() {
         offset: 0,
         workspace_ids: workspaceFilter,
       }),
-      // Run + agent lookups stay broad so the rendered approval rows can
-      // resolve names from any workspace the user belongs to (no scope here).
+      // Run + chat + agent lookups stay broad so the rendered approval rows
+      // can resolve names from any workspace the user belongs to (no scope
+      // here). Chat-source approvals (gateway 0.2.0 / ADR-0011) resolve
+      // their agent via chat.agent_id rather than run.agent_id.
       api.listRuns({ limit: 100 }),
+      user ? api.listChats({ id: user.id, role: user.role }, { limit: 100 }) : Promise.resolve({ items: [], total: 0, limit: 0, offset: 0 }),
       api.listAgents(),
     ])
-      .then(([list, r, a]) => {
+      .then(([list, r, c, a]) => {
         if (cancelled) return
         setItems(list.items)
         setTotal(list.total)
         setRuns(r.items)
+        setChats(c.items)
         setAgents(a.items)
         // Drop pendingIds whose underlying approval has actually committed
         // server-side — otherwise stale ids would hide rows that are now
@@ -310,7 +321,7 @@ export default function ApprovalsScreen() {
         setLoading(false)
       })
     return () => { cancelled = true }
-  }, [statusFilter, reloadTick, workspaceFilter])
+  }, [statusFilter, reloadTick, workspaceFilter, user])
 
   // Append the next page. Guarded so concurrent triggers (scroll + ad-hoc
   // calls) don't fire two parallel requests. Mirrors RunsScreen / sandbox.
@@ -373,14 +384,57 @@ export default function ApprovalsScreen() {
     return m
   }, [runs])
 
+  // chat_id → agent name / agent id. Mirrors the run-based resolvers above
+  // for chat-source approvals (gateway 0.2.0 / ADR-0011).
+  const agentNameByChat = useMemo(() => {
+    const m = new Map<string, string>()
+    const byAgent = new Map<string, Agent>()
+    for (const a of agents) byAgent.set(a.id, a)
+    for (const c of chats) {
+      const a = byAgent.get(c.agent_id)
+      if (a) m.set(c.id, a.name)
+    }
+    return m
+  }, [chats, agents])
+
+  const agentIdByChat = useMemo(() => {
+    const m = new Map<string, string>()
+    for (const c of chats) m.set(c.id, c.agent_id)
+    return m
+  }, [chats])
+
+  // Single resolver — picks the right map based on approval source.
+  const resolveApprovalAgent = (a: ApprovalRequest): { name: string; id: string | null; isChat: boolean } => {
+    if (a.chat_id) {
+      return {
+        name: agentNameByChat.get(a.chat_id) ?? 'Agent',
+        id: agentIdByChat.get(a.chat_id) ?? null,
+        isChat: true,
+      }
+    }
+    if (a.run_id) {
+      return {
+        name: agentNameByRun.get(a.run_id) ?? 'Agent',
+        id: agentIdByRun.get(a.run_id) ?? null,
+        isChat: false,
+      }
+    }
+    return { name: 'Agent', id: null, isChat: false }
+  }
+
   // Rows hidden during the 5s undo window are filtered out of the visible
   // list and out of filter-chip counts — both should stay in sync. Sandbox
   // does the same. Counts are approximate ("what's been loaded so far") —
   // they don't reflect server total because that would require N round
   // trips just to get a chip badge.
   const visible = useMemo(
-    () => items.filter(a => !pendingIds.has(a.id)),
-    [items, pendingIds],
+    () => items.filter(a => {
+      if (pendingIds.has(a.id)) return false
+      if (sourceFilter === 'run' && !a.run_id) return false
+      if (sourceFilter === 'chat' && !a.chat_id) return false
+      return true
+    }),
+    [items, pendingIds, sourceFilter],
   )
 
   const counts = useMemo(() => {
@@ -388,6 +442,18 @@ export default function ApprovalsScreen() {
     visible.forEach(a => { c[a.status] = (c[a.status] ?? 0) + 1 })
     return c
   }, [visible])
+
+  // Source filter counts use the pre-source-filter set (status filter
+  // already applied via server), so each chip reads correctly when you
+  // toggle between sources.
+  const sourceCounts = useMemo(() => {
+    const pre = items.filter(a => !pendingIds.has(a.id))
+    return {
+      all: pre.length,
+      run: pre.filter(a => !!a.run_id).length,
+      chat: pre.filter(a => !!a.chat_id).length,
+    }
+  }, [items, pendingIds])
 
   return (
     <AppShell crumbs={[{ label: 'home', to: '/' }, { label: 'approvals' }]}>
@@ -424,6 +490,27 @@ export default function ApprovalsScreen() {
             <Box flexGrow="1" />
             <ViewModeToggle viewMode={viewMode} onChange={setViewMode} />
           </Flex>
+
+          <Flex align="center" gap="2" wrap="wrap">
+            <Caption mr="1">source</Caption>
+            {(['all', 'run', 'chat'] as const).map(f => {
+              const isActive = sourceFilter === f
+              const label = f === 'all' ? 'All' : f === 'run' ? 'From runs' : 'From chats'
+              return (
+                <Button
+                  key={f}
+                  type="button"
+                  size="2"
+                  variant="soft"
+                  color={isActive ? 'cyan' : 'gray'}
+                  onClick={() => setSourceFilter(f)}
+                >
+                  <span>{label}</span>
+                  <Code variant="ghost" size="1" color="gray">{sourceCounts[f]}</Code>
+                </Button>
+              )
+            })}
+          </Flex>
         </Flex>
 
         {error ? (
@@ -448,10 +535,11 @@ export default function ApprovalsScreen() {
           <div className="card card--flush">
             <Flex direction="column">
               {visible.map(a => {
-                // Approvals are polymorphic in gateway 0.2.0 (run_id | chat_id);
-                // this screen still assumes run-anchored. Chat-source approvals
-                // fall back to 'Agent' until Tier 3 ships dedicated UI.
-                const agentName = (a.run_id && agentNameByRun.get(a.run_id)) || 'Agent'
+                // Polymorphic per gateway 0.2.0 / ADR-0011: approvals can be
+                // anchored on a run OR a chat. The resolver picks the right
+                // map (run.agent_id chain vs chat.agent_id).
+                const source = resolveApprovalAgent(a)
+                const agentName = source.name
                 const actionVerb = prettifyRequestedAction(a.requested_action).toLowerCase()
                 const isPending = a.status === 'pending'
                 const isRejectExpanded = rejectTarget?.approval.id === a.id
@@ -493,13 +581,19 @@ export default function ApprovalsScreen() {
                               {actionVerb}
                             </Text>
                           </Text>
-                          <WorkspaceContextPill agentId={a.run_id ? agentIdByRun.get(a.run_id) : undefined} show={shouldShowWorkspacePill(workspaceFilter, myWorkspaces.length)} />
+                          {source.isChat && (
+                            <Badge color="cyan" variant="soft" radius="full" size="1">in chat</Badge>
+                          )}
+                          <WorkspaceContextPill agentId={source.id ?? undefined} show={shouldShowWorkspacePill(workspaceFilter, myWorkspaces.length)} />
                         </Flex>
-                        {a.requested_by_name && (
-                          <Text as="div" size="1" color="gray" mt="1">
-                            Triggered by {a.requested_by_name}
-                          </Text>
-                        )}
+                        {(() => {
+                          const requesterName = a.requested_by ? users.get(a.requested_by)?.name : undefined
+                          return requesterName ? (
+                            <Text as="div" size="1" color="gray" mt="1">
+                              Triggered by {requesterName}
+                            </Text>
+                          ) : null
+                        })()}
                       </Box>
                       <Text as="span" size="1" color="gray" style={{ textAlign: 'right' }}>
                         {ago(a.created_at)}
@@ -565,17 +659,15 @@ export default function ApprovalsScreen() {
               data-tour="approvals-card-grid"
             >
               {visible.map(a => {
-                // See note above — chat-anchored approvals (a.run_id == null)
-                // fall back to 'Agent' / null until Tier 3 UI ships.
-                const agentName = (a.run_id && agentNameByRun.get(a.run_id)) || 'Agent'
-                const agentId = (a.run_id && agentIdByRun.get(a.run_id)) ?? null
+                const source = resolveApprovalAgent(a)
                 const actionVerb = prettifyRequestedAction(a.requested_action).toLowerCase()
                 return (
                   <ApprovalCard
                     key={a.id}
                     approval={a}
-                    agentName={agentName}
-                    agentId={agentId}
+                    agentName={source.name}
+                    agentId={source.id}
+                    isChatSource={source.isChat}
                     showWorkspacePill={shouldShowWorkspacePill(workspaceFilter, myWorkspaces.length)}
                     actionVerb={actionVerb}
                     isRejectExpanded={rejectTarget?.approval.id === a.id}
@@ -583,8 +675,8 @@ export default function ApprovalsScreen() {
                     rejectTouched={rejectTouched}
                     rejectMinChars={REJECT_REASON_MIN}
                     onOpenDetail={() => navigate(`/approvals/${a.id}`)}
-                    onApprove={() => handleApprove(a, agentName, actionVerb)}
-                    onRejectStart={() => handleRejectStart(a, agentName, actionVerb)}
+                    onApprove={() => handleApprove(a, source.name, actionVerb)}
+                    onRejectStart={() => handleRejectStart(a, source.name, actionVerb)}
                     onChangeReason={v => { setRejectReason(v); setRejectTouched(true) }}
                     onBlurReason={() => setRejectTouched(true)}
                     onRejectCancel={closeReject}

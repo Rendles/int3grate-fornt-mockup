@@ -102,7 +102,11 @@
       "Bash(grep -E \"^    [A-Z][A-Za-z0-9]+:$\" /tmp/gateway-new.yaml)",
       "Read(//d/Work/int3grate-fornt-mockup/**)",
       "Bash(grep -E \"^ [A-Z][A-Za-z0-9]+:$\" docs/gateway.yaml)",
-      "Bash(git add *)"
+      "Bash(git add *)",
+      "Bash(git commit -m ' *)",
+      "Bash(git push *)",
+      "Bash(grep -n \"\\\\\\\\bBadge\\\\\\\\b\\\\|\\\\\\\\bDataList\\\\\\\\b\\\\|\\\\\\\\babsTime\\\\\\\\b\\\\|\\\\\\\\bMetaRow\\\\\\\\b\" src/prototype/screens/AgentDetailScreen.tsx)",
+      "Bash(grep -n \"Last updated\\\\|^---$\" docs/backend-gaps.md)"
     ]
   }
 }

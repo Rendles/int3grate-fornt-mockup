@@ -10,6 +10,7 @@ import { api } from './lib/api'
 import { TourProvider } from './tours/TourProvider'
 import { TourOverlay } from './tours/TourOverlay'
 import { TrainingModeProvider } from './tours/TrainingModeProvider'
+import { UserLookupProvider } from './lib/user-lookup'
 import { TrainingBanner } from './tours/TrainingBanner'
 import { TrainingAutoExit } from './tours/TrainingAutoExit'
 import { WelcomeToast } from './tours/WelcomeToast'
@@ -43,7 +44,7 @@ import SpendScreen from './screens/SpendScreen'
 import ProfileScreen from './screens/ProfileScreen'
 import LearnScreen from './screens/LearnScreen'
 import NotFoundScreen from './screens/NotFoundScreen'
-import WorkspacesScreen from './screens/WorkspacesScreen'
+import CompanyScreen from './screens/CompanyScreen'
 // Sandbox: design exploration only. Reachable via direct URL + a sidebar
 // entry with a muted "preview" badge. See docs/agent-plans/.
 import TeamBridgeScreen from './screens/sandbox/TeamBridgeScreen'
@@ -160,7 +161,10 @@ function Router() {
     // { pattern: '/audit', render: () => <AuditScreen /> },
     { pattern: '/profile', render: () => <ProfileScreen /> },
     { pattern: '/learn', render: () => <LearnScreen /> },
-    { pattern: '/workspaces', render: () => <WorkspacesScreen /> },
+    { pattern: '/company', render: () => <Redirect to="/company/workspaces" /> },
+    { pattern: '/company/members', render: () => <CompanyScreen tab="members" /> },
+    { pattern: '/company/workspaces', render: () => <CompanyScreen tab="workspaces" /> },
+    { pattern: '/workspaces', render: () => <Redirect to="/company/workspaces" /> },
     // Sandbox routes — design previews, surfaced in the sidebar with a
     // muted "preview" badge. See docs/agent-plans/.
     { pattern: '/sandbox/team-bridge', render: () => <TeamBridgeScreen /> },
@@ -203,17 +207,19 @@ function ThemedRoot() {
             <RouterProvider>
               <DevModeProvider>
                 <TrainingModeProvider>
-                  <TrainingBanner />
-                  <TourProvider>
-                    <DevModeRemount>
-                      <WorkspaceRemount>
-                        <Router />
-                      </WorkspaceRemount>
-                    </DevModeRemount>
-                    <TourOverlay />
-                    <WelcomeToast />
-                    <TrainingAutoExit />
-                  </TourProvider>
+                  <UserLookupProvider>
+                    <TrainingBanner />
+                    <TourProvider>
+                      <DevModeRemount>
+                        <WorkspaceRemount>
+                          <Router />
+                        </WorkspaceRemount>
+                      </DevModeRemount>
+                      <TourOverlay />
+                      <WelcomeToast />
+                      <TrainingAutoExit />
+                    </TourProvider>
+                  </UserLookupProvider>
                 </TrainingModeProvider>
               </DevModeProvider>
             </RouterProvider>

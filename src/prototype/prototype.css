@@ -238,8 +238,8 @@
   min-width: 220px;
 }
 
-/* /workspaces — card grid + member roster.
-   See screens/WorkspacesScreen.tsx. */
+/* /company/workspaces — card grid + member roster.
+   See screens/company/WorkspacesTab.tsx. */
 .ws-grid {
   display: grid;
   grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
@@ -351,6 +351,18 @@
 .page__title em {
   font-style: italic;
   color: var(--accent-9);
+}
+
+/* .agent-title — hover surface for inline rename pencil on AgentDetail
+   header. Pencil starts hidden, fades in on hover/focus-within so the
+   header stays clean when not in use. */
+.agent-title__edit {
+  opacity: 0;
+  transition: opacity 0.15s ease;
+}
+.agent-title:hover .agent-title__edit,
+.agent-title:focus-within .agent-title__edit {
+  opacity: 1;
 }
 
 

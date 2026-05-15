@@ -101,7 +101,6 @@ export const APPROVAL_REVIEW: TrainingScenario = {
       tenant_id: 'ten_acme',
       requested_action: 'stripe.refund · $412 on charge ch_3P8fL2 (order #44021)',
       requested_by: APPROVAL_REVIEW_USER_ID,
-      requested_by_name: 'agent · Refunds Concierge',
       approver_role: 'domain_admin',
       approver_user_id: null,
       status: 'pending',
@@ -122,8 +121,8 @@ export const APPROVAL_REVIEW: TrainingScenario = {
     {
       id: APPROVAL_REVIEW_RUN_ID,
       tenant_id: 'ten_acme',
-      domain_id: 'ws_ops',
       task_id: null,
+      agent_id: APPROVAL_REVIEW_AGENT_ID,
       agent_version_id: APPROVAL_REVIEW_VERSION_ID,
       status: 'suspended',
       suspended_stage: 'approval_gate · stripe.refund',

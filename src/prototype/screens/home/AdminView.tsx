@@ -11,6 +11,7 @@ import {
 } from '../../components/icons'
 import type { Agent, ApprovalRequest, RunListItem, RunStatus, SpendDashboard } from '../../lib/types'
 import { ago, approverRoleLabel, money, num, prettifyRequestedAction } from '../../lib/format'
+import { useUsers } from '../../lib/user-lookup'
 import { SpendByAgentCard } from './SpendByAgentCard'
 // Hidden 2026-05-01 — purely synthesized surfaces. Restore when backend
 // supplies the underlying real data (per-hour run buckets / time-saved metric).
@@ -38,6 +39,7 @@ export function AdminView({
 }) {
   const agentName = (id: string | null) =>
     (id && agents.find(a => a.id === id)?.name) || 'Agent'
+  const users = useUsers()
   return (
     <>
       <Grid columns="3" gap="4" mb="5">
@@ -92,7 +94,7 @@ export function AdminView({
                       <Badge color="gray" variant="soft" radius="full" size="1">{a.approver_role ? approverRoleLabel(a.approver_role) : '—'}</Badge>
                     </Flex>
                     <Text as="div" size="1" color="gray">
-                      {a.requested_by_name ?? '—'} · {ago(a.created_at)}
+                      {(a.requested_by && users.get(a.requested_by)?.name) || '—'} · {ago(a.created_at)}
                     </Text>
                   </div>
                   <IconArrowRight className="ic ic--sm card--tile__arrow" />

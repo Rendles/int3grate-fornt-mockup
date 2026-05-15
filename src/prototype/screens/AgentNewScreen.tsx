@@ -757,7 +757,7 @@ function ReviewStep({
 
         {!targetWorkspace && (
           <Banner tone="warn" title="Pick a workspace first">
-            Open the workspace switcher in the sidebar, or create one on the <a href="#/workspaces">workspaces page</a>.
+            Open the workspace switcher in the sidebar, or create one on the <a href="#/company/workspaces">company page</a>.
           </Banner>
         )}
       </Flex>

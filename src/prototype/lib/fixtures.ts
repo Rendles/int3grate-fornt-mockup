@@ -61,6 +61,126 @@ export const users: User[] = [
     approval_level: 1,
     created_at: days(190),
   },
+  {
+    id: 'usr_yusuf',
+    tenant_id: 'ten_acme',
+    domain_id: null,
+    email: 'yusuf.demir@int3grate.ai',
+    name: 'Yusuf Demir',
+    role: 'admin',
+    approval_level: 4,
+    created_at: days(600),
+  },
+  {
+    id: 'usr_lena',
+    tenant_id: 'ten_acme',
+    domain_id: 'ws_ops',
+    email: 'lena.kowalski@int3grate.ai',
+    name: 'Lena Kowalski',
+    role: 'domain_admin',
+    approval_level: 3,
+    created_at: days(480),
+  },
+  {
+    id: 'usr_bashir',
+    tenant_id: 'ten_acme',
+    domain_id: 'ws_finance',
+    email: 'bashir.alrashid@int3grate.ai',
+    name: 'Bashir Al-Rashid',
+    role: 'domain_admin',
+    approval_level: 3,
+    created_at: days(450),
+  },
+  {
+    id: 'usr_hana',
+    tenant_id: 'ten_acme',
+    domain_id: 'ws_growth',
+    email: 'hana.tanaka@int3grate.ai',
+    name: 'Hana Tanaka',
+    role: 'member',
+    approval_level: 2,
+    created_at: days(360),
+  },
+  {
+    id: 'usr_tomas',
+    tenant_id: 'ten_acme',
+    domain_id: 'ws_growth',
+    email: 'tomas.cardenas@int3grate.ai',
+    name: 'Tomás Cárdenas',
+    role: 'member',
+    approval_level: 1,
+    created_at: days(300),
+  },
+  {
+    id: 'usr_naledi',
+    tenant_id: 'ten_acme',
+    domain_id: 'ws_ops',
+    email: 'naledi.mokoena@int3grate.ai',
+    name: 'Naledi Mokoena',
+    role: 'member',
+    approval_level: 1,
+    created_at: days(240),
+  },
+  {
+    id: 'usr_eitan',
+    tenant_id: 'ten_acme',
+    domain_id: 'ws_ops',
+    email: 'eitan.roth@int3grate.ai',
+    name: 'Eitan Roth',
+    role: 'member',
+    approval_level: 2,
+    created_at: days(200),
+  },
+  {
+    id: 'usr_sasha',
+    tenant_id: 'ten_acme',
+    domain_id: 'ws_finance',
+    email: 'sasha.petrenko@int3grate.ai',
+    name: 'Sasha Petrenko',
+    role: 'member',
+    approval_level: 1,
+    created_at: days(170),
+  },
+  {
+    id: 'usr_meilin',
+    tenant_id: 'ten_acme',
+    domain_id: 'ws_finance',
+    email: 'meilin.cho@int3grate.ai',
+    name: 'Mei-Lin Cho',
+    role: 'member',
+    approval_level: 2,
+    created_at: days(140),
+  },
+  {
+    id: 'usr_aarav',
+    tenant_id: 'ten_acme',
+    domain_id: null,
+    email: 'aarav.bhatt@int3grate.ai',
+    name: 'Aarav Bhatt',
+    role: 'member',
+    approval_level: 1,
+    created_at: days(110),
+  },
+  {
+    id: 'usr_freya',
+    tenant_id: 'ten_acme',
+    domain_id: 'ws_growth',
+    email: 'freya.lindqvist@int3grate.ai',
+    name: 'Freya Lindqvist',
+    role: 'member',
+    approval_level: 1,
+    created_at: days(80),
+  },
+  {
+    id: 'usr_diego',
+    tenant_id: 'ten_acme',
+    domain_id: null,
+    email: 'diego.mendes@int3grate.ai',
+    name: 'Diego Mendes',
+    role: 'member',
+    approval_level: 2,
+    created_at: days(45),
+  },
 ]
 
 // ══════════════════════════════════════════════════ WORKSPACES
@@ -279,6 +399,102 @@ export const agentVersions: AgentVersion[] = [
     is_active: true,
     created_by: 'usr_ada',
     created_at: days(52),
+  },
+
+  // ────────────────────────────────────────────────────────────────────
+  // Past (inactive) versions for 3 agents — gives VersionHistory on the
+  // Advanced tab realistic timelines. The 7 other agents keep a single
+  // version so the "no earlier versions yet" empty state is also visible.
+  // ────────────────────────────────────────────────────────────────────
+
+  // Lead Qualifier — evolution: scoring only → + enrich → + outreach drafts.
+  {
+    id: 'ver_lq_13',
+    agent_id: 'agt_lead_qualifier',
+    version: 13,
+    instruction_spec:
+      'You are a Lead Qualifier. Score inbound leads against ICP and enrich them via the CRM. Hand the top deciles off to the sales team for outreach.',
+    memory_scope_config: { ...defaultMemoryScope(), domain_shared: true },
+    tool_scope_config: defaultToolScope(),
+    approval_rules: { rules: [] },
+    model_chain_config: defaultModelChain('claude-haiku-4-5'),
+    is_active: false,
+    created_by: 'usr_marcelo',
+    created_at: days(25),
+  },
+  {
+    id: 'ver_lq_12',
+    agent_id: 'agt_lead_qualifier',
+    version: 12,
+    instruction_spec:
+      'You are a Lead Qualifier. Score inbound leads against the ICP rubric and surface the top fits in a daily digest.',
+    memory_scope_config: defaultMemoryScope(),
+    tool_scope_config: defaultToolScope(),
+    approval_rules: { rules: [] },
+    model_chain_config: defaultModelChain('claude-haiku-4-5'),
+    is_active: false,
+    created_by: 'usr_ada',
+    created_at: days(45),
+  },
+
+  // Refund Resolver — evolution: simple refund → + approval gate → + policy step.
+  {
+    id: 'ver_rr_07',
+    agent_id: 'agt_refund_resolver',
+    version: 7,
+    instruction_spec:
+      'You are a Refund Resolver. Verify charges and issue refunds within the auto-cap. Anything above the cap waits for human approval.',
+    memory_scope_config: defaultMemoryScope(),
+    tool_scope_config: defaultToolScope(),
+    approval_rules: { rules: [{ id: 'rule_rr_old_1', when: 'stripe.refund > 100', required_approver_level: 3 }] },
+    model_chain_config: defaultModelChain('claude-sonnet-4-6'),
+    is_active: false,
+    created_by: 'usr_priya',
+    created_at: days(50),
+  },
+  {
+    id: 'ver_rr_06',
+    agent_id: 'agt_refund_resolver',
+    version: 6,
+    instruction_spec:
+      'You are a Refund Resolver. Verify the charge against Stripe records and issue the refund. Log every action for audit.',
+    memory_scope_config: defaultMemoryScope(),
+    tool_scope_config: defaultToolScope(),
+    approval_rules: { rules: [] },
+    model_chain_config: defaultModelChain('claude-sonnet-4-6'),
+    is_active: false,
+    created_by: 'usr_ada',
+    created_at: days(70),
+  },
+
+  // Ticket Triage — evolution: categorise only → + routing → + priority tagging.
+  {
+    id: 'ver_tt_05',
+    agent_id: 'agt_ticket_triage',
+    version: 5,
+    instruction_spec:
+      'You are a Ticket Triage Agent. Categorise inbound support tickets and route them to the right specialist queue.',
+    memory_scope_config: defaultMemoryScope(),
+    tool_scope_config: defaultToolScope(),
+    approval_rules: { rules: [] },
+    model_chain_config: defaultModelChain('claude-haiku-4-5'),
+    is_active: false,
+    created_by: 'usr_marcelo',
+    created_at: days(45),
+  },
+  {
+    id: 'ver_tt_04',
+    agent_id: 'agt_ticket_triage',
+    version: 4,
+    instruction_spec:
+      'You are a Ticket Triage Agent. Read inbound support tickets and pick the right category from the taxonomy.',
+    memory_scope_config: defaultMemoryScope(),
+    tool_scope_config: defaultToolScope(),
+    approval_rules: { rules: [] },
+    model_chain_config: defaultModelChain('claude-haiku-4-5'),
+    is_active: false,
+    created_by: 'usr_ada',
+    created_at: days(65),
   },
 ]
 
@@ -701,8 +917,8 @@ export const runs: Record<string, Run> = {
   run_4081: {
     id: 'run_4081',
     tenant_id: 'ten_acme',
-    domain_id: 'ws_ops',
     task_id: 'tsk_4081',
+    agent_id: 'agt_refund_resolver',
     agent_version_id: 'ver_rr_08',
     status: 'suspended',
     suspended_stage: 'approval_gate · stripe.refund',
@@ -785,8 +1001,8 @@ export const runs: Record<string, Run> = {
   run_4080: {
     id: 'run_4080',
     tenant_id: 'ten_acme',
-    domain_id: 'ws_growth',
     task_id: 'tsk_4080',
+    agent_id: 'agt_lead_qualifier',
     agent_version_id: 'ver_lq_14',
     status: 'running',
     suspended_stage: null,
@@ -861,8 +1077,8 @@ export const runs: Record<string, Run> = {
   run_4079: {
     id: 'run_4079',
     tenant_id: 'ten_acme',
-    domain_id: 'ws_ops',
     task_id: 'tsk_4079',
+    agent_id: 'agt_invoice_reconciler',
     agent_version_id: 'ver_ir_05',
     status: 'completed',
     suspended_stage: null,
@@ -934,8 +1150,8 @@ export const runs: Record<string, Run> = {
   run_4077: {
     id: 'run_4077',
     tenant_id: 'ten_acme',
-    domain_id: 'ws_ops',
     task_id: 'tsk_4077',
+    agent_id: 'agt_access_provisioner',
     agent_version_id: 'ver_ap_02',
     status: 'suspended',
     suspended_stage: 'approval_gate · aws.revoke_user',
@@ -993,8 +1209,8 @@ export const runs: Record<string, Run> = {
   run_4076: {
     id: 'run_4076',
     tenant_id: 'ten_acme',
-    domain_id: 'ws_ops',
     task_id: 'tsk_4076',
+    agent_id: 'agt_invoice_reconciler',
     agent_version_id: 'ver_ir_05',
     status: 'failed',
     suspended_stage: null,
@@ -1075,8 +1291,8 @@ export const runs: Record<string, Run> = {
   run_4082: {
     id: 'run_4082',
     tenant_id: 'ten_acme',
-    domain_id: 'ws_growth',
     task_id: null,
+    agent_id: 'agt_lead_qualifier',
     agent_version_id: 'ver_lq_14',
     status: 'completed_with_errors',
     suspended_stage: null,
@@ -1172,8 +1388,8 @@ export const runs: Record<string, Run> = {
   run_4083: {
     id: 'run_4083',
     tenant_id: 'ten_acme',
-    domain_id: 'ws_ops',
     task_id: 'tsk_4075',
+    agent_id: 'agt_refund_resolver',
     agent_version_id: 'ver_rr_08',
     status: 'pending',
     suspended_stage: null,
@@ -1190,8 +1406,8 @@ export const runs: Record<string, Run> = {
   run_4078: {
     id: 'run_4078',
     tenant_id: 'ten_acme',
-    domain_id: 'ws_ops',
     task_id: 'tsk_4071',
+    agent_id: 'agt_access_provisioner',
     agent_version_id: 'ver_ap_02',
     status: 'cancelled',
     suspended_stage: null,
@@ -1232,8 +1448,8 @@ export const runs: Record<string, Run> = {
   run_4075: {
     id: 'run_4075',
     tenant_id: 'ten_acme',
-    domain_id: 'ws_growth',
     task_id: null,
+    agent_id: 'agt_lead_qualifier',
     agent_version_id: 'ver_lq_14',
     status: 'failed',
     suspended_stage: null,
@@ -1265,8 +1481,8 @@ export const runs: Record<string, Run> = {
   run_4073: {
     id: 'run_4073',
     tenant_id: 'ten_acme',
-    domain_id: 'ws_ops',
     task_id: 'tsk_4073',
+    agent_id: 'agt_invoice_reconciler',
     agent_version_id: 'ver_ir_05',
     status: 'failed',
     suspended_stage: null,
@@ -1313,6 +1529,7 @@ export const runs: Record<string, Run> = {
 // so subsequent renders see stable values. Agent versions / statuses /
 // timestamps cycle through realistic combinations.
 const GEN_AGENT_VERSIONS: string[] = ['ver_lq_14', 'ver_rr_08', 'ver_kb_03', 'ver_id_05', 'ver_ap_02', 'ver_cd_01']
+const GEN_AGENT_BY_VERSION = new Map(agentVersions.map(v => [v.id, v.agent_id]))
 const GEN_STATUSES: Run['status'][] = [
   'completed', 'completed', 'completed', 'completed', 'completed',
   'completed_with_errors',
@@ -1332,11 +1549,15 @@ for (let i = 1; i <= 80; i++) {
     || status === 'failed'
     || status === 'cancelled'
   const id = `run_gen_${i.toString().padStart(4, '0')}`
+  // RunDetail.agent_id is required per spec. Resolve via version map; if
+  // the version doesn't exist (legacy typo IDs), the synthetic row falls
+  // back to the first real agent so the type contract holds.
+  const agentId = GEN_AGENT_BY_VERSION.get(ver) ?? agentVersions[0]!.agent_id
   runs[id] = {
     id,
     tenant_id: 'ten_acme',
-    domain_id: null,
     task_id: null,
+    agent_id: agentId,
     agent_version_id: ver,
     status,
     suspended_stage: status === 'suspended' ? 'approval_gate · email.send' : null,
@@ -1366,7 +1587,6 @@ export const approvals: ApprovalRequest[] = [
     tenant_id: 'ten_acme',
     requested_action: 'email.send · reply to support ticket #TKT-8821 with refund offer ($90)',
     requested_by: 'usr_marcelo',
-    requested_by_name: 'Marcelo Ito',
     approver_role: 'domain_admin',
     approver_user_id: 'usr_marcelo',
     status: 'pending',
@@ -1388,7 +1608,6 @@ export const approvals: ApprovalRequest[] = [
     tenant_id: 'ten_acme',
     requested_action: 'stripe.refund · $412 on charge ch_3P8fL2 (order #44021)',
     requested_by: 'usr_priya',
-    requested_by_name: 'Priya Vasan',
     approver_role: 'domain_admin',
     approver_user_id: 'usr_marcelo',
     status: 'pending',
@@ -1412,7 +1631,6 @@ export const approvals: ApprovalRequest[] = [
     tenant_id: 'ten_acme',
     requested_action: 'email.send batch × 6 · outreach drafts (partial — 2 contacts skipped after enrich timeouts)',
     requested_by: 'usr_marcelo',
-    requested_by_name: 'Marcelo Ito',
     approver_role: 'domain_admin',
     approver_user_id: null,
     status: 'pending',
@@ -1435,7 +1653,6 @@ export const approvals: ApprovalRequest[] = [
     tenant_id: 'ten_acme',
     requested_action: 'email.send batch × 8 · personalised outreach to high-fit leads',
     requested_by: 'usr_marcelo',
-    requested_by_name: 'Marcelo Ito',
     approver_role: 'domain_admin',
     approver_user_id: null,
     status: 'pending',
@@ -1457,7 +1674,6 @@ export const approvals: ApprovalRequest[] = [
     tenant_id: 'ten_acme',
     requested_action: 'stripe.refund · $280 duplicate subscription charge',
     requested_by: 'usr_priya',
-    requested_by_name: 'Priya Vasan',
     approver_role: 'domain_admin',
     approver_user_id: 'usr_marcelo',
     status: 'approved',
@@ -1475,7 +1691,6 @@ export const approvals: ApprovalRequest[] = [
     tenant_id: 'ten_acme',
     requested_action: 'brex.create_vendor · Taubman & Co · Net-30 ACH',
     requested_by: 'usr_ada',
-    requested_by_name: 'Ada Fernsby',
     approver_role: 'domain_admin',
     approver_user_id: 'usr_marcelo',
     status: 'rejected',
@@ -1493,7 +1708,6 @@ export const approvals: ApprovalRequest[] = [
     tenant_id: 'ten_acme',
     requested_action: 'okta.create_user · new hire · role template "sales_ae"',
     requested_by: 'usr_ada',
-    requested_by_name: 'Ada Fernsby',
     approver_role: 'admin',
     approver_user_id: null,
     status: 'expired',
@@ -1502,6 +1716,47 @@ export const approvals: ApprovalRequest[] = [
     expires_at: days(4),
     resolved_at: null,
     created_at: days(5),
+  },
+  // Additional chat-source approvals (gateway 0.2.0 / ADR-0011). Together
+  // with apv_9030, these give the `/approvals` and chat-panel UIs enough
+  // variety to demo all three states (pending / approved / rejected).
+  {
+    // Pending chat-source — agt_refund_resolver, gates the cht_3810 chat.
+    id: 'apv_9031',
+    run_id: null,
+    chat_id: 'cht_3810',
+    task_id: null,
+    tenant_id: 'ten_acme',
+    requested_action: 'stripe.refund · $412 on charge ch_3P8fL2 (order #44021)',
+    requested_by: 'usr_priya',
+    approver_role: 'domain_admin',
+    approver_user_id: null,
+    status: 'pending',
+    reason: null,
+    evidence_ref: { charge_id: 'ch_3P8fL2', order_id: '#44021', amount_usd: 412, customer: 'Eliza Voss' },
+    expires_at: future(240),
+    resolved_at: null,
+    created_at: mins(6),
+  },
+  {
+    // Resolved chat-source — approved 1h ago. cht_3805 is now active again
+    // (post-resume). Demonstrates the green "Approved by …" SuspendedCard
+    // in the chat timeline and the resolved variant on /approvals.
+    id: 'apv_9028',
+    run_id: null,
+    chat_id: 'cht_3805',
+    task_id: null,
+    tenant_id: 'ten_acme',
+    requested_action: 'gmail.send · close-call invite to Northwind contact list (8 recipients)',
+    requested_by: 'usr_marcelo',
+    approver_role: 'domain_admin',
+    approver_user_id: 'usr_marcelo',
+    status: 'approved',
+    reason: 'Approved — agreed on the outreach plan in standup.',
+    evidence_ref: { recipients: 8, account: 'Northwind', subject: 'Locking in the Northwind close' },
+    expires_at: hrs(2),
+    resolved_at: hrs(1),
+    created_at: hrs(2),
   },
 ]
 
@@ -1516,7 +1771,10 @@ export const chats: Chat[] = [
     created_by: 'usr_marcelo',
     model: 'claude-haiku-4-5',
     title: 'Lead triage debrief — Friday batch',
-    status: 'active',
+    // Suspended on apv_9030 (chat-source pending approval, gateway 0.2.0 /
+    // ADR-0011). The chat is awaiting the user's decision before the agent
+    // can finish the email-send tool call.
+    status: 'awaiting_approval',
     started_at: mins(45),
     updated_at: mins(2),
     ended_at: null,
@@ -1555,6 +1813,42 @@ export const chats: Chat[] = [
     total_cost_usd: 0.09,
     total_tokens_in: 1840,
     total_tokens_out: 420,
+  },
+  {
+    // Suspended on apv_9031 — refund needs Priya's approval.
+    id: 'cht_3810',
+    tenant_id: 'ten_acme',
+    agent_id: 'agt_refund_resolver',
+    agent_version_id: 'ver_rr_08',
+    created_by: 'usr_priya',
+    model: 'claude-sonnet-4-6',
+    title: 'Refund — Eliza Voss order #44021',
+    status: 'awaiting_approval',
+    started_at: mins(9),
+    updated_at: mins(6),
+    ended_at: null,
+    total_cost_usd: 0.08,
+    total_tokens_in: 1640,
+    total_tokens_out: 380,
+  },
+  {
+    // Already resumed after apv_9028 was approved. Shown as 'active' in
+    // the list; the SuspendedCard inside renders in its resolved (jade)
+    // state with "Approved by you · 1h ago".
+    id: 'cht_3805',
+    tenant_id: 'ten_acme',
+    agent_id: 'agt_lead_qualifier',
+    agent_version_id: 'ver_lq_14',
+    created_by: 'usr_marcelo',
+    model: 'claude-haiku-4-5',
+    title: 'Outreach for Northwind close — draft + send',
+    status: 'active',
+    started_at: hrs(2),
+    updated_at: hrs(0.9),
+    ended_at: null,
+    total_cost_usd: 0.21,
+    total_tokens_in: 3420,
+    total_tokens_out: 740,
   },
 ]
 
@@ -1736,6 +2030,104 @@ export const chatMessages: Record<string, ChatMessage[]> = {
       tokens_in: 1840,
       tokens_out: 420,
       created_at: hrs(3.6),
+    },
+  ],
+  // Pending chat-source suspension — Refund Resolver halted on apv_9031.
+  cht_3810: [
+    {
+      id: 'msg_3810_1',
+      chat_id: 'cht_3810',
+      role: 'user',
+      content: 'Eliza Voss says she was charged twice for order #44021. Can you refund the duplicate ($412)?',
+      tool_calls: null,
+      tool_call_id: null,
+      tool_name: null,
+      cost_usd: null,
+      tokens_in: null,
+      tokens_out: null,
+      created_at: mins(9),
+    },
+    {
+      id: 'msg_3810_2',
+      chat_id: 'cht_3810',
+      role: 'assistant',
+      content: 'Charge ch_3P8fL2 confirmed as a duplicate in Stripe — the second charge ran 4 minutes after the first with the same amount and card. I\'ll prepare the refund, but the amount is above the auto-cap so I need your approval before issuing it.',
+      tool_calls: [
+        {
+          id: 'tcl_3810_a',
+          name: 'stripe.refund',
+          args: { charge_id: 'ch_3P8fL2', amount_usd: 412 },
+        },
+      ],
+      tool_call_id: null,
+      tool_name: null,
+      cost_usd: 0.08,
+      tokens_in: 1640,
+      tokens_out: 380,
+      created_at: mins(6),
+    },
+  ],
+  // Resolved (approved) chat-source — Lead Qualifier sent the outreach
+  // after apv_9028 was approved 1h ago. Resumed turn shows tool_result +
+  // agent's confirmation message.
+  cht_3805: [
+    {
+      id: 'msg_3805_1',
+      chat_id: 'cht_3805',
+      role: 'user',
+      content: 'Draft and send the close-call invite for Northwind — same one we discussed in standup.',
+      tool_calls: null,
+      tool_call_id: null,
+      tool_name: null,
+      cost_usd: null,
+      tokens_in: null,
+      tokens_out: null,
+      created_at: hrs(2),
+    },
+    {
+      id: 'msg_3805_2',
+      chat_id: 'cht_3805',
+      role: 'assistant',
+      content: 'Draft ready. I\'ll send it to the 8-person Northwind contact list — needs your approval since this is the first email to that account from the new shared inbox.',
+      tool_calls: [
+        {
+          id: 'tcl_3805_a',
+          name: 'gmail.send',
+          args: { recipients: 8, subject: 'Locking in the Northwind close', account: 'Northwind' },
+        },
+      ],
+      tool_call_id: null,
+      tool_name: null,
+      cost_usd: 0.07,
+      tokens_in: 1440,
+      tokens_out: 320,
+      created_at: hrs(2),
+    },
+    {
+      id: 'msg_3805_3',
+      chat_id: 'cht_3805',
+      role: 'tool',
+      content: JSON.stringify({ status: 'ok', sent: 8, message_id: 'gmail_msg_88421' }),
+      tool_calls: null,
+      tool_call_id: 'tcl_3805_a',
+      tool_name: 'gmail.send',
+      cost_usd: null,
+      tokens_in: null,
+      tokens_out: null,
+      created_at: hrs(1),
+    },
+    {
+      id: 'msg_3805_4',
+      chat_id: 'cht_3805',
+      role: 'assistant',
+      content: 'Done — invite sent to all 8 Northwind contacts. I\'ll watch for replies and tee up the calendar slots when they come in.',
+      tool_calls: null,
+      tool_call_id: null,
+      tool_name: null,
+      cost_usd: 0.06,
+      tokens_in: 1320,
+      tokens_out: 280,
+      created_at: hrs(1),
     },
   ],
 }

@@ -209,8 +209,11 @@ export interface RunToolError {
 export interface RunDetail {
   id: string
   tenant_id: string
-  domain_id: string | null
   task_id: string | null
+  // Required + non-nullable per spec — every run is anchored to an agent.
+  // Workspace label is derived via `agent.domain_id`, not directly off the
+  // run (no `domain_id` field on Run schema).
+  agent_id: string
   agent_version_id: string | null
   status: RunStatus
   suspended_stage: string | null
@@ -265,8 +268,9 @@ export interface RunStep {
 export interface RunListItem {
   id: string
   tenant_id: string
-  domain_id: string | null
   task_id: string | null
+  // Nullable per spec on RunListItem (a list row may surface orphan runs);
+  // on RunDetail it's required-non-null.
   agent_id: string | null
   agent_version_id: string | null
   status: RunStatus
@@ -440,14 +444,6 @@ export interface ApprovalRequest {
   tenant_id: string
   requested_action: string
   requested_by: string | null
-  // MOCK-ONLY: the real backend does NOT return a denormalised
-  // `requested_by_name`. UI integration will need to look the name up via
-  // `GET /users/{requested_by}` (or a tenant-wide user map cached at app
-  // boot). Kept in the mock so existing screens keep rendering without
-  // an extra fetch round-trip in the prototype.
-  // See docs/agent-plans/2026-05-13-2330-prototype-spec-0.3.0-sync-plan.md
-  // (T1.1 / D3 — "keep with mock-only flag").
-  requested_by_name: string | null
   approver_role: string | null
   approver_user_id: string | null
   status: ApprovalStatus

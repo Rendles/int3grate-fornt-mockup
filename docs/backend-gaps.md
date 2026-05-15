@@ -17,21 +17,41 @@
 - **Что нужно от backend:** endpoint создания tenant + первого admin user. Возвращает `LoginResponse` (token + expires_at) + созданного user.
 - **MockBadge:** ✅ помечен на `RegisterScreen.tsx:157`.
 
-### 1.2 — ~~`GET /users`~~ — RESOLVED 2026-05-13 (gateway 0.3.0)
+### 1.2 — ~~`GET /users`~~ — RESOLVED 2026-05-13 (gateway 0.3.0) + UI wired 2026-05-14
 
-> **Этот gap закрыт.** Live backend 0.3.0 экспонирует `GET /users` (paginated `UserList`) и `GET /users/{userId}` — операции `listUsers` / `getUser`, доступ admin/domain_admin. Мок обновлён: `api.listUsers()` теперь возвращает `UserList` envelope, добавлен `api.getUser(id)`. **Важно:** real backend по-прежнему НЕ возвращает denormalised `requested_by_name` на approvals — мок оставил его как `mock-only` поле; при swap UI должен будет резолвить имена через `getUser` или кэш `listUsers` на старте сессии. Восстановление UI-поверхностей с именами approver/owner/version-author — Tier 2 продуктовое решение (см. `docs/agent-plans/2026-05-13-2330-prototype-spec-0.3.0-sync-plan.md`).
+> **Этот gap закрыт целиком.** Live backend 0.3.0 экспонирует `GET /users` (paginated `UserList`) и `GET /users/{userId}` — операции `listUsers` / `getUser`, доступ admin/domain_admin. Мок обновлён 2026-05-13. UI wired up 2026-05-14:
+>
+> - **`UserLookupProvider`** (`lib/user-lookup.tsx`) — загружает `listUsers()` один раз на auth, кэширует в `Map<userId, User>`, exposes `useUser(id)` и `useUsers()` хуки. Member роль не загружает (real backend = 403); хук отдаёт undefined и UI деградирует.
+> - **`requested_by_name`** mock-only поле **удалено** из типа, фикстур, training-фикстур. 5 UI-консумеров переведены на `useUser(approval.requested_by)?.name`. См. `docs/agent-plans/2026-05-14-1700-user-lookup-context.md`.
+> - **«Decided by»** строка добавлена в Technical Details на `ApprovalDetailScreen` (читает `approval.approver_user_id`).
+> - **«owner»** строка добавлена в Settings → Agent details (читает `agent.owner_user_id`); null → caption «Not assigned».
+> - **Version author** имя рендерится в каждой строке `VersionHistory` на Advanced tab (`version.created_by`).
+> - **Members** tab на `/company/members` — read-only список 15 юзеров (фикстуры расширены 2026-05-14: 3 → 15 seed users).
 
 ### 1.3 — ~~`GET /approvals/{id}`~~ — RESOLVED 2026-05-01
 
 > **Этот gap не существует.** Live backend (см. `docs/gateway.yaml`) экспонирует `GET /approvals/{approvalId}` (operationId `getApproval`). Frontend workaround (cache + sequential list sweep), который мы добавили ранее, был основан на устаревшем local draft. Workaround снят, `api.getApproval(id)` снова делает прямой single-fetch. Запись оставлена как stub чтобы не ломать ссылки `§1.3`.
 
-### 1.4 — ~~`PATCH /agents/{id}` / status transition~~ — RESOLVED 2026-05-13 (gateway 0.3.0)
+### 1.4 — ~~`PATCH /agents/{id}` / status transition~~ — RESOLVED 2026-05-13 (gateway 0.3.0) + UI wired 2026-05-14
 
-> **Этот gap закрыт.** Live backend 0.3.0 экспонирует:
+> **Этот gap закрыт целиком.** Live backend 0.3.0 экспонирует:
 > - `PATCH /agents/{id}` (`patchAgent`) — обновление `name` / `description` / `domain_id` / `owner_user_id`. True PATCH semantics, минимум одно поле.
 > - `PATCH /agents/{id}/status` (`patchAgentStatus`) — lifecycle `draft / active / paused / archived`. Illegal transitions возвращают 409.
 >
-> Мок обновлён 2026-05-13: добавлены `api.patchAgent()` и `api.patchAgentStatus()` с проверкой легальных переходов. Восстановление спрятанных UI-поверхностей (Settings → "Manage employment" / agent rename / re-owner) — Tier 2 продуктовое решение.
+> Мок добавлен 2026-05-13. UI wired up 2026-05-14:
+>
+> - **`name`** — inline rename в шапке AgentDetail. Hover на имени → pencil-кнопка (admin/domain_admin only) → TextField с Save/Cancel. Enter сохраняет, Esc отменяет. Validation: 1-200 символов. (`EditableAgentName` в `AgentDetailScreen.tsx`)
+> - **`description`** — `AboutCard` блок первым на Overview. Кнопка `Edit` (admin/domain_admin only) → TextArea → Save/Cancel. Очищение поля → сохраняется как `null` (caption «—»).
+> - **`domain_id`** — `WorkspaceCard` на Settings продолжает использовать `setAgentWorkspace`, но тот теперь **тонкая обёртка над `api.patchAgent({ domain_id })`**. Picker воркспейсов всё ещё мок (см. § 1.15).
+> - **`owner_user_id`** — отображается **read-only** на Settings → Agent details. Edit-функция (picker юзеров) пока не реализована — отложено как отдельная задача (когда понадобится UX смены ответственного).
+> - **`PATCH /agents/{id}/status`** — `ManageEmploymentCard` на Settings tab. State-based render:
+>   - `draft` — текст «Set up brief to activate», нет actions.
+>   - `active` — `Pause employment` + `Fire {Name}` секции с описаниями. Pause → confirm-dialog. Fire → confirm-dialog с red action.
+>   - `paused` — `Resume employment` (instant, без dialog) + `Fire {Name}`.
+>   - `archived` — «{Name} was fired {ago}. Their past activity stays in your history.», нет actions.
+> - **Member роль:** все surface'ы видны read-only — кнопки скрыты. UI honesty: real backend всё равно вернёт 403, мы не показываем кнопки, которые не сработают.
+>
+> Планы: `docs/agent-plans/2026-05-14-2100-inline-rename-and-about-card.md`, `docs/agent-plans/2026-05-14-2300-manage-employment-pause-resume-fire.md`.
 
 ### 1.5 — Workspace CRUD ⏸ planned
 
@@ -117,23 +137,23 @@
   - **`scopeFilter: string[]`** — глобальный sticky filter для всех list-экранов. `[]` = «all workspaces» (union по memberships, дефолт). `[wsA, wsB, ...]` = explicit subset. Persist'ится в `localStorage["proto.scope.v1"]` как `{ userId, filter }` (userId tag отсекает протекание между демо-логинами на одном устройстве).
   - **Связи нет:** смена active в switcher не трогает filter, и наоборот. Это разделение «контекст действия» vs «контекст просмотра» зафиксировано в `docs/plans/workspaces-redesign-spec.md § 2`.
 - **Где в UI (mock — но не везде глубокий мок):**
-  - `WorkspaceSwitcher` в header сайдбара — caption «Working in», текущий workspace, dropdown с radio-list + helper «New agents will be hired into the selected workspace.» + `+ Create workspace` + `Manage workspaces` + MockBadge. При >=10 memberships в dropdown появляется search input.
+  - `WorkspaceSwitcher` в header сайдбара — caption «Working in», текущий workspace, dropdown с radio-list + helper «New agents will be hired into the selected workspace.» + `+ Create workspace` + **`Manage company`** (ведёт на `/company` → default tab `/company/workspaces`) + MockBadge. При >=10 memberships в dropdown появляется search input.
   - Глобальный chip-row на `/agents`, `/activity`, `/approvals`, `/costs` — лейбл «Showing:», первый чип «All workspaces» (filter==[]), далее чипы на каждый workspace. Sticky-last (нельзя снять последний чип, не активировав «All workspaces»). Скрыт при N≤1.
-  - `/workspaces` (`WorkspacesScreen`) — helper-text + card grid + Create/Edit/Delete + Members card (read-only).
+  - **`/company`** — хаб со вкладками **Members** (тенант-wide список юзеров, admin/domain_admin) и **Workspaces** (helper-text + card grid + Create/Edit/Delete + Members of current workspace card). Старый отдельный `/workspaces` route — теперь legacy redirect на `/company/workspaces`. Файлы: `screens/CompanyScreen.tsx`, `screens/company/{MembersTab,WorkspacesTab}.tsx` (`WorkspacesScreen.tsx` удалён).
   - Hire-form (`/agents/new`) — header «Hiring into: X [Change]» с локальным per-hire override; глобальный active не трогается. Welcome-step + каждый wizard-step.
-  - AgentDetail Overview tile «Workspace», RunDetail MetaRow «workspace», AgentDetail Settings → `WorkspaceCard` с move-action — все читают `agent.domain_id` и резолвят имя через `workspaceLabel(id)` (lookup в `fxWorkspaces`).
+  - AgentDetail Overview tile «Workspace», RunDetail MetaRow «workspace», AgentDetail Settings → `WorkspaceCard` с move-action — все читают `agent.domain_id` и резолвят имя через `workspaceLabel(id)` (lookup в `fxWorkspaces`). **Move-action теперь идёт через реальный `PATCH /agents/{id}` (gateway 0.3.0)** — `setAgentWorkspace` тонкая обёртка над `api.patchAgent({ domain_id })`. Мок-only часть здесь — picker source (см. ниже).
   - Filter cascade в `api.list*` — каждый list-метод (`listAgents`, `listApprovals`, `listRuns`, `listAudit`, `listChats`, `getSpend`, `listHandoffs`) принимает `workspace_ids?: string[]`. Пустой/undefined → fallback на union по memberships (`getAllUserWorkspaceIds()`). **Resolve agent → workspace через `agent.domain_id` напрямую** — никакого side-table.
   - Auto-create на login: если `GET /workspaces` вернул empty list для свежего юзера, клиент инициирует `POST /workspaces` с `{ name: 'Main' }` (idempotent, см. `auth.tsx`). Демо-юзеры с memberships не задеты.
 - **Что говорит spec:**
-  - **Есть:** `Agent.domain_id: uuid|null`, `User.domain_id: uuid|null`, роль `domain_admin`. Это и есть наш workspace FK + workspace admin role.
-  - **Нет:** `Workspace` (или `Domain`) schema, `/workspaces` (или `/domains`) namespace, membership endpoints, `PATCH /agents/{id}` (для move-action).
+  - **Есть:** `Agent.domain_id: uuid|null`, `User.domain_id: uuid|null`, роль `domain_admin`. Это и есть наш workspace FK + workspace admin role. **`PATCH /agents/{id}` с `{ domain_id }`** — есть (0.3.0), используется для move-action.
+  - **Нет:** `Workspace` (или `Domain`) schema, `/workspaces` (или `/domains`) namespace, membership endpoints.
 - **Что нужно от backend (минимально):**
   - `Workspace`/`Domain` schema (`id`, `name`, `description?`, `created_at`). Backend выбирает имя — UI нормализует.
   - `Membership` schema (`workspace_id`, `user_id`, `joined_at`, optionally `role`).
   - `GET /workspaces` (или `/domains`) — workspaces visible to the bearer (via memberships).
   - `GET /workspaces/{id}` / `POST /workspaces` / `PATCH /workspaces/{id}` / `DELETE /workspaces/{id}`.
   - `GET /workspaces/{id}/members` (read-only достаточно для v1).
-  - `PATCH /agents/{id}` с `{ domain_id }` — для move-action (см. AgentDetail Settings → WorkspaceCard).
+  - ~~`PATCH /agents/{id}` с `{ domain_id }` — для move-action~~ — ✅ есть в 0.3.0 (используется).
   - **Filter param на list endpoints:** `?workspace_ids[]=ws_a&workspace_ids[]=ws_b` (multi-param) ИЛИ `?workspace_ids=a,b` (CSV) — на бэке маппится на `domain_id IN (...)` фильтр. Применяется к `/agents`, `/dashboard/runs`, `/audit`, `/approvals`, `/chat`, `/dashboard/spend`. **Когда параметр НЕ передан** — сервер ВОЗВРАЩАЕТ union по всем workspace'ам пользователя (это контракт нашего «filter==[]» = «all»; на этот же контракт опирается sidebar approval badge — счётчик считает ALL pending без передачи workspace_ids).
   - Aggregations (`/dashboard/spend`): либо честный server-side multi-param, либо `group_by=workspace` чтобы UI не считал per-workspace aggregation client-side. Сейчас у `/dashboard/spend` нет `workspace_id` query вообще.
 - **Auto-create на регистрации:**
@@ -281,22 +301,17 @@ Gateway 0.2.0 (ADR-0011) ввёл два связанных изменения, 
 - **Backend:** persistent storage. Refresh показывает реальное состояние.
 - **Migration impact:** zero — UI код одинаковый.
 
-### 3.5 — Agent status flip после createAgentVersion
+### 3.5 — ~~Agent status flip после createAgentVersion~~ — RESOLVED (no longer in code)
 
-- **Где:** `AgentNewScreen.tsx:147` (Phase 7 wizard).
-- **Mock:** `fresh.status = 'active'` напрямую после `activateVersion`.
-- **Backend:** см. §1.4.
-- **Migration impact:** удалить хак, доверить backend-у транзицию.
+> **Хака больше нет.** Текущий `AgentNewScreen` (hire wizard success path) после `api.activateVersion` просто перечитывает агента через `api.getAgent` — никакого ручного `fresh.status = 'active'`. Мок-`activateVersion` сам делает транзицию `draft → active` (`lib/api.ts:486-493`), как и реальный бэк. Архитектурно всё корректно. Запись осталась как stub чтобы не ломать ссылки `§3.5` из других мест.
 
 ---
 
 ## 4. Disabled UI features (planned, no backend yet)
 
-### 4.1 — Pause AI worker / Fire AI worker
+### 4.1 — ~~Pause / Fire agent~~ — RESOLVED 2026-05-14
 
-- **Где:** `AgentDetailScreen.tsx` → Settings tab.
-- **Что нужно:** `PATCH /agents/{id}` со status transition, либо отдельные endpoint-ы `POST /agents/{id}/pause`, `DELETE /agents/{id}`.
-- **Status:** disabled "(planned)".
+> **Этот gap закрыт.** Surface на AgentDetail → Settings tab — рабочая карточка `ManageEmploymentCard` (Pause / Resume / Fire) поверх `PATCH /agents/{id}/status` (gateway 0.3.0). Подробности — § 1.4. Лейбл «(planned)» снят, кнопки реально мутируют статус.
 
 ### 4.2 — Manage billing / Rename workspace / Close workspace
 
@@ -415,7 +430,9 @@ Gateway 0.2.0 (ADR-0011) ввёл два связанных изменения, 
 
 ---
 
-**Last updated:** 2026-05-08 (latest) — § 1.15 (Workspaces) rewritten for the **domain ≡ workspace merge** (architectural decision, see `docs/handoff-prep.md § 0.1`). Backend `domain` and frontend `workspace` are now treated as one entity: `Agent.domain_id` (already in spec) IS the workspace FK, role `domain_admin` IS workspace admin. Side-table `agentWorkspace` removed; `DOMAIN_LABELS` hardcode removed; new `workspaceLabel(id)` helper resolves names via `fxWorkspaces`. UI labels updated: AgentDetail Overview tile «Team»→«Workspace», Settings MetaRow dropped (dup of WorkspaceCard), RunDetail MetaRow «team»→«workspace», ProfileScreen Scope card resolved label conflict (tenant Caption «Workspace»→«Tenant», domain Caption «Team»→«Workspace»). Backend contract minimally affected — still need `Workspace` (or `Domain`) schema + CRUD endpoints + `PATCH /agents/{id}` for move-action, but `Agent.workspace_id` is no longer requested (the field exists as `domain_id`).
+**Last updated:** 2026-05-14 — backend-sync 0.3.0 UI work. § 1.2 (GET /users) marked fully wired: `UserLookupProvider` + `useUser` hook, `requested_by_name` denorm field removed, approver-name and agent-owner surfaces restored as read-only. § 1.4 (PATCH /agents) marked fully wired: inline rename in AgentDetail header, About card on Overview, `WorkspaceCard` move-action now wraps real PATCH, `ManageEmploymentCard` for Pause/Resume/Fire on Settings. § 4.1 (Pause/Fire) marked resolved (no longer disabled). § 1.15 (Workspaces): `/workspaces` route replaced with `/company` hub (Members + Workspaces tabs, `WorkspacesScreen.tsx` deleted), switcher dropdown item renamed «Manage workspaces» → «Manage company». New section in plans: `2026-05-14-*` agent-plan files document each change. Plus T2.4 (Version history on Advanced tab via `GET /agents/{id}/versions` + activate rollback) — no separate § in this doc but covered under § 1.13 compliance. Plus T2.5 (Run shape cleanup): removed mock-only `domain_id` field from `RunDetail`/`RunListItem` types and all Run fixtures, added required `agent_id` field per spec, `RunDetailScreen` now derives workspace via `agent.domain_id` instead of `run.domain_id`. `workspace_ids` filter on `listRuns` flagged as mock-only with comment (closes when § 1.15 workspace namespace lands).
+
+Earlier 2026-05-08 — § 1.15 (Workspaces) rewritten for the **domain ≡ workspace merge** (architectural decision, see `docs/handoff-prep.md § 0.1`). Backend `domain` and frontend `workspace` are now treated as one entity: `Agent.domain_id` (already in spec) IS the workspace FK, role `domain_admin` IS workspace admin. Side-table `agentWorkspace` removed; `DOMAIN_LABELS` hardcode removed; new `workspaceLabel(id)` helper resolves names via `fxWorkspaces`. UI labels updated: AgentDetail Overview tile «Team»→«Workspace», Settings MetaRow dropped (dup of WorkspaceCard), RunDetail MetaRow «team»→«workspace», ProfileScreen Scope card resolved label conflict (tenant Caption «Workspace»→«Tenant», domain Caption «Team»→«Workspace»). Backend contract minimally affected — still need `Workspace` (or `Domain`) schema + CRUD endpoints + `PATCH /agents/{id}` for move-action, but `Agent.workspace_id` is no longer requested (the field exists as `domain_id`).
 
 Earlier 2026-05-08 — § 1.15 (Workspaces) rewritten for the active/filter split redesign. UI now keeps `activeWorkspaceId` (where I work — drives hire) and `scopeFilter: string[]` (what I see — global sticky chip-row, default `[]` = all memberships) as TWO INDEPENDENT slices. Switcher relabeled "Working in"; chip-row labeled "Showing:" with first chip "All workspaces". Sidebar nav "Team" → "Agents". Auto-create "Main" workspace on first login when memberships are empty. Backend contract for list endpoints unchanged — still `?workspace_ids[]=...`, omit = union over user memberships.
 

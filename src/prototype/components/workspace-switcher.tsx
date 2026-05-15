@@ -132,10 +132,10 @@ export function WorkspaceSwitcher() {
               <Text as="span" size="2">Create workspace</Text>
             </Flex>
           </DropdownMenu.Item>
-          <DropdownMenu.Item onSelect={() => navigate('/workspaces')}>
+          <DropdownMenu.Item onSelect={() => navigate('/company')}>
             <Flex align="center" gap="2" width="100%">
               <IconSettings size={12} />
-              <Text as="span" size="2">Manage workspaces</Text>
+              <Text as="span" size="2">Manage company</Text>
             </Flex>
           </DropdownMenu.Item>
           <DropdownMenu.Separator />
