@@ -104,18 +104,22 @@ function userInSelectedWorkspaces(userId: string, workspaceIds?: string[]): bool
 }
 
 // ApprovalRequest doesn't carry agent_id directly — resolve via run_id →
-// run.agent_version_id → version.agent_id. Returns null if any link is
-// missing (such approvals are filtered out by inSelectedWorkspaces).
-//
-// Chat-source approvals (gateway 0.2.0 / ADR-0011) have run_id == null;
-// agent lookup for those needs to go via chat_id → chat.agent_id instead.
-// That path isn't wired here yet — Tier 3.
+// run.agent_version_id → version.agent_id for run-source approvals, or
+// chat_id → chat.agent_id for chat-source ones (gateway 0.2.0 / ADR-0011).
+// Returns null if any link is missing (such approvals are filtered out by
+// inSelectedWorkspaces).
 function approvalAgentId(a: ApprovalRequest): string | null {
-  if (!a.run_id) return null
-  const run = fxRuns[a.run_id]
-  if (!run || !run.agent_version_id) return null
-  const version = fxVersions.find(v => v.id === run.agent_version_id)
-  return version?.agent_id ?? null
+  if (a.run_id) {
+    const run = fxRuns[a.run_id]
+    if (!run || !run.agent_version_id) return null
+    const version = fxVersions.find(v => v.id === run.agent_version_id)
+    return version?.agent_id ?? null
+  }
+  if (a.chat_id) {
+    const chat = fxChats.find(c => c.id === a.chat_id)
+    return chat?.agent_id ?? null
+  }
+  return null
 }
 
 // Dev-mode short-circuit. Read methods call this right after delay()

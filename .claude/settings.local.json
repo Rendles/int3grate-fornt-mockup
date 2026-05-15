@@ -106,7 +106,8 @@
       "Bash(git commit -m ' *)",
       "Bash(git push *)",
       "Bash(grep -n \"\\\\\\\\bBadge\\\\\\\\b\\\\|\\\\\\\\bDataList\\\\\\\\b\\\\|\\\\\\\\babsTime\\\\\\\\b\\\\|\\\\\\\\bMetaRow\\\\\\\\b\" src/prototype/screens/AgentDetailScreen.tsx)",
-      "Bash(grep -n \"Last updated\\\\|^---$\" docs/backend-gaps.md)"
+      "Bash(grep -n \"Last updated\\\\|^---$\" docs/backend-gaps.md)",
+      "Bash(git commit *)"
     ]
   }
 }
