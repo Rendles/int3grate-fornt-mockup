@@ -29,6 +29,10 @@ export interface ApprovalCardProps {
   /** Drives whether the WorkspaceContextPill renders. Parent passes
       true when its page-level workspace filter is broader than 1. */
   showWorkspacePill: boolean
+  /** False when the current user's role can't decide this approval — gateway
+      would 403 on submit. Hide quick Approve / Reject icon buttons; the
+      View-full-details link still works as a read-only route. */
+  canDecide: boolean
   actionVerb: string
   isRejectExpanded: boolean
   rejectReason: string
@@ -51,6 +55,7 @@ export function ApprovalCard(props: ApprovalCardProps) {
     agentId,
     isChatSource,
     showWorkspacePill,
+    canDecide,
     actionVerb,
     isRejectExpanded,
     rejectReason,
@@ -120,7 +125,7 @@ export function ApprovalCard(props: ApprovalCardProps) {
               View full details
               <IconArrowRight className="ic ic--sm" />
             </Button>
-            {isPending && (
+            {isPending && canDecide && (
               <>
                 <IconButton
                   size="2"

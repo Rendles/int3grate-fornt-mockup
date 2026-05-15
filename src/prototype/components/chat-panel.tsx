@@ -9,6 +9,7 @@ import { IconAlert, IconChat, IconCheck, IconPlay, IconStop, IconX } from './ico
 import { RejectInlineForm } from './reject-inline-form'
 import { useAuth } from '../auth'
 import { api } from '../lib/api'
+import { canDecideApproval } from '../lib/permissions'
 import { useUser } from '../lib/user-lookup'
 import type { Agent, AgentVersion, ApprovalRequest, Chat, ChatMessage, ChatStreamFrame, ChatToolCall } from '../lib/types'
 import { absTime, ago, money, num, prettifyRequestedAction, toolLabel } from '../lib/format'
@@ -411,6 +412,7 @@ export function ChatPanel(props: ChatPanelProps) {
                 approval={item.data}
                 agentName={agent?.name ?? 'The agent'}
                 currentUserId={user?.id ?? null}
+                canDecide={canDecideApproval(user, item.data)}
                 deciding={deciding && item.data.status === 'pending'}
                 rejectExpanded={rejectExpanded && item.data.status === 'pending'}
                 rejectReason={rejectReason}
@@ -453,7 +455,9 @@ export function ChatPanel(props: ChatPanelProps) {
       ) : mode !== 'draft' && chat?.status === 'awaiting_approval' ? (
         <div className="chat-detail__composer chat-detail__composer--readonly">
           <Text as="div" size="1" color="gray">
-            Chat is paused — waiting for your decision on the action above.
+            {chatApprovals.some(a => a.status === 'pending' && canDecideApproval(user, a))
+              ? 'Chat is paused — waiting for your decision on the action above.'
+              : 'Chat is paused — an admin needs to approve the action above.'}
           </Text>
         </div>
       ) : mode !== 'draft' && chat?.status === 'active' ? (
@@ -813,6 +817,7 @@ function SuspendedCard({
   approval,
   agentName,
   currentUserId,
+  canDecide,
   deciding,
   rejectExpanded,
   rejectReason,
@@ -828,6 +833,10 @@ function SuspendedCard({
   approval: ApprovalRequest
   agentName: string
   currentUserId: string | null
+  /** False when the current user's role can't decide this approval — gateway
+      would 403 on submit. Hide Approve / Reject buttons and show a small
+      "waiting for an admin" hint instead. */
+  canDecide: boolean
   deciding: boolean
   rejectExpanded: boolean
   rejectReason: string
@@ -905,6 +914,10 @@ function SuspendedCard({
         deciding ? (
           <Text as="div" size="1" color="gray">
             Recording your decision — the agent will continue in a moment.
+          </Text>
+        ) : !canDecide ? (
+          <Text as="div" size="1" color="gray">
+            An admin needs to decide before {agentName} can continue.
           </Text>
         ) : rejectExpanded ? (
           <RejectInlineForm

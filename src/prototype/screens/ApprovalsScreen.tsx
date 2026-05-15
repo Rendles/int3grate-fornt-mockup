@@ -15,6 +15,7 @@ import { useRouter } from '../router'
 import { api } from '../lib/api'
 import { APPROVAL_STATUS_FILTERS } from '../lib/filters'
 import type { ApprovalStatusFilter } from '../lib/filters'
+import { canDecideApproval } from '../lib/permissions'
 import type { Agent, ApprovalRequest, Chat, RunListItem } from '../lib/types'
 import { makeToastId, nowMs, type UndoToast } from '../lib/undo-toast'
 import { ago, prettifyRequestedAction } from '../lib/format'
@@ -599,7 +600,7 @@ export default function ApprovalsScreen() {
                         {ago(a.created_at)}
                       </Text>
                       <Status status={a.status} />
-                      {isPending ? (
+                      {isPending && canDecideApproval(user, a) ? (
                         <Flex gap="2" justify="end">
                           <IconButton
                             size="2"
@@ -669,6 +670,7 @@ export default function ApprovalsScreen() {
                     agentId={source.id}
                     isChatSource={source.isChat}
                     showWorkspacePill={shouldShowWorkspacePill(workspaceFilter, myWorkspaces.length)}
+                    canDecide={canDecideApproval(user, a)}
                     actionVerb={actionVerb}
                     isRejectExpanded={rejectTarget?.approval.id === a.id}
                     rejectReason={rejectReason}

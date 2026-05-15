@@ -2,7 +2,7 @@
 
 > Plan owner: Claude
 > Created: 2026-05-15 00:30 local
-> Status: plan only — awaiting owner sign-off before Step 1
+> Status: **Done.** Steps 1-7 в `03d4ee5`, critical workspace-scope fix в `7dbceb0`, member-role gate + vocab pass в текущем коммите. Tour compat вынесен out-of-scope. Plan body ниже — оригинальный design-doc, treat § 7 as retroactive log.
 
 ## 1. Task summary
 
@@ -255,3 +255,32 @@ Visual design suspended-card:
 ## 10. Progress log
 
 - **2026-05-15 00:30** — Plan drafted. 8 шагов. Owner confirmed: suspended-card как message в timeline, inline Approve/Reject, auto-resume через polling, полный план не MVP. Большая задача — расщеплена на 8 циклов для удобства верификации.
+
+- **2026-05-15 — implementation landed (retroactive log).** Имплементация прошла параллельно с авторством плана, формального step-by-step approval'а не было. На момент сверки в коммите `03d4ee5` (Tier 1.5 batch, тот же коммит что и пять 2026-05-14 планов) Steps 1-7 уже были в master'е. Чек по факту:
+
+  | Step | Where | Notes |
+  |---|---|---|
+  | 1. Mock streamer (suspend + resume) | `lib/api.ts` — `streamMockTurn` § 1465+, `detectApprovalNeeded` § 1355, `applyChatResume` § 1396, `pendingResumes` Map § 1346 | 409 path реализован как synthetic `event: 'error'` frame (line 1473-1481), не throw. Семантически эквивалентно для UI consumer'а. |
+  | 2. Suspended-card в чате | `components/chat-panel.tsx:401-431` (`buildTimeline` + `SuspendedCard`), компонент § 812-936 | Variant 2 из плана (без `ChatMessage.kind`-поля) — approvals тянутся через `listApprovals` + filter по `chat_id`. Card иммутабельная история, статус-плашка меняется (orange/jade/red). |
+  | 3. Auto-resume polling | `chat-panel.tsx:273-330` (`decideOnApproval`) | Polling `getChat` каждые 300ms, 15 attempts × 300ms = 4.5s cap. Если не зарезюмилось — non-fatal hint «Decision recorded — agent is taking longer than usual». Composer-баннер «Chat is paused…» при `chat.status === 'awaiting_approval'` (line 453-458). |
+  | 4. Approvals list integration | `screens/ApprovalsScreen.tsx:387-454`, `components/approval-card.tsx:619+` | Agent resolve по `chat.agent_id`, source filter pill «All / From runs / From chats» с counts (§ 449-456). |
+  | 5. Approval-detail chat-source variant | `screens/ApprovalDetailScreen.tsx:59-118, 245, 619-905` | `Return to chat` back-link, conversation-excerpt section (последние сообщения из chat'а), chat-meta row в Technical Details. |
+  | 6. Filter pill all/run/chat | См. Step 4 — реализовано вместе. | — |
+  | 7. Fixtures | `lib/fixtures.ts` — `apv_9030` (pending, `cht_3801`), `apv_9031` (pending, `cht_3810`), `apv_9028` (approved, `cht_3805`); `cht_3801` + `cht_3810` со `status: 'awaiting_approval'` (§ 1777, 1826). | Покрывает три состояния (pending / approved / rejected) и оба сценария (suspended chat + resumed chat). |
+
+- **2026-05-15 — critical fix (`7dbceb0`).** При первой попытке открыть `cht_3801` SuspendedCard не отрисовывался: composer показывал «Chat is paused», но кнопок Approve / Reject не было. Корневая причина — `approvalAgentId()` в `api.ts:113` возвращал `null` для chat-source approvals (`run_id == null` → return), после чего `inSelectedWorkspaces(null, …)` фильтровал их из `listApprovals` (workspace-scope гейт). В коде висел TODO «That path isn't wired here yet — Tier 3», который оставили на потом и забыли. Фикс — расширить resolver на `chat_id → chat.agent_id` для chat-source. Это же ломало source-filter «From chats» на `/approvals` — он был мёртвый код.
+
+- **2026-05-15 — actual remaining hot-list (Step 8 / new findings):**
+
+  - [x] **Member-роль gate на кнопки decision.** Done. Hелпер `canDecideApproval(user, approval)` в `lib/permissions.ts` — admin: всегда, domain_admin: если `approver_role !== 'admin'`, member: никогда. Использован в `chat-panel.tsx` (SuspendedCard prop + composer copy), `approval-card.tsx` (prop), `ApprovalsScreen.tsx` table view (inline render gate), `ApprovalDetailScreen.tsx` (заменил lax `userCanDecide` + добавил «Waiting for an admin» Banner для pending-but-cant-decide).
+  - [x] **Browser QA полным flow.** Done by owner — flow работает.
+  - [x] **Vocab pass.** Done. Грeп по 4 файлам (chat-panel, approval-card, ApprovalsScreen, ApprovalDetailScreen) на `suspended`/`gate`/`queued`/`Assistant`. Все matches в visible-UI кроме одного — `title={\`${verb} action queued\`}` в `ResumeBanner` на ApprovalDetailScreen.tsx:642. Переписан в «Approved — agent is catching up» / «Rejected — agent is catching up» (verb теперь Approved/Rejected, не Approve/Reject). Body тоже подправлен: «recorded» → «saved».
+  - [ ] **Reject в чате — статичный текст агента.** Owner decision: пофиг — `applyChatResume` оставляем как есть. Reject-текст агента (hardcoded «I won't proceed since you rejected») — заглушка; на проде orchestrator сгенерит сам.
+  - **Out of scope:** Tour `approval-review-tour` compat — tours это отдельная фича со своими приколами, разруливается отдельно.
+
+- **Не закрыто из § 4 (Uncertainties), статус по факту:**
+  - Inline reject reason — реализован как expand-on-click (textarea сворачивается, разворачивается на Reject) — `RejectInlineForm` в chat-panel.
+  - `ChatMessage.kind` поле — **НЕ добавлено** (выбран Variant 2 из плана: filter approvals по `chat_id` через listApprovals). Спека чистая.
+  - «Что если decided из /approvals» — реализовано: SuspendedCard в timeline после возврата в чат показывает resolved state с approver name + ago.
+
+- **Plan body (§ 1-9) — design-doc snapshot.** Сохраняется как исторический документ. Расхождения с реальным кодом: (а) Step 1 описывает 409 как throw, реально — synthetic error frame; (б) Variant 1 из § 5.2 (`ChatMessage.kind` поле) рассматривался — выбран Variant 2; (в) Step 8 как «sequenced after 7» — на практике частично пересекался со Step 1 (поскольку 409 фрейм был сделан сразу же).

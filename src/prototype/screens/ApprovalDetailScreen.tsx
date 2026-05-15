@@ -22,6 +22,7 @@ import {
 import { Link, useRouter } from '../router'
 import { useAuth } from '../auth'
 import { api } from '../lib/api'
+import { canDecideApproval } from '../lib/permissions'
 import type {
   Agent,
   ApprovalDecisionAccepted,
@@ -157,7 +158,7 @@ export default function ApprovalDetailScreen({ approvalId }: { approvalId: strin
   const reasonRequired = decision === 'rejected'
   const reasonInvalid = reasonRequired && reasonTouched && reason.trim().length < 4
   const canSubmit = decision !== null && (!reasonRequired || reason.trim().length >= 4) && !busy
-  const userCanDecide = approval.status === 'pending' && !!user
+  const userCanDecide = approval.status === 'pending' && canDecideApproval(user, approval)
   const agentName = agent?.name ?? 'Agent'
   const actionVerb = prettifyRequestedAction(approval.requested_action)
 
@@ -306,6 +307,15 @@ export default function ApprovalDetailScreen({ approvalId }: { approvalId: strin
             onCancel={cancelDecision}
             onConfirm={submitFromConfirmCard}
           />
+        )}
+
+        {/* Pending but the current user's role can't decide — gateway would
+            403 on submit. Surface the reason instead of showing empty space. */}
+        {approval.status === 'pending' && !userCanDecide && !resume && (
+          <Banner tone="info" title="Waiting for an admin">
+            This action needs an admin to approve or reject. You can still
+            view the details below.
+          </Banner>
         )}
 
         {/* Resolved state · ReviewCard isn't rendered here, so the
@@ -622,17 +632,17 @@ function ResumeBanner({
     approval.status !== 'pending' ? 'resolved' :
     'queued'
 
-  const verb = ack.decision === 'approve' ? 'Approve' : 'Reject'
+  const verb = ack.decision === 'approve' ? 'Approved' : 'Rejected'
 
   if (stage === 'queued') {
     return (
       <Banner
         tone="info"
         icon={<IconApproval className="ic" />}
-        title={`${verb} action queued`}
+        title={`${verb} — agent is catching up`}
         action={<Badge color="cyan" variant="soft" radius="small" size="1">waiting</Badge>}
       >
-        Your decision is recorded. Your agent will resume shortly — usually within 8–15 seconds.
+        Your decision is saved. Your agent will resume shortly — usually within 8–15 seconds.
       </Banner>
     )
   }
